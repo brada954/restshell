@@ -1,0 +1,6 @@
+# This is the user init file for a docker container build.
+# It is renamed during the build to .rsconfig.user.
+#
+# Developers can have their own init file in their local
+# repository that is .gitignored and does not collide with checked in files.
+#

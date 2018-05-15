@@ -1,0 +1,37 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "gILp4IL+xwXLH6tJtRLrnZ56F24=",
+			"path": "github.com/mitchellh/mapstructure",
+			"revision": "06020f85339e21b2478f756a78e295255ffa4d6a",
+			"revisionTime": "2017-10-17T17:18:08Z"
+		},
+		{
+			"checksumSHA1": "9g3poI1bigwIsRtU+ReaYVrews8=",
+			"path": "github.com/pborman/getopt/v2",
+			"revision": "7148bc3a4c3008adfcab60cbebfd0576018f330b",
+			"revisionTime": "2017-01-12T20:04:14Z"
+		},
+		{
+			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "7d9177d70076375b9a59c8fde23d52d9c4a7ecd5",
+			"revisionTime": "2017-09-15T19:08:28Z"
+		},
+		{
+			"checksumSHA1": "qLwcuele4pa2OxBoa3Titv9Msr0=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "b6e1ae21643682ce023deb8d152024597b0e9bb4",
+			"revisionTime": "2017-09-18T15:00:50Z"
+		},
+		{
+			"checksumSHA1": "pBPFzDGt3AVSRffB7ffiUnruFUk=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "b6e1ae21643682ce023deb8d152024597b0e9bb4",
+			"revisionTime": "2017-09-18T15:00:50Z"
+		}
+	],
+	"rootPath": "github.com/brada954/restshell"
+}
