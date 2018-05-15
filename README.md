@@ -122,7 +122,10 @@ There is support to optionally test error values and Authorization JWT tokens. E
 Assertions can easily be added to perform more complex validations.
 
 ## Dependencies
-This program uses a getopt library http://github.com/pborman/getopt/v2"
+This program uses:
+    http://github.com/pborman/getopt/v2 (getopt library)
+    github.com/mitchellh/mapstructure/ (structure/map mapping)
+    golang.org/x/crypto/ssh/terminal/ (terminal detection)
 
 ## Contributors
 A special thanks for the initial contributer, PeakActivity, LLC, which has allowed the program to be provided publically under the MIT License.
