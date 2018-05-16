@@ -20,7 +20,12 @@ func AddAlias(key string, command string, force bool) error {
 	}
 
 	if err := validateCmd(command); err != nil {
-		return err
+		parts := strings.SplitN(command, " ", 2)
+		cmdName := "Bad Command"
+		if len(parts) > 0 {
+			cmdName = parts[0]
+		}
+		return errors.New(cmdName + ": " + err.Error())
 	}
 
 	aliasStore[key] = command

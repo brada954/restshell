@@ -78,7 +78,11 @@ func runCmdLine(args []string) {
 
 func buildCmdLine(args []string) string {
 	for i, v := range args {
-		args[i] = quoteString(v)
+		if i == 0 {
+			args[i] = v
+		} else {
+			args[i] = quoteString(v)
+		}
 	}
 	return strings.Join(args, " ")
 }
