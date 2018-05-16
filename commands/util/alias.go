@@ -27,7 +27,7 @@ func (cmd *AliasCommand) Execute(args []string) error {
 	} else if len(args) == 1 {
 		cmd.displayAlias(args[0])
 	} else if len(args) == 2 {
-		shell.AddAlias(args[0], args[1], true)
+		return shell.AddAlias(args[0], args[1], true)
 	} else {
 		return errors.New("Invalid number of arguments")
 	}
