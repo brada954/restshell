@@ -1,7 +1,7 @@
 # Default startup script to create some common aliasses and variables
 ALIAS PUT "post --put"
 ALIAS OPTIONS "post --options"
-ALIAS HEAD "get --head"
+ALIAS HEAD "get --out-header --head"
 ALIAS DELETE "get --delete"
 ALIAS LIST "run --list"
 ALIAS DESCRIBE "run --header"

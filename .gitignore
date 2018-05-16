@@ -15,5 +15,6 @@ debug
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-# User scripts
+# User scripts or user specific init code
 *.user
+init2.go

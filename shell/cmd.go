@@ -10,25 +10,30 @@ import (
 	"github.com/pborman/getopt/v2"
 )
 
+// Command - interface for basic command
 type Command interface {
 	Execute([]string) error
 	AddOptions(set *getopt.Set)
 }
 
+// Abortable - interface for commands that support abort
 type Abortable interface {
 	Abort()
 }
 
+// Trackable - interface that overrides tracking mechanisms
 type Trackable interface {
 	DoNotCount() bool
 	DoNotClearError() bool
 	CommandCount() int
 }
 
+// LineProcessor - interface for commands that execute whole line
 type LineProcessor interface {
 	ExecuteLine(line string, echoed bool) error
 }
 
+// CommandWithSubcommands - interface for commands that have sub-commands
 type CommandWithSubcommands interface {
 	GetSubCommands() []string
 }
@@ -43,11 +48,12 @@ var (
 	CategoryHelp        = "Help"
 )
 
-var cmdMap map[string]Command = make(map[string]Command)
-var cmdKeys map[string][]string = make(map[string][]string)
-var cmdCategories []string = make([]string, 0)
-var cmdSubCommands map[string][]string = make(map[string][]string)
+var cmdMap = make(map[string]Command)
+var cmdKeys = make(map[string][]string)
+var cmdCategories = make([]string, 0)
+var cmdSubCommands = make(map[string][]string)
 
+// AddCommand -- Add a command to registry
 // Cmd structures should avoid pointers to data structures so cmd structures can
 // be duplicated into separate instances without data collision
 func AddCommand(name string, category string, cmd Command) {
@@ -117,6 +123,7 @@ const (
 	CmdRestclient
 	CmdNoRedirect         // Encapsulated in CmdRestclient
 	CmdSkipCertValidation // Encapsulated in CmdRestclient
+	CmdFormatOutput
 )
 
 const (
@@ -152,6 +159,11 @@ type StandardOptions struct {
 	reconnectOption      *bool
 	warmingOption        *bool // BM warming iterations (# = concurrency)
 	headersOption        *string
+	shortOutputOption    *bool
+	bodyOutputOption     *bool
+	headerOutputOption   *bool
+	cookieOutputOption   *bool
+	fullOutputOption     *bool
 }
 
 var globalOptions StandardOptions
@@ -316,6 +328,22 @@ func AddCommonCmdOptions(set *getopt.Set, options ...int) {
 			if globalOptions.headersOption == nil {
 				globalOptions.headersOption = set.StringLong("headers", 0, "", "Set the headers [k=v]")
 			}
+		case CmdFormatOutput:
+			if globalOptions.shortOutputOption == nil {
+				globalOptions.shortOutputOption = set.BoolLong("out-short", 0, "Output the short response (overrides verbose)")
+			}
+			if globalOptions.bodyOutputOption == nil {
+				globalOptions.bodyOutputOption = set.BoolLong("out-body", 0, "Output the response body")
+			}
+			if globalOptions.headerOutputOption == nil {
+				globalOptions.headerOutputOption = set.BoolLong("out-header", 0, "Output response headers")
+			}
+			if globalOptions.cookieOutputOption == nil {
+				globalOptions.cookieOutputOption = set.BoolLong("out-cookie", 0, "Output response cookies")
+			}
+			if globalOptions.fullOutputOption == nil {
+				globalOptions.fullOutputOption = set.BoolLong("out-full", 0, "Output all response data")
+			}
 		}
 	}
 }
@@ -414,6 +442,26 @@ func IsCmdNoRedirectEnabled() bool {
 
 func IsCmdSkipCertValidationEnabled() bool {
 	return globalOptions.IsSkipCertValidationEnabled()
+}
+
+func IsCmdFullOutputEnabled() bool {
+	return (globalOptions.fullOutputOption != nil && *globalOptions.fullOutputOption)
+}
+
+func IsCmdOutputHeaderEnabled() bool {
+	return (globalOptions.headerOutputOption != nil && *globalOptions.headerOutputOption) || IsCmdFullOutputEnabled()
+}
+
+func IsCmdOutputCookieEnabled() bool {
+	return (globalOptions.cookieOutputOption != nil && *globalOptions.cookieOutputOption) || IsCmdFullOutputEnabled()
+}
+
+func IsCmdOutputShortEnabled() bool {
+	return (globalOptions.shortOutputOption != nil && *globalOptions.shortOutputOption)
+}
+
+func IsCmdOutputBodyEnabled() bool {
+	return (globalOptions.bodyOutputOption != nil && *globalOptions.bodyOutputOption) || (IsCmdVerboseEnabled() && !IsCmdOutputShortEnabled())
 }
 
 func (o *StandardOptions) IsDebugEnabled() bool {
@@ -572,6 +620,26 @@ func (o *StandardOptions) IsSkipCertValidationEnabled() bool {
 
 func (o *StandardOptions) IsNoRedirectEnabled() bool {
 	return o.noRedirectOption != nil && *o.noRedirectOption
+}
+
+func (o *StandardOptions) IsFullOutputEnabled() bool {
+	return o.fullOutputOption != nil && *o.fullOutputOption
+}
+
+func (o *StandardOptions) IsOutputHeaderEnabled() bool {
+	return o.headerOutputOption != nil && *o.headerOutputOption
+}
+
+func (o *StandardOptions) IsOutputCookieEnabled() bool {
+	return o.cookieOutputOption != nil && *o.cookieOutputOption
+}
+
+func (o *StandardOptions) IsOutputShortEnabled() bool {
+	return o.shortOutputOption != nil && *o.shortOutputOption
+}
+
+func (o *StandardOptions) IsOutputBodyEnabled() bool {
+	return o.bodyOutputOption != nil && *o.bodyOutputOption
 }
 
 func ParseDuration(timeArg string, suffix ...string) (time.Duration, error) {

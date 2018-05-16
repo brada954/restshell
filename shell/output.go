@@ -7,36 +7,52 @@ import (
 	"net/http"
 )
 
-func RestCompletionHandler(response *RestResponse, err error, shortDisplay func(Result) error) error {
+// ShortDisplayFunc -- A function can be used to pretty format the output or condense it
+type ShortDisplayFunc func(io.Writer, Result) error
+
+func RestCompletionHandler(response *RestResponse, err error, shortDisplay ShortDisplayFunc) error {
+
 	if err != nil {
 		return errors.New("Network Error: " + err.Error())
 	}
 
+	if IsCmdDebugEnabled() {
+		fmt.Fprintln(ConsoleWriter(), "Displaying response:")
+	}
+
 	options := GetDefaultDisplayOptions()
-	if !IsCmdSilentEnabled() {
-		if !IsCmdVerboseEnabled() && shortDisplay != nil {
+	if IsShort(options) {
+		if shortDisplay != nil {
 			data, err := PeekResult(0)
 			if err != nil {
 				return errors.New("Warning: Unable to parse response")
 			}
 			if data.HttpStatus == http.StatusOK {
-				return shortDisplay(data)
+				err = shortDisplay(OutputWriter(), data)
 			} else {
-				response.DumpResponse(OutputWriter(), options...)
+				options = append(options, Body)
 			}
 		} else {
-			response.DumpResponse(OutputWriter(), options...)
+			options = append(options, Body)
 		}
 	}
 
+	response.DumpResponse(OutputWriter(), options...)
+
+	// Return the short error message if not nil
+	if err != nil {
+		return err
+	}
+
+	// Return error for http status errors
 	if response.GetStatus() != http.StatusOK {
-		return statusError(response.GetStatus())
+		return makeStatusError(response.httpResp)
 	}
 	return nil
 }
 
-func statusError(status int) error {
-	return errors.New(fmt.Sprintf("Http Failure: %d", status))
+func makeStatusError(resp *http.Response) error {
+	return fmt.Errorf("HTTP Status: %s", resp.Status)
 }
 
 func ColumnizeTokens(tokens []string, columns int, width int) []string {
@@ -70,11 +86,16 @@ const (
 	Headers
 	Cookies
 	Status
+	Short
 	All
 )
 
 func IsBody(l []DisplayOption) bool {
 	return isOptionEnabled(l, Body)
+}
+
+func IsShort(l []DisplayOption) bool {
+	return isOptionEnabled(l, Short)
 }
 
 func IsHeaders(l []DisplayOption) bool {
@@ -86,18 +107,38 @@ func IsCookies(l []DisplayOption) bool {
 }
 
 func IsStatus(l []DisplayOption) bool {
-	return isOptionEnabled(l, Headers) || isOptionEnabled(l, Body)
+	return isOptionEnabled(l, Headers) || isOptionEnabled(l, Status)
 }
 
 func GetDefaultDisplayOptions() []DisplayOption {
 	result := make([]DisplayOption, 0)
 
-	if !IsCmdSilentEnabled() {
-		result = append(result, Body)
+	if IsCmdSilentEnabled() {
+		if IsCmdOutputBodyEnabled() {
+			result = append(result, Body)
+		}
+		if IsCmdOutputShortEnabled() {
+			result = append(result, Short)
+		}
+	} else {
+		if IsCmdVerboseEnabled() && !IsCmdOutputShortEnabled() {
+			result = append(result, Body)
+		} else if IsCmdOutputBodyEnabled() && IsCmdOutputShortEnabled() {
+			result = append(result, Short, Body)
+		} else if IsCmdOutputBodyEnabled() {
+			result = append(result, Body)
+		} else {
+			// Note: if there is no short handler, it will dump the full body
+			result = append(result, Short)
+		}
 	}
 
-	if IsCmdVerboseEnabled() && IsCmdDebugEnabled() {
-		result = append(result, Cookies, Headers)
+	if (IsCmdVerboseEnabled() && IsCmdDebugEnabled()) || IsCmdOutputHeaderEnabled() {
+		result = append(result, Headers)
+	}
+
+	if (IsCmdVerboseEnabled() && IsCmdDebugEnabled()) || IsCmdOutputCookieEnabled() {
+		result = append(result, Cookies)
 	}
 	return result
 }
@@ -115,7 +156,7 @@ func (resp *RestResponse) DumpHeader(w io.Writer) {
 }
 
 func (resp *RestResponse) DumpResponse(w io.Writer, options ...DisplayOption) {
-	if IsStatus(options) {
+	if IsStatus(options) && !IsHeaders(options) {
 		fmt.Fprintf(w, "HEADER: Status(%s)\n", resp.httpResp.Status)
 	}
 

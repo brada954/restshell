@@ -8,4 +8,5 @@ func init() {
 
 func AddCommands() {
 	shell.AddCommand("example", shell.CategoryUtilities, NewExampleCommand())
+	shell.AddCommand("exquery", shell.CategoryUtilities, NewExqueryCommand())
 }

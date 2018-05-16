@@ -19,6 +19,7 @@ type Result struct {
 	Error      error
 	HttpStatus int
 	HeaderMap  map[string]string
+	CookieMap  map[string]string
 	AuthMap    interface{}
 }
 
@@ -36,6 +37,40 @@ func (r *Result) GetArrayMap() ([]interface{}, bool) {
 	return nil, false
 }
 
+func (r *Result) addCookieMap(resp *RestResponse) error {
+	cookies := make(map[string]string, 0)
+	for _, cookie := range resp.GetCookies() {
+		cookies[cookie.Name] = cookie.Value
+	}
+	r.HeaderMap = cookies
+	return nil // TODO: Are there any error conditions
+}
+
+func (r *Result) addHeaderMap(resp *RestResponse) error {
+	headers := make(map[string]string, 0)
+	for n, values := range resp.GetHeader() {
+		headers[n] = values[0]
+
+		// Special code that evalutes authorization header as a JWT
+		// This may need revisiting to be more acceptable of possibiltiies
+		if n == "Authorization" {
+			authmap, err := decodeJwtClaims(values[0])
+			if err == nil {
+				if IsCmdDebugEnabled() {
+					fmt.Fprintf(ConsoleWriter(), "Pushing AuthMap:\n%v\n", authmap)
+				}
+				r.AuthMap = authmap
+			} else {
+				if IsCmdDebugEnabled() {
+					fmt.Fprintln(ConsoleWriter(), "Unable to decode JWT")
+				}
+			}
+		}
+	}
+	r.HeaderMap = headers
+	return nil // TODO: Are there any error conditions
+}
+
 var (
 	ErrArguments        = errors.New("Invalid arguments")
 	ErrInvalidValue     = errors.New("Invalid value type")
@@ -47,28 +82,20 @@ var (
 	ErrArrayOutOfBounds = errors.New("Array index out of bounds")
 )
 
+//
+// PushResponse -- Push a RestResponse into the history buffer
+//
 func PushResponse(resp *RestResponse, resperror error) error {
 	var result Result
 
-	headers := make(map[string]string, 0)
-	for n, values := range resp.GetHeader() {
-		headers[n] = values[0]
-		if n == "Authorization" {
-			authmap, err := decodeJwtClaims(values[0])
-			if err == nil {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintf(ConsoleWriter(), "Pushing AuthMap:\n%v\n", authmap)
-				}
-				result.AuthMap = authmap
-			} else {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintln(ConsoleWriter(), "Unable to decode JWT")
-				}
-			}
-		}
+	if err := result.addCookieMap(resp); err != nil {
+		fmt.Fprintf(ConsoleWriter(), "WARNING: parsing cookies returned: %s", err.Error())
 	}
 
-	result.HeaderMap = headers
+	if err := result.addHeaderMap(resp); err != nil {
+		fmt.Fprintf(ConsoleWriter(), "WARNING: parsing header returned: %s", err.Error())
+	}
+
 	result.Text = resp.Text
 	result.Error = resperror
 	result.HttpStatus = resp.GetStatus()
@@ -82,18 +109,22 @@ func PushResponse(resp *RestResponse, resperror error) error {
 }
 
 func PushError(resperror error) error {
-	headers := make(map[string]string, 0)
-
 	var result Result
-	result.HeaderMap = headers
-	result.Text = resperror.Error()
-	result.Error = resperror
-	result.HttpStatus = -1
-	resultMap, err := makeResultMap(result.Text)
-	if err != nil {
-		return err
+	{
+		emptyMap := make(map[string]string, 0)
+
+		result.HeaderMap = emptyMap
+		result.CookieMap = emptyMap
+		result.Text = resperror.Error()
+		result.Error = resperror
+		result.HttpStatus = -1
+		resultMap, err := makeResultMap(result.Text)
+		if err != nil {
+			return err
+		}
+		result.Map = resultMap
 	}
-	result.Map = resultMap
+
 	PushResult(result)
 	return resperror
 }
@@ -129,7 +160,7 @@ func makeRootMap(text string) (interface{}, error) {
 
 func PushResult(result Result) error {
 	if IsCmdDebugEnabled() {
-		fmt.Fprintln(ConsoleWriter(), "Pushing result into history")
+		fmt.Fprintln(ConsoleWriter(), "Pushing the result into history")
 	}
 	history = append(history, result)
 	if len(history) > 10 {
