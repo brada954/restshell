@@ -1,9 +1,5 @@
 package shell
 
-var ProgramName = "RestShell"
-var RestShellInitFile = ".rsconfig"
-var RestShellUserInitFile = ".rsconfig.user"
-
 func init() {
 	InitializeShell()
 	EnableGlobalOptions()
