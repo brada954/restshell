@@ -80,10 +80,8 @@ func TestCmdInstance(t *testing.T) {
 
 	if cmd, ok := cmdMap[name]; !ok {
 		t.Errorf("Falied to look up command on second pass")
-		return
 	} else {
 		if base, ok := cmd.(*baseCommand); ok {
-
 			if base.testInt != 111 {
 				t.Errorf("Instance modification affected original: %d!=%d", 111, base.testInt)
 			}

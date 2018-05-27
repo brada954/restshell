@@ -136,7 +136,7 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 
 	if r.Debug {
 		fmt.Fprintf(OutputWriter(), "Executing: (GET) %s\n", req.URL.String())
-		fmt.Fprintln(OutputWriter(), "Headers:")
+		fmt.Fprintln(OutputWriter(), "Sending Headers:")
 		dumpHeaders(OutputWriter(), req)
 	}
 
