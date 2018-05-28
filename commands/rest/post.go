@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
+// Default values for options
 const (
 	DefaultJsonVar  = ""
 	DefaultJsonBody = ""
@@ -32,7 +32,7 @@ func NewPostCommand() *PostCommand {
 	return &PostCommand{}
 }
 
-func (cmd *PostCommand) AddOptions(set *getopt.Set) {
+func (cmd *PostCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.optionUsePut = set.BoolLong("put", 0, "Use PUT method instead of post")
 	cmd.optionUseOption = set.BoolLong("options", 0, "Use OPTIONS method instead of post")

@@ -12,50 +12,29 @@ import (
 
 // Default settings for startup
 var (
-	DefaultInitFileName = ".rsconfig"
-	DefaultInitFileExt  = ".user"
-	ProgramName         = "RestShell"
-	ProgramArgs         = make([]string, 0, 0)
+	DefaultInitFileName  = ".rsconfig"
+	DefaultInitFileExt   = ".user"
+	DefaultScriptFileExt = ".rshell"
+	ProgramName          = "RestShell"
+	ProgramArgs          = make([]string, 0, 0)
 )
 
 // StartupOptions -- configuration available to the shell
 type StartupOptions struct {
 	DebugInit         bool
-	InitFile          string
+	InitFileName      string
 	InitFileExt       string
+	ScriptFileExt     string
 	AbortOnExceptions bool
-}
-
-func (s *StartupOptions) GetInitFileName() string {
-	if len(s.InitFile) > 0 {
-		return s.InitFile
-	} else {
-		return DefaultInitFileName
-	}
-}
-
-func (s *StartupOptions) GetInitFileExt() string {
-	if len(s.InitFileExt) > 0 {
-		return s.InitFileExt
-	} else {
-		return DefaultInitFileExt
-	}
-}
-
-func (s *StartupOptions) IsDebugInitEnabled() bool {
-	return s.DebugInit
-}
-
-func (s *StartupOptions) IsExceptionHandlingEnabled() bool {
-	return s.AbortOnExceptions == false
 }
 
 // GetDefaultStartupOptions return an interface to the options for the shell startup
 func GetDefaultStartupOptions() StartupOptions {
 	return StartupOptions{
 		DebugInit:         false,
-		InitFile:          DefaultInitFileName,
+		InitFileName:      DefaultInitFileName,
 		InitFileExt:       DefaultInitFileExt,
+		ScriptFileExt:     DefaultScriptExtension,
 		AbortOnExceptions: false,
 	}
 }
@@ -64,7 +43,7 @@ func GetDefaultStartupOptions() StartupOptions {
 // and run command processor
 func RunShell(options StartupOptions) (exitCode int) {
 	exitCode = 1
-	if options.IsExceptionHandlingEnabled() {
+	if options.AbortOnExceptions == false {
 		defer func() {
 			if r := recover(); r == nil {
 				return // Pass-thru existing error code
@@ -76,6 +55,16 @@ func RunShell(options StartupOptions) (exitCode int) {
 				exitCode = 100 // Return 100 for exception
 			}
 		}()
+	}
+
+	if len(options.InitFileName) > 0 {
+		DefaultInitFileName = options.InitFileName
+	}
+	if len(options.InitFileExt) > 0 {
+		DefaultInitFileExt = options.InitFileExt
+	}
+	if len(options.ScriptFileExt) > 0 {
+		DefaultScriptFileExt = options.ScriptFileExt
 	}
 
 	getopt.Parse()
@@ -108,11 +97,11 @@ func RunShell(options StartupOptions) (exitCode int) {
 }
 
 func runInitScripts(options StartupOptions) {
-	scriptFile := options.GetInitFileName()
-	runInitScript(scriptFile, options.IsDebugInitEnabled())
+	scriptFile := DefaultInitFileName
+	runInitScript(scriptFile, options.DebugInit)
 
-	scriptFile = options.GetInitFileName() + options.GetInitFileExt()
-	runInitScript(scriptFile, options.IsDebugInitEnabled())
+	scriptFile = DefaultInitFileName + DefaultInitFileExt
+	runInitScript(scriptFile, options.DebugInit)
 }
 
 func runInitScript(scriptFile string, debug bool) {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var ()
@@ -22,7 +21,7 @@ func NewDiffCommand() *DiffCommand {
 	return &DiffCommand{}
 }
 
-func (cmd *DiffCommand) AddOptions(set *getopt.Set) {
+func (cmd *DiffCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[-- {git options for git diff --no-index}] file1 file2")
 	set.SetUsage(func() {
 		set.PrintUsage(shell.ConsoleWriter())

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type SilentCommand struct {
@@ -17,7 +16,7 @@ func NewSilentCommand() *SilentCommand {
 	return &SilentCommand{}
 }
 
-func (cmd *SilentCommand) AddOptions(set *getopt.Set) {
+func (cmd *SilentCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 }
 

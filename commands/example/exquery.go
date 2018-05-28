@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var (
@@ -21,7 +20,7 @@ func NewExqueryCommand() *ExqueryCommand {
 	return &ExqueryCommand{}
 }
 
-func (cmd *ExqueryCommand) AddOptions(set *getopt.Set) {
+func (cmd *ExqueryCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 
 	// Add command helpers for verbose, debug, restclient and output formatting

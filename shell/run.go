@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type RunCommand struct {
@@ -34,7 +32,7 @@ func NewRunCommand() *RunCommand {
 	return &cmd
 }
 
-func (cmd *RunCommand) AddOptions(set *getopt.Set) {
+func (cmd *RunCommand) AddOptions(set CmdSet) {
 	set.SetParameters("scripts...")
 	cmd.ifCondition = set.StringLong("cond", 0, "", "run script if specified variable is not empty")
 	cmd.list = set.BoolLong("list", 0, "List the contexts of script file")

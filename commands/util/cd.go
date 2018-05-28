@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type CdCommand struct {
@@ -28,7 +27,7 @@ func NewCdCommand() *CdCommand {
 	return cmd
 }
 
-func (cmd *CdCommand) AddOptions(set *getopt.Set) {
+func (cmd *CdCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	cmd.resetDir = set.BoolLong("reset", 'r', "Reset current working directory to initial startup")
 }

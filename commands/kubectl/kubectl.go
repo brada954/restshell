@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var ()
@@ -22,7 +21,7 @@ func NewKubectlCommand() *KubectlCommand {
 	return &KubectlCommand{}
 }
 
-func (cmd *KubectlCommand) AddOptions(set *getopt.Set) {
+func (cmd *KubectlCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("kubectl_command [options]")
 	set.SetUsage(func() {
 		set.PrintUsage(shell.ConsoleWriter())

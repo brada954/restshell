@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type AboutCommand struct {
@@ -28,7 +27,7 @@ func NewAboutCommand() *AboutCommand {
 	return &AboutCommand{}
 }
 
-func (cmd *AboutCommand) AddOptions(set *getopt.Set) {
+func (cmd *AboutCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("topic")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

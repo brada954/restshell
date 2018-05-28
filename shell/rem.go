@@ -8,8 +8,6 @@ package shell
 
 import (
 	"fmt"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type RemCommand struct {
@@ -19,7 +17,7 @@ func NewRemCommand() *RemCommand {
 	return &RemCommand{}
 }
 
-func (cmd *RemCommand) AddOptions(set *getopt.Set) {
+func (cmd *RemCommand) AddOptions(set CmdSet) {
 }
 
 func (cmd *RemCommand) Execute(args []string) error {

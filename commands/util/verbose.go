@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type VerboseCommand struct {
@@ -17,7 +16,7 @@ func NewVerboseCommand() *VerboseCommand {
 	return &VerboseCommand{}
 }
 
-func (cmd *VerboseCommand) AddOptions(set *getopt.Set) {
+func (cmd *VerboseCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

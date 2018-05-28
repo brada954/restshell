@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type BmGetCommand struct {
@@ -19,7 +18,7 @@ func NewBmGetCommand() *BmGetCommand {
 	return &BmGetCommand{}
 }
 
-func (cmd *BmGetCommand) AddOptions(set *getopt.Set) {
+func (cmd *BmGetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")

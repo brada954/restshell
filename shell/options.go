@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pborman/getopt/v2"
 )
 
 //////////////////////////////////////////////////////////////////////
@@ -148,7 +146,7 @@ func (o StandardOptions) Clear(options ...int) StandardOptions {
 }
 
 // InitializeCommonCmdOptions initialize common command options
-func InitializeCommonCmdOptions(set *getopt.Set, options ...int) {
+func InitializeCommonCmdOptions(set CmdSet, options ...int) {
 	ClearCmdOptions()
 	AddCommonCmdOptions(set, options...)
 }
@@ -160,7 +158,7 @@ func ClearCmdOptions() {
 
 // AddCommonCmdOptions -- Add the given command options to the options supported
 // by the current executing command
-func AddCommonCmdOptions(set *getopt.Set, options ...int) {
+func AddCommonCmdOptions(set CmdSet, options ...int) {
 	for _, v := range options {
 		switch v {
 		case CmdHelp:
@@ -436,17 +434,15 @@ func (o *StandardOptions) GetUrlValue(fallback string) (result string) {
 
 	if o.urlOption != nil && *o.urlOption != "" {
 		return *o.urlOption
-	} else {
-		return fallback
 	}
+	return fallback
 }
 
 func (o *StandardOptions) GetHeaderValues(fallback string) string {
 	if o.headersOption != nil {
 		return *o.headersOption
-	} else {
-		return fallback
 	}
+	return fallback
 }
 
 // GetBasicAuthContext -- get the Auth context for the basic auth parameters specified

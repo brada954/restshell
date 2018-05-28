@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type DebugCommand struct {
@@ -17,7 +16,7 @@ func NewDebugCommand() *DebugCommand {
 	return &DebugCommand{}
 }
 
-func (cmd *DebugCommand) AddOptions(set *getopt.Set) {
+func (cmd *DebugCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

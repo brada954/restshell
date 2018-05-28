@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type SleepCommand struct {
@@ -18,7 +17,7 @@ func NewSleepCommand() *SleepCommand {
 	return &SleepCommand{}
 }
 
-func (cmd *SleepCommand) AddOptions(set *getopt.Set) {
+func (cmd *SleepCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[msec]")
 	shell.AddCommonCmdOptions(set, shell.CmdVerbose)
 }

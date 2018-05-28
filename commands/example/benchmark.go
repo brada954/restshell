@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type BmCommand struct {
@@ -16,7 +15,7 @@ func NewBmCommand() *BmCommand {
 	return &BmCommand{}
 }
 
-func (cmd *BmCommand) AddOptions(set *getopt.Set) {
+func (cmd *BmCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdBenchmarks)
 }
