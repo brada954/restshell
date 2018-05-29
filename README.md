@@ -114,6 +114,8 @@ Adding a command is as simple as creating a new package to hold your commands. T
 
 An example command is provided to develop new commands, but additional examples are needed to demostrate sharing state between commands as well as a feature list for better sharing techniques between the POST and GET commands.
 
+Alternatively, you can create your own main function that uses the RunShell() function to run all the initialization for you and maintain a separate package/repository with your commands and any dependent commands. Your main package would be able to include any package desired.
+
 ## Assertions (Assert)
 All REST commands store responses in a history buffer such that assertions can be run against the history buffer. Assertions are designed to use a simplistic XPATH-like mechanism to identify and extract a property value in a JSON response to perform validations against.
 
