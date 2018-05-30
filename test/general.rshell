@@ -1,0 +1,43 @@
+REM ####################################################################
+REM ## General tests
+REM ##
+REM ## Running some basic tests using some well known REST api's
+REM ## All assertions should pass
+REM ##
+REM ## This test requires the .rsconfig file to be loaded due to
+REM ## dependencies on alias command; used to verify alias. An output
+REM ## should have been displayed from the config file above.
+REM ####################################################################
+assert --clear
+REM ##
+REM ## Test getting local ip address; assert finds 3 periods in ip address
+REM ##
+BASEAPI
+@get -s /?format=json
+assert noerr
+assert hstatus 200
+assert eq --regex "^\\d+(\\.)\\d+(\\.)\\d+(\\.)\\d+$" ip ...
+assert --new --report
+REM ####################################################################
+REM ##
+REM ## Test getting a post from an online mock rest api
+REM ##
+FAKEAPI
+@get -s /posts/1
+assert noerr
+assert hstatus 200
+assert eq userId 1
+assert eq id 1
+assert isstr title
+assert isstr body
+assert --new --report
+REM ####################################################################
+REM ##
+REM ## Test an invalid REST api call that will return 404
+REM ##
+@get -s /junk/asdf
+assert noerr
+assert hstatus 404
+assert --report
+REM ####################################################################
+assert --report-sum

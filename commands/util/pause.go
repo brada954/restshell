@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var (
@@ -22,7 +21,7 @@ func NewPauseCommand() *PauseCommand {
 	return &PauseCommand{}
 }
 
-func (cmd *PauseCommand) AddOptions(set *getopt.Set) {
+func (cmd *PauseCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("")
 	cmd.messageOption = set.StringLong("message", 'm', DefaultMessage, "Message to display")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)

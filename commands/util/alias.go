@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type AliasCommand struct {
@@ -16,7 +15,7 @@ func NewAliasCommand() *AliasCommand {
 	return &AliasCommand{}
 }
 
-func (cmd *AliasCommand) AddOptions(set *getopt.Set) {
+func (cmd *AliasCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[[alias] command]")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type EnvCommand struct {
@@ -16,7 +15,7 @@ func NewEnvCommand() *EnvCommand {
 	return &EnvCommand{}
 }
 
-func (cmd *EnvCommand) AddOptions(set *getopt.Set) {
+func (cmd *EnvCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 }
 

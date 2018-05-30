@@ -1,0 +1,3 @@
+REM ## Running the config file for testing RestShell.
+alias MYIPAPI "base http://api.ipify.org"
+alias FAKEAPI "base https://jsonplaceholder.typicode.com\"

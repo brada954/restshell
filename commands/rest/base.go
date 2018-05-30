@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var (
@@ -23,7 +22,7 @@ func NewBaseCommand() *BaseCommand {
 	return &BaseCommand{}
 }
 
-func (cmd *BaseCommand) AddOptions(set *getopt.Set) {
+func (cmd *BaseCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[baseurl]")
 	cmd.clearOption = set.BoolLong("clear", 'c', "Clear the base URL")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth)

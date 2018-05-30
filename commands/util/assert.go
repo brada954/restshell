@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type AssertCommand struct {
@@ -52,7 +50,7 @@ func (cmd *AssertCommand) GetSubCommands() []string {
 
 type ValueModifier func(i interface{}) (interface{}, error)
 
-func (cmd *AssertCommand) AddOptions(set *getopt.Set) {
+func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	set.SetProgram("assert [sub command]")
 	set.SetUsage(func() {
 		cmd.HeaderUsage(shell.ConsoleWriter())

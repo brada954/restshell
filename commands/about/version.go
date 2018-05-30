@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 var BuildCommit string
@@ -38,7 +37,7 @@ func NewVersionCommand() *VersionCommand {
 	}
 }
 
-func (cmd *VersionCommand) AddOptions(set *getopt.Set) {
+func (cmd *VersionCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

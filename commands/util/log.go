@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type LogCommand struct {
@@ -21,7 +20,7 @@ func NewLogCommand() *LogCommand {
 	return &cmd
 }
 
-func (cmd *LogCommand) AddOptions(set *getopt.Set) {
+func (cmd *LogCommand) AddOptions(set shell.CmdSet) {
 	cmd.cmdTruncate = set.BoolLong("truncate", 0, "Truncate the log file first")
 	cmd.cmdAppend = set.BoolLong("append", 'a', "Append to an existing file")
 	cmd.cmdStop = set.BoolLong("stop", 0, "Stop the current log")

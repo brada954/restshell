@@ -12,7 +12,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/pborman/getopt/v2"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -20,6 +19,9 @@ var LastError int = 0
 var InitDirectory string = ""
 var ExecutableDirectory string = ""
 var initialized = false
+
+// Default parameter line for commands
+var defaultParameters = "{CMD} [sub-command] [Command Options] [parameter]..."
 
 func ReadLine() {
 	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
@@ -41,7 +43,6 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 	var shell = ""
 	var prompt = defaultPrompt
 
-	getopt.SetParameters("{CMD} [sub-command] [Command Options] [parameter]...")
 	scanner := bufio.NewScanner(reader)
 	if prompt != "" {
 		fmt.Printf(prompt)
@@ -257,11 +258,12 @@ func parseAndExecute(cmd Command, command string, tokens []string) error {
 	}
 
 	// Setup the call to parse command options
-	set := getopt.New()
+	set := NewCmdSet()
+	set.SetParameters(defaultParameters)
 	InitializeCommonCmdOptions(set, CmdHelp)
 	cmd.AddOptions(set)
 	set.Reset()
-	err := set.Getopt(parseTokens, nil)
+	err := CmdParse(set, parseTokens)
 	if err != nil {
 		fmt.Fprintln(ErrorWriter(), err.Error())
 		set.Usage()
@@ -367,11 +369,11 @@ func validateCmd(input string) error {
 	}
 
 	// Setup the call to parse command options
-	set := getopt.New()
+	set := NewCmdSet()
 	InitializeCommonCmdOptions(set, CmdHelp)
 	cmdServer.AddOptions(set)
 	set.Reset()
-	err := set.Getopt(tokens, nil)
+	err := CmdParse(set, tokens)
 	if err != nil {
 		return errors.New("Invalid arguments")
 	}

@@ -6,7 +6,6 @@ import (
 	"os/exec"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type DirCommand struct {
@@ -17,7 +16,7 @@ func NewDirCommand() *DirCommand {
 	return &DirCommand{}
 }
 
-func (cmd *DirCommand) AddOptions(set *getopt.Set) {
+func (cmd *DirCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

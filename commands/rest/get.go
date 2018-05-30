@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type GetCommand struct {
@@ -17,7 +16,7 @@ func NewGetCommand() *GetCommand {
 	return &GetCommand{}
 }
 
-func (cmd *GetCommand) AddOptions(set *getopt.Set) {
+func (cmd *GetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")

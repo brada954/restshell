@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 // Support for unittesting
@@ -27,7 +26,7 @@ func NewSetCommand() *SetCommand {
 	return &SetCommand{}
 }
 
-func (cmd *SetCommand) AddOptions(set *getopt.Set) {
+func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[key[=[value]]...")
 	cmd.listOption = set.BoolLong("list", 'l', "List the globals")
 	cmd.initOnly = set.BoolLong("init", 'i', "Inialize if not set already")

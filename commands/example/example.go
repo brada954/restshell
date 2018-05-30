@@ -2,7 +2,6 @@ package example
 
 import (
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 type ExampleCommand struct {
@@ -13,7 +12,7 @@ func NewExampleCommand() *ExampleCommand {
 	return &ExampleCommand{}
 }
 
-func (cmd *ExampleCommand) AddOptions(set *getopt.Set) {
+func (cmd *ExampleCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }

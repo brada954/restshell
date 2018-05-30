@@ -3,14 +3,12 @@ package shell
 import (
 	"reflect"
 	"strings"
-
-	"github.com/pborman/getopt/v2"
 )
 
 // Command - interface for basic command
 type Command interface {
 	Execute([]string) error
-	AddOptions(set *getopt.Set)
+	AddOptions(CmdSet)
 }
 
 // Abortable - interface for commands that support abort
@@ -35,6 +33,7 @@ type CommandWithSubcommands interface {
 	GetSubCommands() []string
 }
 
+// Variables for supported categorizations of commands
 var (
 	CategoryHttp        = "Http"
 	CategorySpecialized = "Specialized"
