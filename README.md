@@ -110,11 +110,11 @@ Making REST calls can be made easier by using the BASE command:
 ## Extending commands
 Developers can create new commands that may perform specialized calls, save state or re-use state between REST API calls, use variables to store outputs and inputs to make it easier to string a series of commands together without a user having to extract the data and include it in subsequent commands.
 
-Adding a command is as simple as creating a new package to hold your commands. The command package should use an init() function to register the commands with the shell. To link the new command package with RestShell, the init.go function could have an import reference to the new commands or any new file like init2.go can be added to the root of RestShell which can cause the import of the commands. Init.go in the root of RestShell can serve as an example. Once RestShell is recompiled the commands should be available.
+Adding a command is as simple as creating a new package to hold your commands. The command package should use an init() function to register the commands with the shell. To link the new command package with RestShell, the root init.go file could have an import reference to the new command package or any new file like init2.go can be added to the root of RestShell which can cause the import of the commands. Init2.go.example in the root of RestShell can serve as an example of adding commands. Once RestShell is recompiled the commands should be available.
 
 An example command is provided to develop new commands, but additional examples are needed to demostrate sharing state between commands as well as a feature list for better sharing techniques between the POST and GET commands.
 
-Alternatively, you can create your own main function that uses the RunShell() function to run all the initialization for you and maintain a separate package/repository with your commands and any dependent commands. Your main package would be able to include any package desired.
+Alternatively, you can create your own main function that uses the RunShell() function to run all the initialization for you and maintain a separate package/repository with your commands and any dependent commands. Your main package would be able to include any package desired. There is a repository called restshell-example which can be used to build your own restshell tool with your own command packages without having to compile or modify the original restshell repository.
 
 ## Assertions (Assert)
 All REST commands store responses in a history buffer such that assertions can be run against the history buffer. Assertions are designed to use a simplistic XPATH-like mechanism to identify and extract a property value in a JSON response to perform validations against.
