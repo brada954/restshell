@@ -221,6 +221,60 @@ func (r *RestClient) DoWithJson(method string, authContext Auth, url string, dat
 	return result, nil
 }
 
+func (r *RestClient) DoWithXml(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
+	if r.History {
+		defer func() {
+			if resultError != nil {
+				PushError(resultError)
+			} else {
+				PushResponse(resultResponse, resultError)
+			}
+		}()
+	}
+
+	if method == http.MethodGet {
+		fmt.Fprintf(OutputWriter(), "Warning: using a XML body with a Get method is not best practice")
+	}
+
+	XmlBodyValidate(r.Debug, data)
+
+	req, err := http.NewRequest(method, url, strings.NewReader(data))
+	if err != nil {
+		return nil, errors.New("Building request: " + err.Error())
+	}
+	if authContext != nil {
+		authContext.AddAuth(req)
+	}
+	req.Header.Add("Content-Type", "application/xml")
+
+	// Add headers from command parsing/client configuration
+	if err := addHeaders(req, r.Headers); err != nil {
+		fmt.Fprintf(OutputWriter(), "Warning: %s\n", err.Error())
+	}
+
+	if r.Debug {
+		fmt.Fprintf(OutputWriter(), "Executing: (%s) %s\n", method, req.URL.String())
+	}
+
+	resp, err := r.Client.Do(req)
+	if err != nil {
+		errMsg := "Response Error: " + err.Error()
+		if r.Debug {
+			fmt.Fprintln(OutputWriter(), errMsg)
+		}
+		return nil, errors.New(errMsg)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.New("Reading Response: " + err.Error())
+	}
+
+	result := &RestResponse{string(body), resp}
+	return result, nil
+}
+
 func (r *RestClient) DoWithForm(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
 	if r.History {
 		defer func() {
@@ -322,6 +376,18 @@ func JsonBodyValidate(debug bool, body string) {
 	if err != nil {
 		fmt.Fprintf(ErrorWriter(), "Warning: Failed to decode JSON body: %s\n", err.Error())
 	}
+	if debug {
+		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", body)
+	}
+}
+
+func XmlBodyValidate(debug bool, body string) {
+	// raw := make(map[string]interface{}, 0)
+	// bytes := []byte(body)
+	// err := xml.Unmarshal(bytes, &raw)
+	// if err != nil {
+	// 	fmt.Fprintf(ErrorWriter(), "Warning: Failed to decode XML body: %s\n", err.Error())
+	// }
 	if debug {
 		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", body)
 	}

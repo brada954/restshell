@@ -2,10 +2,10 @@ package shell
 
 import "testing"
 
-func TestCreateInterface(t *testing.T) {
-	i := NewCmdOptions()
+func TestCmdSetInterface(t *testing.T) {
+	i := NewCmdSet()
 
 	i.Reset()
 
-	i.GetOpt(args []string, fn func(Options) bool)
+	i.Args()
 }

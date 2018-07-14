@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -62,4 +63,14 @@ func PerformVariableSubstitution(input string) string {
 	EnumerateGlobals(replaceBuilder, filter)
 	r := strings.NewReplacer(replaceStrings...)
 	return r.Replace(input)
+}
+
+func IsVariableSubstitutionComplete(input string) bool {
+
+	if regx, err := regexp.Compile(`\%\%.*\%\%`); err == nil {
+		if regx.MatchString(input) == false {
+			return true
+		}
+	}
+	return false // Note: this is returned in error situations as well (requires investigation)
 }

@@ -2,8 +2,6 @@ package shell
 
 import (
 	"testing"
-
-	"github.com/pborman/getopt/v2"
 )
 
 type baseCommand struct {
@@ -15,7 +13,7 @@ func (b *baseCommand) Execute(args []string) error {
 	return nil
 }
 
-func (b *baseCommand) AddOptions(set *getopt.Set) {
+func (b *baseCommand) AddOptions(set CmdSet) {
 	return
 }
 
@@ -26,7 +24,7 @@ func (b *subCommand) Execute(args []string) error {
 	return nil
 }
 
-func (b *subCommand) AddOptions(set *getopt.Set) {
+func (b *subCommand) AddOptions(set CmdSet) {
 }
 
 func (b *subCommand) GetSubCommands() []string {
