@@ -37,7 +37,7 @@ func TestNonJsonPushResult(t *testing.T) {
 		t.Errorf("Unexpected failure to peek result: %s", err.Error())
 		return
 	} else {
-		node, err := GetNode("/", r.Map)
+		node, err := GetJsonNode("/", r.Map)
 		if err != nil {
 			t.Errorf("failure to get root value from map: %s", err.Error())
 		} else if strResult, ok := node.(string); !ok {
@@ -49,7 +49,7 @@ func TestNonJsonPushResult(t *testing.T) {
 }
 
 func TestPushPeek(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -71,7 +71,7 @@ func TestPushPeek(t *testing.T) {
 }
 
 func TestRootAccessToMap(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -82,7 +82,7 @@ func TestRootAccessToMap(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	n, err := GetNode("/", r.Map)
+	n, err := GetJsonNode("/", r.Map)
 	if err != nil {
 		t.Errorf("Unexpected root err: %s", err.Error())
 		return
@@ -98,7 +98,7 @@ func TestRootAccessToMap(t *testing.T) {
 }
 
 func TestFirstLevelObjectFloat64Success(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -113,7 +113,7 @@ func TestFirstLevelObjectFloat64Success(t *testing.T) {
 }
 
 func TestSecondLevelObjectStringSuccess(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -128,7 +128,7 @@ func TestSecondLevelObjectStringSuccess(t *testing.T) {
 }
 
 func TestStringArraySuccess(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -143,7 +143,7 @@ func TestStringArraySuccess(t *testing.T) {
 }
 
 func TestMissingObjectStringNodes(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -160,7 +160,7 @@ func TestMissingObjectStringNodes(t *testing.T) {
 }
 
 func TestFirstItemOfObjectArray(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -172,7 +172,7 @@ func TestFirstItemOfObjectArray(t *testing.T) {
 	}
 
 	key := "dataarray[0].d1"
-	x, err := GetNode(key, r.Map)
+	x, err := GetJsonNode(key, r.Map)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}
@@ -189,7 +189,7 @@ func TestFirstItemOfObjectArray(t *testing.T) {
 }
 
 func TestInvalidKeyForItemInObjectArray(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -201,7 +201,7 @@ func TestInvalidKeyForItemInObjectArray(t *testing.T) {
 	}
 
 	key := "dataarray.d1"
-	x, err := GetNode(key, r.Map)
+	x, err := GetJsonNode(key, r.Map)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -212,7 +212,7 @@ func TestInvalidKeyForItemInObjectArray(t *testing.T) {
 }
 
 func TestStringArrayOutOfBounds(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -224,7 +224,7 @@ func TestStringArrayOutOfBounds(t *testing.T) {
 	}
 
 	key := "car.strarray[3]"
-	x, err := GetNode(key, r.Map)
+	x, err := GetJsonNode(key, r.Map)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -235,7 +235,7 @@ func TestStringArrayOutOfBounds(t *testing.T) {
 }
 
 func TestDataArrayOutOfBounds(t *testing.T) {
-	err := PushResponse(makeRestResponse(json1, 200), nil)
+	err := PushResponse(makeRestResponse(json1, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -247,7 +247,7 @@ func TestDataArrayOutOfBounds(t *testing.T) {
 	}
 
 	key := "dataarray[2].d1"
-	x, err := GetNode(key, r.Map)
+	x, err := GetJsonNode(key, r.Map)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -258,7 +258,7 @@ func TestDataArrayOutOfBounds(t *testing.T) {
 }
 
 func TestJSONArray(t *testing.T) {
-	err := PushResponse(makeRestResponse(jsonArray, 200), nil)
+	err := PushResponse(makeRestResponse(jsonArray, "application/json", 200), nil)
 	if err != nil {
 		t.Errorf("Error pushing json: %s", err.Error())
 		return
@@ -274,7 +274,7 @@ func TestJSONArray(t *testing.T) {
 	// AssertNodeNotFound(t, "carx.make", r.Map)
 }
 
-func makeRestResponse(data string, status int) *RestResponse {
+func makeRestResponse(data string, contentType string, status int) *RestResponse {
 	result := RestResponse{}
 	result.Text = data
 	result.httpResp = &http.Response{
@@ -282,11 +282,12 @@ func makeRestResponse(data string, status int) *RestResponse {
 		StatusCode: status,
 		Header:     http.Header(make(map[string][]string, 0)),
 	}
+	result.httpResp.Header.Add("Content-Type", contentType)
 	return &result
 }
 
 func assertNodeNotFound(t *testing.T, key string, m interface{}) {
-	x, err := GetNode(key, m)
+	x, err := GetJsonNode(key, m)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s)", key)
 	}
@@ -299,7 +300,7 @@ func assertNodeNotFound(t *testing.T, key string, m interface{}) {
 }
 
 func assertNodeFloat64(t *testing.T, key string, m interface{}, value float64) {
-	x, err := GetNode(key, m)
+	x, err := GetJsonNode(key, m)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}
@@ -314,7 +315,7 @@ func assertNodeFloat64(t *testing.T, key string, m interface{}, value float64) {
 }
 
 func assertNodeString(t *testing.T, key string, m interface{}, value string) {
-	x, err := GetNode(key, m)
+	x, err := GetJsonNode(key, m)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}

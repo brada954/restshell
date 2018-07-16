@@ -9,10 +9,13 @@
 // constructs
 //
 // Best practice for globalstore is to prefix the variable name with
-// and indicator of the command or function of the variable. The "_"
+// an indicator of the command or function of the variable. The "_"
 // prefix works great to store default information that can be
-// easily accessed through variable substitution. The eneration of
+// easily accessed through variable substitution. The enumeration of
 // global store returns "_" prefixed variables last.
+//
+// Another best practice is to use $ prefix to indicate a variable may be considered
+// temporary. There are commands to delete all variables starting with $.
 //
 //////////////////////////////////////////////////////////////////////
 package shell
@@ -36,6 +39,10 @@ var (
 )
 
 var globalStore map[string]interface{} = make(map[string]interface{}, 0)
+
+func initGlobalStore() {
+	globalStore = make(map[string]interface{}, 0)
+}
 
 func EnableGlobalOptions() {
 	useDebug = getopt.BoolLong("debug", 'd', "Enable debug output globally")

@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "JE5PVZpL6lOPLSyfSVBdUVtJbb8=",
+			"path": "github.com/antchfx/xpath",
+			"revision": "077bca4d2caaf391ee780136adae00f59153dcd2",
+			"revisionTime": "2018-05-24T05:23:54Z"
+		},
+		{
 			"checksumSHA1": "gILp4IL+xwXLH6tJtRLrnZ56F24=",
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "06020f85339e21b2478f756a78e295255ffa4d6a",
@@ -13,6 +19,12 @@
 			"path": "github.com/pborman/getopt/v2",
 			"revision": "7148bc3a4c3008adfcab60cbebfd0576018f330b",
 			"revisionTime": "2017-01-12T20:04:14Z"
+		},
+		{
+			"checksumSHA1": "dj25sT8IAcOnbrEaOcwijHlUgIA=",
+			"path": "github.com/subchen/go-xmldom",
+			"revision": "e1029cd9087cb9c9c8941b155414b8b8e7ce293a",
+			"revisionTime": "2018-03-01T14:19:29Z"
 		},
 		{
 			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",

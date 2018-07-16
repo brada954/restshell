@@ -1,0 +1,22 @@
+REM ####################################################################
+REM ## Basic XMLtests
+REM ##
+REM ## Call a simple XML api that returns IP lookup data and validate
+REM ## results
+REM ##
+REM ####################################################################
+assert --new
+REM ##
+REM ## Test getting local ip data and assert known fields in XML response
+REM ##
+base "http://ip-api.com/xml"
+@get -s /
+assert noerr
+assert hstatus 200
+# Assert query field is IP address looking for 3 periods between digits
+assert eq --regex "^\\d+(\\.)\\d+(\\.)\\d+(\\.)\\d+$" /query/query ...
+# Assert zip field exists and len is 5
+assert eq --len /query/zip 5
+assert --new --report
+REM ####################################################################
+assert --report-sum

@@ -75,6 +75,7 @@ func (r *RestClient) EnableRedirect() {
 	r.Client.CheckRedirect = nil
 }
 
+// DisableCertValidation -- A function to disable cert validation in the rest client
 // TODO: cleanup relationship be between skipping verification and including certificates
 func (r *RestClient) DisableCertValidation() {
 	if t, ok := r.Client.Transport.(*http.Transport); ok {
@@ -86,18 +87,6 @@ func (r *RestClient) DisableCertValidation() {
 
 	r.Client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 
-}
-
-// Warning: this does not work well on windows as system
-// certs may not be available
-// TODO: cleanup relationship with disabling verification as this needs to be done first
-func newTlsWithLocalCertificates(client *http.Client) {
-	var tlsconfig = &tls.Config{RootCAs: GetX509Pool()}
-	if t, ok := client.Transport.(*http.Transport); ok {
-		t.TLSClientConfig = tlsconfig
-	} else {
-		client.Transport = &http.Transport{TLSClientConfig: tlsconfig}
-	}
 }
 
 func (r *RestClient) DoGet(authContext Auth, url string) (resultResponse *RestResponse, resultError error) {
@@ -168,6 +157,25 @@ func (r *RestClient) DoWithJsonMarshal(method string, authContext Auth, url stri
 }
 
 func (r *RestClient) DoWithJson(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
+	JsonBodyValidate(r.Debug, data)
+	return r.DoMethodWithBody(method, authContext, url, "application/json", data)
+}
+
+// DoWithXml -- Perform an HTTP method request with an XML body
+func (r *RestClient) DoWithXml(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
+
+	XmlBodyValidate(r.Debug, data)
+	return r.DoMethodWithBody(method, authContext, url, "application/xml", data)
+}
+
+func (r *RestClient) DoWithForm(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
+
+	FormBodyValidate(r.Debug, data)
+	return r.DoMethodWithBody(method, authContext, url, "application/x-www-form-urlencoded", data)
+}
+
+// DoMethodWithBody - Perform a HTTP request for the given method type and content provided
+func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url string, contentType string, data string) (resultResponse *RestResponse, resultError error) {
 	if r.History {
 		defer func() {
 			if resultError != nil {
@@ -178,11 +186,13 @@ func (r *RestClient) DoWithJson(method string, authContext Auth, url string, dat
 		}()
 	}
 
-	if method == http.MethodGet {
-		fmt.Fprintf(OutputWriter(), "Warning: using a JSON body with a Get method is not best practice")
+	if r.Debug {
+		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", data)
 	}
 
-	JsonBodyValidate(r.Debug, data)
+	if method == http.MethodGet {
+		fmt.Fprintf(OutputWriter(), "Warning: using a HTTP body with a Get method is not best practice")
+	}
 
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
@@ -191,7 +201,19 @@ func (r *RestClient) DoWithJson(method string, authContext Auth, url string, dat
 	if authContext != nil {
 		authContext.AddAuth(req)
 	}
-	req.Header.Add("Content-Type", "application/json")
+
+	// TODO: Was "application/json"
+	if len(strings.TrimSpace(contentType)) > 0 {
+		contentTypeSet := false
+		for k := range req.Header {
+			if strings.ToLower(k) == "content-type" {
+				contentTypeSet = true
+			}
+		}
+		if !contentTypeSet {
+			req.Header.Add("Content-Type", contentType)
+		}
+	}
 
 	// Add headers from command parsing/client configuration
 	if err := addHeaders(req, r.Headers); err != nil {
@@ -221,63 +243,15 @@ func (r *RestClient) DoWithJson(method string, authContext Auth, url string, dat
 	return result, nil
 }
 
-func (r *RestClient) DoWithForm(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
-	if r.History {
-		defer func() {
-			if resultError != nil {
-				PushError(resultError)
-			} else {
-				PushResponse(resultResponse, resultError)
-			}
-		}()
-	}
-
-	if method == http.MethodGet {
-		fmt.Fprintf(OutputWriter(), "Warning: using a body with a Get method is not best practice")
-	}
-	if r.Debug {
-		fmt.Fprintf(OutputWriter(), "Executing: (%s) %s\n", method, url)
-	}
-
-	req, err := http.NewRequest(method, url, strings.NewReader(data))
-	if err != nil {
-		return nil, errors.New("Building request: " + err.Error())
-	}
-	if authContext != nil {
-		authContext.AddAuth(req)
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	// Add headers from command parsing/client configuration
-	if err := addHeaders(req, r.Headers); err != nil {
-		fmt.Fprintf(OutputWriter(), "Warning: %s\n", err.Error())
-	}
-
-	resp, err := r.Client.Do(req)
-	if err != nil {
-		errMsg := "Response Error: " + err.Error()
-		if r.Debug {
-			fmt.Fprintln(OutputWriter(), errMsg)
-		}
-		return nil, errors.New(errMsg)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.New("Reading Response: " + err.Error())
-	}
-
-	result := &RestResponse{string(body), resp}
-	return result, nil
-}
-
+// GetX509Pool - Get the X509 pool to use; the system is used by default and
+// a cert.pem file is appended if it can be found in the init directory,
+// or the exe directory.
 func GetX509Pool() *x509.CertPool {
 	// server cert is self signed -> server_cert == ca_cert
-	CA_Pool, err := x509.SystemCertPool()
+	CAPool, err := x509.SystemCertPool()
 	if err != nil {
 		fmt.Fprintf(ConsoleWriter(), "Warning: SystemCertPool returned error: %s", err.Error())
-		CA_Pool = x509.NewCertPool()
+		CAPool = x509.NewCertPool()
 	}
 	certpath := filepath.Join(GetInitDirectory(), "cert.pem")
 	severCert, err := ioutil.ReadFile(certpath)
@@ -286,13 +260,15 @@ func GetX509Pool() *x509.CertPool {
 		severCert, err = ioutil.ReadFile(certpath)
 		if err != nil {
 			fmt.Fprintln(ConsoleWriter(), "Could not load certificate:", certpath)
-			return CA_Pool
+			return CAPool
 		}
 	}
-	CA_Pool.AppendCertsFromPEM(severCert)
-	return CA_Pool
+	CAPool.AppendCertsFromPEM(severCert)
+	return CAPool
 }
 
+// GetStatus - Get the status return code in the response; if the response is
+// invalid or not initialized it will return -1
 func (resp *RestResponse) GetStatus() int {
 	if resp != nil && resp.httpResp != nil {
 		return resp.httpResp.StatusCode
@@ -300,6 +276,8 @@ func (resp *RestResponse) GetStatus() int {
 	return -1
 }
 
+// GetStatusString - Get the status code in string format for the response; if the response is
+// invalid or not initialized it will return "Unknown Status".
 func (resp *RestResponse) GetStatusString() string {
 	if resp != nil && resp.httpResp != nil {
 		return fmt.Sprintf("%s (%d)", resp.httpResp.Status, resp.httpResp.StatusCode)
@@ -315,6 +293,7 @@ func (resp *RestResponse) GetHeader() http.Header {
 	return resp.httpResp.Header
 }
 
+// JsonBodyValidate -  Validate form data is ok; only display a warning if not
 func JsonBodyValidate(debug bool, body string) {
 	raw := make(map[string]interface{}, 0)
 	bytes := []byte(body)
@@ -322,28 +301,41 @@ func JsonBodyValidate(debug bool, body string) {
 	if err != nil {
 		fmt.Fprintf(ErrorWriter(), "Warning: Failed to decode JSON body: %s\n", err.Error())
 	}
-	if debug {
-		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", body)
-	}
 }
 
-// Global Helpers
+// XmlBodyValidate -  Validate form data is ok; only display a warning if not
+func XmlBodyValidate(debug bool, body string) {
+	// TODO: Maybe parse the xml into a dom
+}
+
+// FormBodyValidate -  Validate form data is ok; only display a warning if not
+func FormBodyValidate(debug bool, body string) {
+	// TODO
+}
+
+// PerformHealthCheck - Valiate a default /health endpoint
+// TODO: Evaluate moving this to specialized commands; it is not generic enough to be heres
 func PerformHealthCheck(client RestClient, url string) error {
 	url = url + "/health"
 
 	resp, err := client.DoGet(nil, url)
 	if err != nil || resp.GetStatus() != http.StatusOK {
-		// if IsCmdVerboseEnabled() {
-		// 	if err != nil {
-		// 		fmt.Fprintf(OutputWriter(), "Health Check Error: %s\n", err.Error())
-		// 	} else {
-		// 		fmt.Fprintf(OutputWriter(), "Health Check Status: %d\n", resp.GetStatus())
-		// 	}
-		// }
 		return errors.New("Failed Health Check")
 	}
 	fmt.Fprintln(OutputWriter(), "Healthy")
 	return nil
+}
+
+// Warning: this does not work well on windows as system
+// certs may not be available
+// TODO: cleanup relationship with disabling verification as this needs to be done first
+func newTlsWithLocalCertificates(client *http.Client) {
+	var tlsconfig = &tls.Config{RootCAs: GetX509Pool()}
+	if t, ok := client.Transport.(*http.Transport); ok {
+		t.TLSClientConfig = tlsconfig
+	} else {
+		client.Transport = &http.Transport{TLSClientConfig: tlsconfig}
+	}
 }
 
 func addHeaders(req *http.Request, headerParam string) error {

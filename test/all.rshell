@@ -1,0 +1,6 @@
+REM ####################################################################
+REM ##  ALL TESTS
+REM ##
+assert --clear
+run rest\json
+run rest\xml

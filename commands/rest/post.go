@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
@@ -13,6 +14,7 @@ const (
 	DefaultJsonBody = ""
 	DefaultJsonFile = ""
 	DefaultFormBody = ""
+	DefaultXmlFile  = ""
 	DefaultFormVar  = ""
 )
 
@@ -24,6 +26,7 @@ type PostCommand struct {
 	optionJsonVar   *string
 	optionJson      *string
 	optionJsonFile  *string
+	optionXmlFile   *string
 	optionForm      *string
 	optionFormVar   *string
 }
@@ -41,6 +44,7 @@ func (cmd *PostCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionForm = set.StringLong("form", 0, DefaultFormBody, "Send the given form body", "form")
 	cmd.optionFormVar = set.StringLong("form-var", 0, DefaultFormVar, "Use a named variable as body of form", "name")
 	cmd.optionJsonFile = set.StringLong("json-file", 0, DefaultJsonFile, "Use the given file for json request")
+	cmd.optionXmlFile = set.StringLong("xml-file", 0, DefaultXmlFile, "Use the given file for xml request")
 
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdRestclient)
 }
@@ -70,6 +74,7 @@ func (cmd *PostCommand) Execute(args []string) error {
 
 	body := ""
 	useJson := false
+	useXml := false
 	if *cmd.optionJson != DefaultJsonBody {
 		body = *cmd.optionJson
 		useJson = true
@@ -88,14 +93,33 @@ func (cmd *PostCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
+		body = shell.PerformVariableSubstitution(body)
 		useJson = true
+	} else if *cmd.optionXmlFile != DefaultXmlFile {
+		filename, err := shell.GetValidatedFileName(*cmd.optionXmlFile, ".xml")
+		if err != nil {
+			return err
+		}
+		body, err = shell.GetFileContents(filename)
+		if err != nil {
+			return err
+		}
+		body = shell.PerformVariableSubstitution(body)
+		useXml = true
 	} else if *cmd.optionFormVar != DefaultFormVar {
 		body = shell.GetGlobalStringWithFallback(*cmd.optionFormVar, "")
 	}
 
+	if shell.IsVariableSubstitutionComplete(body) == false {
+		fmt.Fprintf(shell.ErrorWriter(), "WARNING: post body contains unsubstituted variables")
+	}
+
 	// Execute commands
 	client := shell.NewRestClientFromOptions()
-	if useJson {
+	if useXml {
+		resp, err := client.DoWithXml(method, cmd.useAuthContext, url, body)
+		return shell.RestCompletionHandler(resp, err, nil)
+	} else if useJson {
 		resp, err := client.DoWithJson(method, cmd.useAuthContext, url, body)
 		return shell.RestCompletionHandler(resp, err, nil)
 	} else {
