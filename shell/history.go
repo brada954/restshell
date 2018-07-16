@@ -119,38 +119,28 @@ func PushResponse(resp *RestResponse, resperror error) error {
 	result.Error = resperror
 	result.HttpStatus = resp.GetStatus()
 
-	switch contentType {
-	case "application/xml":
-		{
-			doc, err := makeXMLDOM(resp.Text)
-			if err != nil {
-				result.Map = makeRootMap(resp.Text)
-			} else {
-				result.XMLDocument = doc
-			}
-
+	if strings.Contains(contentType, "application/xml") {
+		doc, err := makeXMLDOM(resp.Text)
+		if err != nil {
+			result.Map = makeRootMap(resp.Text)
+		} else {
+			result.XMLDocument = doc
 		}
-	case "application/json":
-		{
-			resultMap, err := makeResultMapFromJson(resp.Text)
-			if err != nil {
-				resultMap = makeRootMap(resp.Text)
-			}
-			result.Map = resultMap
-		}
-	case "text/calandar":
-		fallthrough
-	case "text/css":
-		fallthrough
-	case "text/html":
-		fallthrough
-	case "text/plain":
-		result.Map = makeRootMap(resp.Text)
-	case "text/csv":
-		// TODO: future support
-		result.Map = makeRootMap(resp.Text)
 
-	default:
+	} else if strings.Contains(contentType, "application/json") {
+		resultMap, err := makeResultMapFromJson(resp.Text)
+		if err != nil {
+			resultMap = makeRootMap(resp.Text)
+		}
+		result.Map = resultMap
+	} else if strings.Contains(contentType, "text/plain") ||
+		strings.Contains(contentType, "text/html") ||
+		strings.Contains(contentType, "text/calendar") ||
+		strings.Contains(contentType, "text/css") {
+		result.Map = makeRootMap(resp.Text)
+	} else if strings.Contains(contentType, "text/csv") {
+		result.Map = makeRootMap(resp.Text)
+	} else {
 		// Make a default text entry
 		result.Map = makeRootMap("Unsupported text returned")
 	}

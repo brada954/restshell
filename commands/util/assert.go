@@ -670,6 +670,14 @@ func getIntLength(i int) int {
 	return len(s)
 }
 
+func getInt64Length(i int64) int {
+	length := 1
+	for ; i >= 10; i = i / 10 {
+		length = length + 1
+	}
+	return length
+}
+
 ///////////////////////////////////////////////////////////////////////
 // Date functions -- TODO: There are different formats to support
 // Only works if expecting typical golang time displayed.
@@ -723,20 +731,25 @@ func NilModifier(i interface{}) (interface{}, error) {
 	return i, nil
 }
 
+// LengthModifier -- Convert the interface value to a length if valid or return error
 func LengthModifier(i interface{}) (interface{}, error) {
 	switch v := i.(type) {
 	case string:
 		return len(v), nil
 	case float64:
+		// TODO: this is not counting decimal portion
+		// (probably because float error can make it really long for some values)
 		return getIntLength(int(v)), nil
 	case int:
 		return getIntLength(v), nil
+	case int64:
+		return getInt64Length(v), nil
 	case map[string]interface{}:
 		return len(v), nil
 	case []interface{}:
 		return len(v), nil
 	default:
-		return nil, errors.New("Invalid type for len()")
+		return nil, fmt.Errorf("Invalid type (%v) for len()", reflect.TypeOf(i))
 	}
 }
 
@@ -754,7 +767,7 @@ func ConvertToIntModifier(i interface{}) (interface{}, error) {
 	case float64:
 		return int64(v), nil
 	}
-	return nil, errors.New("Invalid type to make int()")
+	return nil, fmt.Errorf("Invalid type (%v) to make int", reflect.TypeOf(i))
 }
 
 // ConvertToFloatModifier -- convert a scaler to a floating value
@@ -777,7 +790,7 @@ func ConvertToFloatModifier(i interface{}) (interface{}, error) {
 	case float32:
 		return float64(v), nil
 	}
-	return nil, errors.New("Invalid type to make int()")
+	return nil, fmt.Errorf("Invalid type (%v) to make float", reflect.TypeOf(i))
 }
 
 func StringToLowerModifier(i interface{}) (interface{}, error) {
