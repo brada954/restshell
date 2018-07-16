@@ -112,6 +112,12 @@ func (cmd *AssertCommand) Execute(args []string) error {
 		return shell.ErrArguments
 	}
 
+	// Order is a set precendence; changing order can be catastrophic. Generally, the
+	// modifiers call the previous modifier before performing its own task.
+	//
+	// For example, conversion of string to int is initialized before string to float, so
+	// a string containing float can be converted to float and then to int. A "float string",
+	// will fail to convert to int because of the period in the text string.
 	valueModifierFunc := NullModifier
 	if *cmd.useToLowerModifier {
 		valueModifierFunc = MakeStringToLowerModifier(valueModifierFunc)
@@ -121,11 +127,11 @@ func (cmd *AssertCommand) Execute(args []string) error {
 	if len(*cmd.useRegexModifier) > 0 {
 		valueModifierFunc = MakeRegExModifier(*cmd.useRegexModifier, valueModifierFunc)
 	}
-	if *cmd.useStringToIntModifier {
-		valueModifierFunc = MakeStringToIntModifier(valueModifierFunc)
-	}
 	if *cmd.useStringToFloatModifier {
-		valueModifierFunc = MakeStringToFloatModifier(valueModifierFunc)
+		valueModifierFunc = MakeToFloatModifier(valueModifierFunc)
+	}
+	if *cmd.useStringToIntModifier {
+		valueModifierFunc = MakeToIntModifier(valueModifierFunc)
 	}
 	if *cmd.useLengthModifier {
 		valueModifierFunc = MakeLengthModifier(valueModifierFunc)
@@ -257,7 +263,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 				return errors.New("Invaid status argument: " + args[1])
 			}
 			if result.HttpStatus != status {
-				return errors.New(fmt.Sprintf("Expected status %d; got %d", status, result.HttpStatus))
+				return fmt.Errorf("Expected status %d; got %d", status, result.HttpStatus)
 			}
 			return nil
 		}
@@ -274,11 +280,11 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 			}
 		} else {
 			var err error
-			var dataMap = result.Map
 			if *cmd.useAuthTokenMap {
-				dataMap = result.AuthMap
+				node, err = shell.GetJsonNode(path, result.AuthMap)
+			} else {
+				node, err = shell.GetNode(path, result)
 			}
-			node, err = shell.GetNode(path, dataMap)
 			if err != nil {
 				switch args[0] {
 				case "NEX":
@@ -330,7 +336,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 			if isFloat(node) == nil || isInt(node) == nil {
 				return nil
 			}
-			return errors.New(fmt.Sprintf("Type was not a number: %v", reflect.TypeOf(node)))
+			return fmt.Errorf("Type was not a number: %v", reflect.TypeOf(node))
 		default:
 			return shell.ErrArguments
 		}
@@ -397,7 +403,7 @@ func isEqual(i interface{}, value string) error {
 		return err
 	}
 	if comp != 0 {
-		return errors.New(fmt.Sprintf("Values not equal: %s!=%v", value, i))
+		return fmt.Errorf("Values not equal: %s!=%v", value, i)
 	}
 	return nil
 }
@@ -408,7 +414,7 @@ func isNotEqual(i interface{}, value string) error {
 		return err
 	}
 	if comp == 0 {
-		return errors.New(fmt.Sprintf("Unexpected equality: %s==%v", value, i))
+		return fmt.Errorf("Unexpected equality: %s==%v", value, i)
 	}
 	return nil
 }
@@ -421,7 +427,7 @@ func isGt(i interface{}, value string) error {
 	if comp > 0 {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value not greater: %s!<%v", value, i))
+	return fmt.Errorf("Value not greater: %s!<%v", value, i)
 }
 
 func isGte(i interface{}, value string) error {
@@ -432,7 +438,7 @@ func isGte(i interface{}, value string) error {
 	if comp >= 0 {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value not greater or equal: %s!<=%v", value, i))
+	return fmt.Errorf("Value not greater or equal: %s!<=%v", value, i)
 }
 
 func isLt(i interface{}, value string) error {
@@ -443,7 +449,7 @@ func isLt(i interface{}, value string) error {
 	if comp < 0 {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value not lessor: %s!>%v", value, i))
+	return fmt.Errorf("Value not lessor: %s!>%v", value, i)
 }
 
 func isLte(i interface{}, value string) error {
@@ -454,14 +460,14 @@ func isLte(i interface{}, value string) error {
 	if comp <= 0 {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value not lessor or equal: %s!>=%v", value, i))
+	return fmt.Errorf("Value not lessor or equal: %s!>=%v", value, i)
 }
 
 func isNotEqualx(i interface{}, value string) error {
 	switch t := i.(type) {
 	case string:
 		if t == value {
-			return errors.New(fmt.Sprintf("Values unexpectedly equal: %s==%s", value, t))
+			return fmt.Errorf("Values unexpectedly equal: %s==%s", value, t)
 		}
 		return nil
 	case float64:
@@ -473,7 +479,7 @@ func isNotEqualx(i interface{}, value string) error {
 			return shell.ErrInvalidValue
 		}
 		if math.Abs((t - numValue)) < .00001 {
-			return errors.New(fmt.Sprintf("Value unexpectedly equal: %s==%f", value, t))
+			return fmt.Errorf("Value unexpectedly equal: %s==%f", value, t)
 		}
 		return nil
 	default:
@@ -500,10 +506,10 @@ func isRegexMatch(i interface{}, pattern string) error {
 
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
-		return errors.New(fmt.Sprintf("%s: %s", pattern, err.Error()))
+		return fmt.Errorf("%s: %s", pattern, err.Error())
 	}
 	if regex.MatchString(testValue) == false {
-		return errors.New(fmt.Sprintf("Values does not match regex: %s!=%v", pattern, testValue))
+		return fmt.Errorf("Values does not match regex: %s!=%v", pattern, testValue)
 	}
 	return nil
 }
@@ -598,7 +604,7 @@ func isArray(i interface{}) error {
 	case []interface{}:
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value was not an array: type=%v", reflect.TypeOf(i)))
+	return fmt.Errorf("Value was not an array: type=%v", reflect.TypeOf(i))
 }
 
 func isObject(i interface{}) error {
@@ -606,7 +612,7 @@ func isObject(i interface{}) error {
 	case map[string]interface{}:
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value was not an object: type=%v", reflect.TypeOf(i)))
+	return fmt.Errorf("Value was not an object: type=%v", reflect.TypeOf(i))
 }
 
 func isString(i interface{}) error {
@@ -614,13 +620,13 @@ func isString(i interface{}) error {
 	case string:
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value was not a string: type=%v", reflect.TypeOf(i)))
+	return fmt.Errorf("Value was not a string: type=%v", reflect.TypeOf(i))
 }
 
 func isNotString(i interface{}) error {
 	switch i.(type) {
 	case string:
-		return errors.New(fmt.Sprintf("Value was an unexpected string"))
+		return fmt.Errorf("Value was an unexpected string")
 	}
 	return nil
 }
@@ -634,7 +640,7 @@ func isInt(i interface{}) error {
 	case int64:
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value was not an integer: type=%v", reflect.TypeOf(i)))
+	return fmt.Errorf("Value was not an integer: type=%v", reflect.TypeOf(i))
 }
 
 func isFloat(i interface{}) error {
@@ -644,7 +650,7 @@ func isFloat(i interface{}) error {
 	case float64:
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Value was not an float: type=%v", reflect.TypeOf(i)))
+	return fmt.Errorf("Value was not an float: type=%v", reflect.TypeOf(i))
 }
 
 func getLength(i interface{}) int {
@@ -680,9 +686,9 @@ func isNotDate(i interface{}) error {
 	_, err := shell.GetValueAsDate(i)
 	if err == nil {
 		if s, ok := i.(string); ok {
-			return errors.New(fmt.Sprintf("Value is a date: %s", s))
+			return fmt.Errorf("Value is a date: %s", s)
 		} else {
-			return errors.New(fmt.Sprintf("Value is a date: %v", i))
+			return fmt.Errorf("Value is a date: %v", i)
 		}
 	}
 	return nil
@@ -700,7 +706,7 @@ func isDateEqual(i interface{}, value string) error {
 	if date.Equal(expectedDate) {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("Date values not equal: %v!=%v", expectedDate, date))
+	return fmt.Errorf("Date values not equal: %v!=%v", expectedDate, date)
 }
 
 ////////////////////////////////////
@@ -734,14 +740,16 @@ func LengthModifier(i interface{}) (interface{}, error) {
 	}
 }
 
-func StringToIntModifier(i interface{}) (interface{}, error) {
+// ConvertToIntModifier -- A value modifier to make a string or a float64
+// an integer (float64's will round down)
+// Note: XML floats are strings, need to be converted to float then an int
+func ConvertToIntModifier(i interface{}) (interface{}, error) {
 	switch v := i.(type) {
 	case string:
 		i, err := strconv.Atoi(v)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("Returning int!")
 		return i, nil
 	case float64:
 		return int64(v), nil
@@ -749,7 +757,8 @@ func StringToIntModifier(i interface{}) (interface{}, error) {
 	return nil, errors.New("Invalid type to make int()")
 }
 
-func StringToFloatModifier(i interface{}) (interface{}, error) {
+// ConvertToFloatModifier -- convert a scaler to a floating value
+func ConvertToFloatModifier(i interface{}) (interface{}, error) {
 	switch v := i.(type) {
 	case string:
 		i, err := strconv.ParseFloat(v, 64)
@@ -776,7 +785,7 @@ func StringToLowerModifier(i interface{}) (interface{}, error) {
 	case string:
 		return strings.ToLower(v), nil
 	}
-	return nil, errors.New(fmt.Sprintf("Invalid type make lowercase: %v", reflect.TypeOf(i)))
+	return nil, fmt.Errorf("Invalid type make lowercase: %v", reflect.TypeOf(i))
 }
 
 func StringToUpperModifier(i interface{}) (interface{}, error) {
@@ -784,7 +793,7 @@ func StringToUpperModifier(i interface{}) (interface{}, error) {
 	case string:
 		return strings.ToUpper(v), nil
 	}
-	return nil, errors.New(fmt.Sprintf("Invalid type make uppercase: %v", reflect.TypeOf(i)))
+	return nil, fmt.Errorf("Invalid type make uppercase: %v", reflect.TypeOf(i))
 }
 
 func MakeLengthModifier(vmod ValueModifier) ValueModifier {
@@ -797,23 +806,23 @@ func MakeLengthModifier(vmod ValueModifier) ValueModifier {
 	}
 }
 
-func MakeStringToIntModifier(vmod ValueModifier) ValueModifier {
+func MakeToIntModifier(vmod ValueModifier) ValueModifier {
 	return func(i interface{}) (interface{}, error) {
 		v, err := vmod(i)
 		if err != nil {
 			return v, err
 		}
-		return StringToIntModifier(v)
+		return ConvertToIntModifier(v)
 	}
 }
 
-func MakeStringToFloatModifier(vmod ValueModifier) ValueModifier {
+func MakeToFloatModifier(vmod ValueModifier) ValueModifier {
 	return func(i interface{}) (interface{}, error) {
 		v, err := vmod(i)
 		if err != nil {
 			return v, err
 		}
-		return StringToFloatModifier(v)
+		return ConvertToFloatModifier(v)
 	}
 }
 
