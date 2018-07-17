@@ -293,6 +293,18 @@ func (resp *RestResponse) GetHeader() http.Header {
 	return resp.httpResp.Header
 }
 
+func (resp *RestResponse) GetContentType() string {
+	contentType := "application/octet-stream"
+	for k, v := range resp.httpResp.Header {
+		if strings.ToLower(k) == "content-type" {
+			if len(v) > 0 {
+				contentType = strings.ToLower(v[0])
+			}
+		}
+	}
+	return contentType
+}
+
 // JsonBodyValidate -  Validate form data is ok; only display a warning if not
 func JsonBodyValidate(debug bool, body string) {
 	raw := make(map[string]interface{}, 0)
