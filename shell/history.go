@@ -23,6 +23,7 @@ type Result struct {
 	XMLDocument *xmldom.Document
 	Error       error
 	HttpStatus  int
+	ContentType string
 	HeaderMap   map[string]string
 	CookieMap   map[string]string
 	AuthMap     interface{}
@@ -37,7 +38,7 @@ func (r *Result) GetObjectMap() (map[string]interface{}, bool) {
 	return nil, false
 }
 
-// GetArraytMap -- short cut to get an array if the result was a json array
+// GetArrayMap -- short cut to get an array if the result was a json array
 // returns false if it is not a json(-like) object
 func (r *Result) GetArrayMap() ([]interface{}, bool) {
 	if m, ok := r.Map.([]interface{}); ok {
@@ -106,43 +107,37 @@ func PushResponse(resp *RestResponse, resperror error) error {
 		fmt.Fprintf(ConsoleWriter(), "WARNING: parsing header returned: %s", err.Error())
 	}
 
-	contentType := "application/octet-stream"
-	for k, v := range resp.httpResp.Header {
-		if strings.ToLower(k) == "content-type" {
-			if len(v) > 0 {
-				contentType = strings.ToLower(v[0])
-			}
-		}
-	}
-
 	result.Text = resp.Text
 	result.Error = resperror
 	result.HttpStatus = resp.GetStatus()
+	result.ContentType = resp.GetContentType()
 
-	if strings.Contains(contentType, "application/xml") {
-		doc, err := makeXMLDOM(resp.Text)
-		if err != nil {
-			result.Map = makeRootMap(resp.Text)
-		} else {
-			result.XMLDocument = doc
+	switch getResultTypeFromResponse(resp) {
+	case "xml":
+		{
+			doc, err := makeXMLDOM(resp.Text)
+			if err != nil {
+				result.Map = makeRootMap(resp.Text)
+			} else {
+				result.XMLDocument = doc
+			}
 		}
-
-	} else if strings.Contains(contentType, "application/json") {
-		resultMap, err := makeResultMapFromJson(resp.Text)
-		if err != nil {
-			resultMap = makeRootMap(resp.Text)
+	case "json":
+		{
+			resultMap, err := makeResultMapFromJson(resp.Text)
+			if err != nil {
+				resultMap = makeRootMap(resp.Text)
+			}
+			result.Map = resultMap
 		}
-		result.Map = resultMap
-	} else if strings.Contains(contentType, "text/plain") ||
-		strings.Contains(contentType, "text/html") ||
-		strings.Contains(contentType, "text/calendar") ||
-		strings.Contains(contentType, "text/css") {
+	case "text":
 		result.Map = makeRootMap(resp.Text)
-	} else if strings.Contains(contentType, "text/csv") {
+	case "html":
 		result.Map = makeRootMap(resp.Text)
-	} else {
-		// Make a default text entry
-		result.Map = makeRootMap("Unsupported text returned")
+	case "csv":
+		result.Map = makeRootMap(resp.Text)
+	default:
+		result.Map = makeRootMap("Unsupported content type returned: " + result.ContentType)
 	}
 
 	PushResult(result)
@@ -165,6 +160,38 @@ func PushError(resperror error) error {
 
 	PushResult(result)
 	return resperror
+}
+
+// getResultTypeFromResponse -- Get the result type
+//   xml, json, text, html, css, csv, media, unknown
+func getResultTypeFromResponse(resp *RestResponse) string {
+	contentType := resp.GetContentType()
+
+	// Split off parameters
+	parts := strings.Split(contentType, ";")
+	if len(parts) == 0 {
+		return "unknown"
+	}
+
+	contentType = strings.TrimSpace(strings.ToLower(parts[0]))
+	if strings.HasPrefix(contentType, "application/xml") ||
+		strings.HasSuffix(contentType, "+xml") {
+		return "xml"
+
+	} else if strings.HasPrefix(contentType, "application/json") ||
+		strings.HasSuffix(contentType, "+json") {
+		return "json"
+	} else if strings.HasPrefix(contentType, "text/plain") ||
+		strings.HasPrefix(contentType, "text/calendar") ||
+		strings.HasPrefix(contentType, "text/css") {
+		return "text"
+	} else if strings.HasPrefix(contentType, "text/html") {
+		return "html"
+	} else if strings.Contains(contentType, "text/csv") {
+		return "csv"
+	}
+
+	return "unknown"
 }
 
 func makeResultMapFromJson(data string) (interface{}, error) {
