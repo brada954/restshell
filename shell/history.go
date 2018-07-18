@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -81,6 +82,40 @@ func (r *Result) addHeaderMap(resp *RestResponse) error {
 	return nil // TODO: Are there any error conditions
 }
 
+func (r *Result) addParsedContentToResult(contentType string, data string) {
+	r.ContentType = contentType
+
+	switch getResultTypeFromContentType(r.ContentType) {
+	case "xml":
+		{
+			doc, err := makeXMLDOM(data)
+			if err != nil {
+				fmt.Fprintln(ErrorWriter(), "WARNING: XML ERROR: ", err)
+				r.Map = makeRootMap(data)
+			} else {
+				r.XMLDocument = doc
+			}
+		}
+	case "json":
+		{
+			resultMap, err := makeResultMapFromJson(data)
+			if err != nil {
+				fmt.Fprintln(ErrorWriter(), "WARNING: JSON ERROR: ", err)
+				resultMap = makeRootMap(data)
+			}
+			r.Map = resultMap
+		}
+	case "text":
+		r.Map = makeRootMap(data)
+	case "html":
+		r.Map = makeRootMap(data)
+	case "csv":
+		r.Map = makeRootMap(data)
+	default:
+		r.Map = makeRootMap("Unsupported content type returned: " + r.ContentType)
+	}
+}
+
 // Error variables
 var (
 	ErrArguments        = errors.New("Invalid arguments")
@@ -110,35 +145,22 @@ func PushResponse(resp *RestResponse, resperror error) error {
 	result.Text = resp.Text
 	result.Error = resperror
 	result.HttpStatus = resp.GetStatus()
-	result.ContentType = resp.GetContentType()
+	result.addParsedContentToResult(resp.GetContentType(), resp.Text)
 
-	switch getResultTypeFromResponse(resp) {
-	case "xml":
-		{
-			doc, err := makeXMLDOM(resp.Text)
-			if err != nil {
-				result.Map = makeRootMap(resp.Text)
-			} else {
-				result.XMLDocument = doc
-			}
-		}
-	case "json":
-		{
-			resultMap, err := makeResultMapFromJson(resp.Text)
-			if err != nil {
-				resultMap = makeRootMap(resp.Text)
-			}
-			result.Map = resultMap
-		}
-	case "text":
-		result.Map = makeRootMap(resp.Text)
-	case "html":
-		result.Map = makeRootMap(resp.Text)
-	case "csv":
-		result.Map = makeRootMap(resp.Text)
-	default:
-		result.Map = makeRootMap("Unsupported content type returned: " + result.ContentType)
-	}
+	PushResult(result)
+	return resperror
+}
+
+//
+// PushResponse -- Push a RestResponse into the history buffer
+//
+func PushText(contentType string, data string, resperror error) error {
+	var result Result
+
+	result.Text = data
+	result.Error = resperror
+	result.HttpStatus = http.StatusOK
+	result.addParsedContentToResult(contentType, data)
 
 	PushResult(result)
 	return resperror
@@ -164,9 +186,7 @@ func PushError(resperror error) error {
 
 // getResultTypeFromResponse -- Get the result type
 //   xml, json, text, html, css, csv, media, unknown
-func getResultTypeFromResponse(resp *RestResponse) string {
-	contentType := resp.GetContentType()
-
+func getResultTypeFromContentType(contentType string) string {
 	// Split off parameters
 	parts := strings.Split(contentType, ";")
 	if len(parts) == 0 {
@@ -177,7 +197,6 @@ func getResultTypeFromResponse(resp *RestResponse) string {
 	if strings.HasPrefix(contentType, "application/xml") ||
 		strings.HasSuffix(contentType, "+xml") {
 		return "xml"
-
 	} else if strings.HasPrefix(contentType, "application/json") ||
 		strings.HasSuffix(contentType, "+json") {
 		return "json"
@@ -199,7 +218,7 @@ func makeResultMapFromJson(data string) (interface{}, error) {
 
 	err := json.Unmarshal([]byte(data), &f)
 	if err != nil {
-		return nil, ErrInvalidValue
+		return nil, err
 	}
 
 	if m, ok := f.(map[string]interface{}); ok {
@@ -220,7 +239,7 @@ func makeXMLDOM(data string) (*xmldom.Document, error) {
 	wrapper := xmldom.Must(xmldom.ParseXML("<assertwrapper></assertwrapper>"))
 	data = strings.TrimSpace(data)
 	if doc, err := xmldom.ParseXML(data); err != nil {
-		return wrapper, ErrInvalidValue
+		return wrapper, err
 	} else {
 		wrapper.Root.AppendChild(doc.Root)
 		return wrapper, nil
