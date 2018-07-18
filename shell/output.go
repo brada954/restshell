@@ -169,7 +169,7 @@ func (resp *RestResponse) DumpResponse(w io.Writer, options ...DisplayOption) {
 	}
 
 	if IsBody(options) {
-		if isStringBinary(resp.Text) {
+		if IsStringBinary(resp.Text) {
 			fmt.Fprintln(w, "Response contains too many unprintable characters to display")
 		} else {
 			fmt.Fprintf(w, "Response:\n%s\n", resp.Text)
@@ -213,7 +213,7 @@ func isRuneBinary(r rune) bool {
 	return false
 }
 
-func isStringBinary(text string) bool {
+func IsStringBinary(text string) bool {
 	count := 0
 	total := 0
 	for _, r := range text {
