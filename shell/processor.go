@@ -48,45 +48,9 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 		fmt.Printf(prompt)
 	}
 	for !quit && scanner.Scan() {
-		echo := false
-		input := scanner.Text()
-		input = strings.TrimSpace(input)
+		line := NewCommandLine(scanner.Text(), shell)
 
-		// Get first token for special handling
-		args := strings.SplitN(input, " ", 2)
-		command := ""
-		if len(args) > 0 {
-			command = strings.ToUpper(args[0])
-		}
-
-		if strings.HasPrefix(command, "#") {
-			command = ""
-		}
-
-		if strings.HasPrefix(command, "@") {
-			echo = true
-			command = strings.TrimLeft(command, "@")
-			input = strings.TrimLeft(input, "@")
-		}
-
-		if len(shell) > 0 {
-			input = shell + input
-		}
-
-		// Allow aliases
-		if alias, err := GetAlias(command); err == nil {
-			if IsDebugEnabled() {
-				fmt.Fprintf(ConsoleWriter(), "Using alias: %s\n", alias)
-			}
-			input = alias
-			if len(args) > 1 {
-				input = input + " " + args[1]
-			}
-			tmp := strings.SplitN(input, " ", 2)
-			command = strings.ToUpper(tmp[0])
-		}
-
-		switch command {
+		switch line.Command {
 		case "":
 		case "QUIT":
 			fallthrough
@@ -98,26 +62,25 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 				shell = ""
 			}
 		case "SHELL":
-			if !quit && len(args) == 2 && len(args[1]) > 0 {
-				shell = args[1]
+			if !quit && len(line.ArgString) > 0 {
+				shell = line.ArgString
 				if !(shell[len(shell)-1] == '\\' || shell[len(shell)-1] == '/') {
 					shell = shell + " "
 				}
 				prompt = defaultPrompt + shell
-				input = ""
 			} else {
 				shell = ""
 				prompt = defaultPrompt
 			}
 		default:
-			if !strings.HasPrefix(input, "#") {
-				cmd, err, contStepping := processCommand(input, echo, singleStep)
+			if !line.IsComment {
+				cmd, err, contStepping := processCommand(line, singleStep)
 				singleStep = contStepping
 				if IsFlowControl(err, FlowQuit) {
 					quit = true
 				} else if err != nil {
 					LastError = 1
-					fmt.Fprintf(ErrorWriter(), "%s: %s\n", command, err.Error())
+					fmt.Fprintf(ErrorWriter(), "%s: %s\n", line.Command, err.Error())
 					if IsFlowControl(err, FlowAbort) && stopOnInterrupt {
 						quit = true
 					}
@@ -182,9 +145,13 @@ func InitializeShell() {
 	ExecutableDirectory = exPath
 }
 
-func processCommand(line string, echo bool, singleStep bool) (Command, error, bool) {
-	echoed := echo || singleStep
-	cmd, tokens, err := getCmdAndArgs(line, echoed)
+func processCommand(line *Line, singleStep bool) (Command, error, bool) {
+
+	if line.Echo || singleStep {
+		fmt.Println(line.CmdLine)
+	}
+
+	cmd, tokens, err := getCmdAndArgs(line)
 	if err != nil {
 		return cmd, err, singleStep
 	}
@@ -199,37 +166,28 @@ func processCommand(line string, echo bool, singleStep bool) (Command, error, bo
 		}
 	}
 
-	err = processCmd(cmd, tokens, echoed)
+	err = processCmd(cmd, tokens, line.Echo || singleStep)
 	return cmd, err, singleStep
 }
 
-func getCmdAndArgs(input string, echo bool) (cmd Command, tokens []string, err error) {
+func getCmdAndArgs(line *Line) (cmd Command, tokens []string, err error) {
 	cmd = nil
 	err = nil
 
-	input = PerformVariableSubstitution(input)
-	tokens = LineParse(input)
-
-	if len(tokens) < 1 {
-		return nil, tokens, errors.New("Parse failed to find tokens")
+	if len(line.Command) == 0 {
+		return nil, tokens, errors.New("No command parsed")
 	}
-
-	var command = strings.ToUpper(tokens[0])
 
 	// Lookup command
-	if c, ok := cmdMap[command]; ok {
+	if c, ok := cmdMap[line.Command]; ok {
 		cmd = c
 		if _, ok := cmd.(LineProcessor); ok {
-			tokens = []string{command, input}
+			tokens = []string{line.Command, line.CmdLine}
 		} else {
-			tokens[0] = command
+			tokens = line.GetCmdAndArguments()
 		}
 	} else {
-		err = errors.New("Invalid Command '" + command + "'. Try 'help'")
-	}
-
-	if echo {
-		fmt.Println(input)
+		err = errors.New("Invalid Command '" + line.Command + "'. Try 'help'")
 	}
 	return
 }
@@ -334,46 +292,43 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 }
 
 func validateCmd(input string) error {
-	input = PerformVariableSubstitution(input)
-	var tokens = LineParse(input)
-	var command = strings.ToUpper(tokens[0])
+	line := NewCommandLine(input, "")
+	if line.IsComment {
+		return nil
+	}
 
 	// Special commands
-	switch command {
+	switch line.Command {
 	case "REM":
 		return nil
 	case "HELP":
 		return nil
 	}
 
-	var cmdServer Command
-	{
-		var ok bool
-		cmdServer, ok = cmdMap[command]
-		if !ok {
-			return errors.New("Invalid Command")
-		}
+	cmd, tokens, err := getCmdAndArgs(line)
+	if err != nil {
+		return err
 	}
 
 	// Strip out sub command before parsing; add it back with arguments
-	subCommands, hasSub := cmdSubCommands[command]
-	subCommand := ""
+	subCommands, hasSub := cmdSubCommands[line.Command]
 	if hasSub {
-		if len(tokens) > 1 && !strings.HasPrefix(tokens[1], "-") {
+		subCommand := ""
+		if len(line.ArgString) > 1 && !strings.HasPrefix(line.ArgString, "-") {
 			subCommand = strings.ToUpper(tokens[1])
 			if !ContainsCommand(subCommand, subCommands) {
-				return errors.New("Invalid sub-command: " + command + " " + subCommand)
+				return errors.New("Invalid sub-command: " + line.Command + " " + subCommand)
 			}
-			tokens = makeSubTokenArray(command, tokens[2:])
+			tokens = makeSubTokenArray(line.Command, tokens[2:])
 		}
 	}
 
 	// Setup the call to parse command options
 	set := NewCmdSet()
 	InitializeCommonCmdOptions(set, CmdHelp)
-	cmdServer.AddOptions(set)
+	cmd.AddOptions(set)
 	set.Reset()
-	err := CmdParse(set, tokens)
+	err = CmdParse(set, tokens)
 	if err != nil {
 		return errors.New("Invalid arguments")
 	}

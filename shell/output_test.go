@@ -78,7 +78,7 @@ func TestColumnizeFive(t *testing.T) {
 func TestIsStringBinaryWithBinary(t *testing.T) {
 	var text = "{ \013this\013 is a \003test\000 that\013\013\030 needs 10\001 binary ch\013arac\013ters\034}"
 	text = text + "extra c\030racters\030 to get this over 100 be\001ca\001use there"
-	if !isStringBinary(text) {
+	if !IsStringBinary(text) {
 		t.Errorf("Unexpected failure to validate binary string as binary")
 		fmt.Println(text)
 	}
@@ -86,7 +86,7 @@ func TestIsStringBinaryWithBinary(t *testing.T) {
 
 func TestIsStringBinaryWithShortText(t *testing.T) {
 	var text = "{ this is a \003test that needs 10\001 binary characters}"
-	if isStringBinary(text) {
+	if IsStringBinary(text) {
 		t.Errorf("Unexpected failure to validate text string as not binary")
 		fmt.Println(text)
 	}
@@ -95,7 +95,7 @@ func TestIsStringBinaryWithShortText(t *testing.T) {
 func TestIsStringBinaryWithLongText(t *testing.T) {
 	var text = "{ this is a \003test that needs 10\001 binary chara\001cters}"
 	text = text + " some extra characters to get this over 100; 123123"
-	if isStringBinary(text) {
+	if IsStringBinary(text) {
 		t.Errorf("Unexpected failure to validate text string as not binary")
 		fmt.Println(text)
 	}

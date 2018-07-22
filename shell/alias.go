@@ -34,6 +34,10 @@ func AddAlias(key string, command string, force bool) error {
 
 func RemoveAlias(key string) error {
 	key = strings.TrimSpace(strings.ToUpper(key))
+	if len(key) == 0 {
+		return errors.New("Empty key")
+	}
+
 	if _, ok := aliasStore[key]; !ok {
 		return errors.New("Key not found")
 	}
@@ -44,6 +48,10 @@ func RemoveAlias(key string) error {
 
 func GetAlias(key string) (string, error) {
 	key = strings.TrimSpace(strings.ToUpper(key))
+	if len(key) == 0 {
+		return "", errors.New("Empty key")
+	}
+
 	if value, ok := aliasStore[key]; !ok {
 		return "", errors.New("Key not found")
 	} else {

@@ -20,12 +20,17 @@ func TestParseQuotes(t *testing.T) {
 	testAString(t, "123 \"\\\"abc\\\"\"", []string{"123", "\"abc\""})
 	testAString(t, "123 \" abc \"\"", []string{"123", " abc "})
 	testAString(t, "buy   -v -123", []string{"buy", "-v", "-123"})
+	testAString(t, "", []string{})
+	testAString(t, "test \"\" space", []string{"test", "", "space"})
+	testAString(t, "test \"\"", []string{"test", ""})
+	testAString(t, "test \"", []string{"test", ""})
+	testAString(t, "\"", []string{""})
 }
 
 func testAString(t *testing.T, line string, expected []string) {
 	args := LineParse(line)
 	if len(args) != len(expected) {
-		t.Errorf("Invalid number of tokens %d!=%d", len(args), 2)
+		t.Errorf("Invalid number of tokens %d!=%d for line: %s", len(expected), len(args), line)
 	}
 
 	for i := 0; i < min(len(args), len(expected)); i++ {
