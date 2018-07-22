@@ -1,10 +1,14 @@
 package shell
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/subchen/go-xmldom"
 )
 
 // ShortDisplayFunc -- A function can be used to pretty format the output or condense it
@@ -87,6 +91,7 @@ const (
 	Cookies
 	Status
 	Short
+	Pretty
 	All
 )
 
@@ -108,6 +113,10 @@ func IsCookies(l []DisplayOption) bool {
 
 func IsStatus(l []DisplayOption) bool {
 	return isOptionEnabled(l, Headers) || isOptionEnabled(l, Status)
+}
+
+func IsPrettyPrint(l []DisplayOption) bool {
+	return isOptionEnabled(l, Pretty)
 }
 
 func GetDefaultDisplayOptions() []DisplayOption {
@@ -139,6 +148,10 @@ func GetDefaultDisplayOptions() []DisplayOption {
 
 	if (IsCmdVerboseEnabled() && IsCmdDebugEnabled()) || IsCmdOutputCookieEnabled() {
 		result = append(result, Cookies)
+	}
+
+	if IsCmdPrettyPrintEnabled() {
+		result = append(result, Pretty)
 	}
 	return result
 }
@@ -172,7 +185,26 @@ func (resp *RestResponse) DumpResponse(w io.Writer, options ...DisplayOption) {
 		if IsStringBinary(resp.Text) {
 			fmt.Fprintln(w, "Response contains too many unprintable characters to display")
 		} else {
-			fmt.Fprintf(w, "Response:\n%s\n", resp.Text)
+			line := resp.Text
+			if IsPrettyPrint(options) {
+				switch getResultTypeFromContentType(resp.GetContentType()) {
+				case "xml":
+					{
+						if doc, err := xmldom.ParseXML(line); err == nil {
+							line = doc.XMLPrettyEx("    ")
+						}
+					}
+				case "json":
+					{
+						var prettyJSON bytes.Buffer
+						err := json.Indent(&prettyJSON, []byte(line), "", "\t")
+						if err == nil {
+							line = prettyJSON.String()
+						}
+					}
+				}
+			}
+			fmt.Fprintf(w, "Response:\n%s\n", line)
 		}
 	}
 }

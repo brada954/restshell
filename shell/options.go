@@ -70,6 +70,7 @@ type StandardOptions struct {
 	headerOutputOption   *bool
 	cookieOutputOption   *bool
 	fullOutputOption     *bool
+	prettyPrintOption    *bool
 }
 
 // Global options populated by a command being run
@@ -255,6 +256,9 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			if globalOptions.fullOutputOption == nil {
 				globalOptions.fullOutputOption = set.BoolLong("out-full", 0, "Output all response data")
 			}
+			if globalOptions.prettyPrintOption == nil {
+				globalOptions.prettyPrintOption = set.BoolLong("pretty", 0, "Pretty print output")
+			}
 		}
 	}
 }
@@ -373,6 +377,10 @@ func IsCmdOutputShortEnabled() bool {
 
 func IsCmdOutputBodyEnabled() bool {
 	return (globalOptions.bodyOutputOption != nil && *globalOptions.bodyOutputOption) || (IsCmdVerboseEnabled() && !IsCmdOutputShortEnabled())
+}
+
+func IsCmdPrettyPrintEnabled() bool {
+	return (globalOptions.prettyPrintOption != nil && *globalOptions.prettyPrintOption)
 }
 
 func (o *StandardOptions) IsDebugEnabled() bool {
@@ -551,6 +559,10 @@ func (o *StandardOptions) IsOutputShortEnabled() bool {
 
 func (o *StandardOptions) IsOutputBodyEnabled() bool {
 	return o.bodyOutputOption != nil && *o.bodyOutputOption
+}
+
+func (o *StandardOptions) IsPrettyPrintEnabled() bool {
+	return o.prettyPrintOption != nil && *o.prettyPrintOption
 }
 
 // ParseDuration -- parses a duration value from text that may include
