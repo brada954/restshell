@@ -79,8 +79,10 @@ func ColumnizeTokens(tokens []string, columns int, width int) []string {
 	return result
 }
 
+// DisplayOption
 type DisplayOption int
 
+// DisplayOption values
 const (
 	Body DisplayOption = iota
 	Headers
