@@ -21,6 +21,12 @@
 			"revisionTime": "2017-01-12T20:04:14Z"
 		},
 		{
+			"checksumSHA1": "eDQ6f1EsNf+frcRO/9XukSEchm8=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "36e9d2ebbde5e3f13ab2e25625fd453271d6522e",
+			"revisionTime": "2018-01-03T17:44:51Z"
+		},
+		{
 			"checksumSHA1": "dj25sT8IAcOnbrEaOcwijHlUgIA=",
 			"path": "github.com/subchen/go-xmldom",
 			"revision": "e1029cd9087cb9c9c8941b155414b8b8e7ce293a",
