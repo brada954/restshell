@@ -179,7 +179,10 @@ func NewGuidSubstitute(cache interface{}, subname string, fmt string, option str
 	var guid uuid.UUID
 
 	if cache == nil {
-		guid = uuid.NewV4()
+		var err error
+		if guid, err = uuid.NewV4(); err != nil {
+			guid = uuid.Nil
+		}
 	} else {
 		guid = cache.(uuid.UUID)
 	}
