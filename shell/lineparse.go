@@ -2,7 +2,6 @@ package shell
 
 import (
 	"regexp"
-	"strings"
 )
 
 // LineParse -- Parse a command line into tokens handling
@@ -51,24 +50,26 @@ func LineParse(input string) []string {
 
 // PerformVariableSubstitution -- Perform variable substitution on a string
 func PerformVariableSubstitution(input string) string {
-	replaceStrings := make([]string, 0)
+	return SubstituteString(input)
 
-	var filter = func(k string, v interface{}) bool {
-		if _, ok := v.(string); !ok {
-			return false
-		}
-		return true
-	}
+	// replaceStrings := make([]string, 0)
 
-	var replaceBuilder = func(kStr string, v interface{}) {
-		if rStr, ok := v.(string); ok {
-			replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
-		}
-	}
+	// var filter = func(k string, v interface{}) bool {
+	// 	if _, ok := v.(string); !ok {
+	// 		return false
+	// 	}
+	// 	return true
+	// }
 
-	EnumerateGlobals(replaceBuilder, filter)
-	r := strings.NewReplacer(replaceStrings...)
-	return r.Replace(input)
+	// var replaceBuilder = func(kStr string, v interface{}) {
+	// 	if rStr, ok := v.(string); ok {
+	// 		replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
+	// 	}
+	// }
+
+	// EnumerateGlobals(replaceBuilder, filter)
+	// r := strings.NewReplacer(replaceStrings...)
+	// return r.Replace(input)
 }
 
 // IsVariableSubstitutionComplete -- Validate that variable substitution was
