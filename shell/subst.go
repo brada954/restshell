@@ -1,23 +1,18 @@
 ///////////////////////////////////////////////////////////////////////////
-//  Substitution:
-//  Enable a variable lookup table or dynamic functions to be used
-//  in string substitution.
 //
-//  Dynamic functions
-//  Any function can be registered with the substitution system and used in a
-//  string substitution request when the function name is used. The dynamic
-//  function capabilities include the ability to key any function call
+//  Substitution functions
+//
+//  Registered substation functions can be used in variable substitution to
+//  calculate values, provide variable formatting or generate unique data
+//  values. Substitution functions have the ability to key any function call
 //  so the same value can be returned in a subsequent call. A different key or
 //  absence of key can result in a different value.
 //
-//  For example, dynamic functions enable a Guid to be created and used in substitution
-//  in a string or HTTP body. Using a key allows the same guid to be substituted
+//  For example, a substitution function can generate a unique ID to be used
+//  in a variable or HTTP body. Using a key allows the same guid to be substituted
 //  multiple times. Without a key, a function is assumed to return a different
-//  value (but may not if for example a function gettime() called repeatedly
+//  value but that is not guaranteed (for example a gettime() called repeatedly
 //  may return the same time due to speed of the CPU)
-//
-//  The substitution system manages a cache of data during the
-//  lifetime of a substitution process.
 //
 //  A package init function can register functions using RegisterSubstitutionHandler. The
 //  function registered identifies a function name and function group. The function
@@ -25,9 +20,6 @@
 //  functions group membership identifies the cached data used to manage key'ed
 //  instance of function data. Multiple functions in the same group can use the
 //  same cache data to ensure consistency for a given key.
-//
-//  It is assumed the user of the function understands the underlying grouping
-//  and key mechanism when using a given function.
 //
 //  A function is defined as: %%funcname([key, [fmt, [option]]])%%
 //  When a function is parsed, the funcname is used to identify a function to
@@ -50,8 +42,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/satori/go.uuid"
 )
 
 // SubstitutionHandler -- A handler returns a value for substitution given a function name. The handler may
@@ -60,9 +50,9 @@ import (
 // in the same function group).
 type SubstitutionHandler func(cache interface{}, funcName string, fmt string, option string) (value string, data interface{})
 
-// handlerDataCache maintains the raw data returned from functions within a function group.
+// substitutionDataCache maintains the raw data returned from functions within a function group.
 // The function group name is used in the lookup
-type handlerDataCache map[string]interface{}
+type substitutionDataCache map[string]interface{}
 
 type substHandler struct {
 	group    string
@@ -72,61 +62,105 @@ type substHandler struct {
 // Mapping of a function name to handler record identifying the group and handler
 var handlerMap = make(map[string]substHandler)
 
-var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(([a-zA-Z0-9_]*)(?:,([a-zA-Z0-9\.]+)(?:,\"([a-zA-Z0-9\.]+)\")?)?\)%%`
+var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,\s*([a-zA-Z0-9\.]+)\s*(?:,\s*\"([a-zA-Z0-9\.\,\;_\-\+\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
 
 // RegisterSubstitutionHandler -- Register a substitution function
 func RegisterSubstitutionHandler(groupName string, funcName string, fn SubstitutionHandler) {
 	if _, ok := handlerMap[funcName]; !ok {
+		if IsDebugEnabled() {
+			fmt.Println("Registering:", groupName, funcName)
+		}
 		handlerMap[funcName] = substHandler{groupName, fn}
 	} else {
 		panic("Duplicate substitution registration: " + groupName + "." + funcName)
 	}
 }
 
-// SubstituteString -- perform substitution on a string
-func SubstituteString(input string) string {
+// PerformVariableSubstitution -- perform substitution on a string
+func PerformVariableSubstitution(input string) string {
 
-	var cache = make(handlerDataCache, 0)
+	var localVars = buildSubstitutionFunctionVars(input)
+
+	var replaceStrings = make([]string, 0)
+
+	// Filters out non-string variables
+	var filter = func(k string, v interface{}) bool {
+		if _, ok := v.(string); !ok {
+			return false
+		}
+		return true
+	}
+
+	// Construct the array of strings used in variable substitution
+	var replaceBuilder = func(kStr string, v interface{}) {
+		if rStr, ok := v.(string); ok {
+			replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
+		}
+	}
+
+	// Build the replacement strings from global variables
+	EnumerateGlobals(replaceBuilder, filter)
+
+	// Add the strings from the substitution function
+	for k, v := range localVars {
+		if IsCmdDebugEnabled() {
+			fmt.Println("Adding Substitution Var: ", "%%"+k+"%% =", v)
+		}
+		replaceStrings = append(replaceStrings, "%%"+k+"%%", v)
+	}
+
+	// Replace all tokens in the input string
+	r := strings.NewReplacer(replaceStrings...)
+	return r.Replace(input)
+}
+
+// IsVariableSubstitutionComplete -- Validate that variable substitution was
+// complete (no variable syntax found)
+func IsVariableSubstitutionComplete(input string) bool {
+
+	if regx, err := regexp.Compile(`\%\%.*\%\%`); err == nil {
+		if regx.MatchString(input) == false {
+			return true
+		}
+	}
+	return false // Note: this is returned in error situations as well (requires investigation)
+}
+
+func buildSubstitutionFunctionVars(input string) map[string]string {
+	var cache = make(substitutionDataCache, 0)
 	var localVars = make(map[string]string, 0)
 
-	fmt.Println("Beginning regex eval (", len(handlerMap), "functions)")
 	pattern, _ := regexp.Compile(regexPattern)
-
 	results := pattern.FindAllStringSubmatch(input, -1)
 	for i, list := range results {
-		fmt.Println("Processing group list: ", i)
-		for _, m := range list {
-			fmt.Println(m)
+		if IsCmdDebugEnabled() && IsCmdVerboseEnabled() {
+			fmt.Println("Processing group list: ", i)
+			for _, m := range list {
+				fmt.Println(m)
+			}
 		}
 
 		fn := ""
 		key := ""
-		fmt := ""
+		format := ""
 		option := ""
-		varName := ""
+
+		varName := strings.Trim(list[0], "%%")
 
 		if len(list) > 1 {
 			fn = list[1]
-			varName = fn + "("
 		}
 
 		if len(list) > 2 && len(list[2]) > 0 {
 			key = list[2]
-			varName = varName + key
 		}
 
 		if len(list) > 3 && len(list[3]) > 0 {
-			fmt = list[3]
-			varName = varName + "," + fmt
+			format = list[3]
 		}
 
 		if len(list) > 4 && len(list[4]) > 0 {
 			option = list[4]
-			varName = varName + "," + option
-		}
-
-		if len(list) > 1 {
-			varName = varName + ")"
 		}
 
 		if r, ok := handlerMap[fn]; ok {
@@ -136,59 +170,10 @@ func SubstituteString(input string) string {
 				data = nil
 			}
 
-			v, c := r.function(data, fn, fmt, option)
+			v, c := r.function(data, fn, format, option)
 			localVars[varName] = v
 			cache[cachekey] = c
 		}
 	}
-
-	var replaceStrings = make([]string, 0)
-
-	var filter = func(k string, v interface{}) bool {
-		if _, ok := v.(string); !ok {
-			return false
-		}
-		return true
-	}
-
-	var replaceBuilder = func(kStr string, v interface{}) {
-		if rStr, ok := v.(string); ok {
-			replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
-		}
-	}
-
-	EnumerateGlobals(replaceBuilder, filter)
-
-	for k, v := range localVars {
-		fmt.Println("Adding: ", "%%"+k+"%%", v)
-		replaceStrings = append(replaceStrings, "%%"+k+"%%", v)
-	}
-	r := strings.NewReplacer(replaceStrings...)
-	return r.Replace(input)
-
-	//return input
-}
-
-func init() {
-	// Register substitutes
-	RegisterSubstitutionHandler("newguid", "newguid", NewGuidSubstitute)
-}
-
-// NewGuidSubstitute -- Implementatino of guid substitution
-func NewGuidSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
-	var guid uuid.UUID
-
-	if cache == nil {
-		var err error
-		if guid, err = uuid.NewV4(); err != nil {
-			guid = uuid.Nil
-		}
-	} else {
-		guid = cache.(uuid.UUID)
-	}
-
-	switch fmt {
-	default:
-		return guid.String(), guid
-	}
+	return localVars
 }
