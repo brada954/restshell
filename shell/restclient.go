@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+// RestClient -- An object that makes REST calls
 type RestClient struct {
 	Debug   bool
 	Verbose bool
@@ -22,6 +23,7 @@ type RestClient struct {
 	Client  *http.Client
 }
 
+// RestResponse -- The response structure returned by a REST interface
 type RestResponse struct {
 	Text     string
 	httpResp *http.Response
@@ -359,7 +361,7 @@ func addHeaders(req *http.Request, headerParam string) error {
 	headers := make(map[string]string, 0)
 
 	for _, pair := range parts {
-		kv := strings.Split(pair, "=")
+		kv := strings.SplitN(pair, "=", 2)
 		if len(kv) != 2 {
 			return errors.New("Error parsing header parameter; no headers used")
 		}
