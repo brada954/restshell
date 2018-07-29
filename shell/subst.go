@@ -42,8 +42,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/satori/go.uuid"
 )
 
 // SubstitutionHandler -- A handler returns a value for substitution given a function name. The handler may
@@ -78,9 +76,57 @@ func RegisterSubstitutionHandler(groupName string, funcName string, fn Substitut
 	}
 }
 
-// SubstituteString -- perform substitution on a string
-func SubstituteString(input string) string {
+// PerformVariableSubstitution -- perform substitution on a string
+func PerformVariableSubstitution(input string) string {
 
+	var localVars = buildSubstitutionFunctionVars(input)
+
+	var replaceStrings = make([]string, 0)
+
+	// Filters out non-string variables
+	var filter = func(k string, v interface{}) bool {
+		if _, ok := v.(string); !ok {
+			return false
+		}
+		return true
+	}
+
+	// Construct the array of strings used in variable substitution
+	var replaceBuilder = func(kStr string, v interface{}) {
+		if rStr, ok := v.(string); ok {
+			replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
+		}
+	}
+
+	// Build the replacement strings from global variables
+	EnumerateGlobals(replaceBuilder, filter)
+
+	// Add the strings from the substitution function
+	for k, v := range localVars {
+		if IsCmdDebugEnabled() {
+			fmt.Println("Adding Substitution Var: ", "%%"+k+"%% =", v)
+		}
+		replaceStrings = append(replaceStrings, "%%"+k+"%%", v)
+	}
+
+	// Replace all tokens in the input string
+	r := strings.NewReplacer(replaceStrings...)
+	return r.Replace(input)
+}
+
+// IsVariableSubstitutionComplete -- Validate that variable substitution was
+// complete (no variable syntax found)
+func IsVariableSubstitutionComplete(input string) bool {
+
+	if regx, err := regexp.Compile(`\%\%.*\%\%`); err == nil {
+		if regx.MatchString(input) == false {
+			return true
+		}
+	}
+	return false // Note: this is returned in error situations as well (requires investigation)
+}
+
+func buildSubstitutionFunctionVars(input string) map[string]string {
 	var cache = make(substitutionDataCache, 0)
 	var localVars = make(map[string]string, 0)
 
@@ -98,30 +144,23 @@ func SubstituteString(input string) string {
 		key := ""
 		format := ""
 		option := ""
-		varName := ""
+
+		varName := strings.Trim(list[0], "%%")
 
 		if len(list) > 1 {
 			fn = list[1]
-			varName = fn + "("
 		}
 
 		if len(list) > 2 && len(list[2]) > 0 {
 			key = list[2]
-			varName = varName + key
 		}
 
 		if len(list) > 3 && len(list[3]) > 0 {
 			format = list[3]
-			varName = varName + "," + format
 		}
 
 		if len(list) > 4 && len(list[4]) > 0 {
 			option = list[4]
-			varName = varName + ",\"" + option + "\""
-		}
-
-		if len(list) > 1 {
-			varName = varName + ")"
 		}
 
 		if r, ok := handlerMap[fn]; ok {
@@ -136,67 +175,5 @@ func SubstituteString(input string) string {
 			cache[cachekey] = c
 		}
 	}
-
-	var replaceStrings = make([]string, 0)
-
-	var filter = func(k string, v interface{}) bool {
-		if _, ok := v.(string); !ok {
-			return false
-		}
-		return true
-	}
-
-	var replaceBuilder = func(kStr string, v interface{}) {
-		if rStr, ok := v.(string); ok {
-			replaceStrings = append(replaceStrings, "%%"+kStr+"%%", rStr)
-		}
-	}
-
-	EnumerateGlobals(replaceBuilder, filter)
-
-	for k, v := range localVars {
-		if IsCmdDebugEnabled() {
-			fmt.Println("Adding Substitution Var: ", "%%"+k+"%% =", v)
-		}
-		replaceStrings = append(replaceStrings, "%%"+k+"%%", v)
-	}
-	r := strings.NewReplacer(replaceStrings...)
-	return r.Replace(input)
-}
-
-func init() {
-	// Register substitutes
-	RegisterSubstitutionHandler("newguid", "newguid", NewGuidSubstitute)
-	RegisterSubstitutionHandler("tolower", "tolower", ToLowerSubstitute)
-}
-
-// NewGuidSubstitute -- Implementatino of guid substitution
-func NewGuidSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
-	var guid uuid.UUID
-
-	if cache == nil {
-		var err error
-		if guid, err = uuid.NewV4(); err != nil {
-			guid = uuid.Nil
-		}
-	} else {
-		guid = cache.(uuid.UUID)
-	}
-
-	switch fmt {
-	default:
-		return guid.String(), guid
-	}
-}
-
-// ToLowerSubstitute -- Implementatino of guid substitution
-func ToLowerSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
-	if cache == nil {
-		if fmt == "var" {
-			value = GetGlobalString(option)
-		} else {
-			value = option
-		}
-	}
-	return strings.ToLower(value), value
+	return localVars
 }
