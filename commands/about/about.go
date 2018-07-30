@@ -48,7 +48,7 @@ func (cmd *AboutCommand) executeTopicList() {
 	fmt.Fprintln(shell.ConsoleWriter(), "\nUse the ABOUT command to learn about the following topics:")
 	fmt.Fprintln(shell.ConsoleWriter())
 	for _, topic := range topicList {
-		fmt.Fprintf(shell.ConsoleWriter(), "%s -- %s", topic.GetKey(), topic.GetDescription())
+		fmt.Fprintf(shell.ConsoleWriter(), "%s -- %s\n", topic.GetKey(), topic.GetDescription())
 	}
 	fmt.Fprintln(shell.ConsoleWriter(), "")
 }

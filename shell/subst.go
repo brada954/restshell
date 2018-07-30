@@ -62,7 +62,7 @@ type substHandler struct {
 // Mapping of a function name to handler record identifying the group and handler
 var handlerMap = make(map[string]substHandler)
 
-var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,\s*([a-zA-Z0-9\.]+)\s*(?:,\s*\"([a-zA-Z0-9\.\,\;_\-\+\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
+var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0-9\.]+)(?:,\s*\"([a-zA-Z0-9\.\,\;\:_\-\+\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
 
 // RegisterSubstitutionHandler -- Register a substitution function
 func RegisterSubstitutionHandler(groupName string, funcName string, fn SubstitutionHandler) {
