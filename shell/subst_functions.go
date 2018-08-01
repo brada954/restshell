@@ -19,7 +19,7 @@ func init() {
 }
 
 // NewGuidSubstitute -- Implementatino of guid substitution
-func NewGuidSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
+func NewGuidSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
 	var guid uuid.UUID
 
 	if cache == nil {
@@ -31,7 +31,7 @@ func NewGuidSubstitute(cache interface{}, subname string, fmt string, option str
 		guid = cache.(uuid.UUID)
 	}
 
-	switch fmt {
+	switch format {
 	default:
 		return guid.String(), guid
 	}
@@ -39,9 +39,9 @@ func NewGuidSubstitute(cache interface{}, subname string, fmt string, option str
 
 // ToLowerSubstitute -- returns the ToLower value from options parameter with format
 // options to use the option parameter in a variable lookup
-func ToLowerSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
+func ToLowerSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
 	if cache == nil {
-		if fmt == "var" {
+		if format == "var" {
 			value = GetGlobalString(option)
 		} else {
 			value = option
@@ -52,9 +52,9 @@ func ToLowerSubstitute(cache interface{}, subname string, fmt string, option str
 
 // ToUpperSubstitute -- returns the ToUpper value from options parameter with format
 // options to use the option parameter in a variable lookup
-func ToUpperSubstitute(cache interface{}, subname string, fmt string, option string) (value string, data interface{}) {
+func ToUpperSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
 	if cache == nil {
-		if fmt == "var" {
+		if format == "var" {
 			value = GetGlobalString(option)
 		} else {
 			value = option
@@ -64,7 +64,7 @@ func ToUpperSubstitute(cache interface{}, subname string, fmt string, option str
 }
 
 // GetDateSubstitute --
-func GetDateSubstitute(cache interface{}, subname string, fmt string, option string) (value string, date interface{}) {
+func GetDateSubstitute(cache interface{}, subname string, format string, option string) (value string, date interface{}) {
 	var inputTime time.Time
 	var defaultFmt = "2006-01-02 15:04:05"
 
@@ -74,15 +74,17 @@ func GetDateSubstitute(cache interface{}, subname string, fmt string, option str
 		inputTime = t
 	}
 
-	fmt = strings.ToLower(fmt)
+	format = strings.ToLower(format)
 	if len(option) == 0 {
 		option = defaultFmt
 	}
-	switch fmt {
+	switch format {
 	case "utc":
 		return inputTime.UTC().Format(option), inputTime
 	case "unix":
 		return strconv.FormatInt(inputTime.Unix(), 10), inputTime
+	case "local":
+		return inputTime.Local().Format(option), inputTime
 	default:
 		return inputTime.Format(option), inputTime
 	}
@@ -128,19 +130,49 @@ func GetDateSubstitute(cache interface{}, subname string, fmt string, option str
 
 // SetDateSubstitute -- A function that returns an empty string but sets the date
 // value used by the date group functions
-func SetDateSubstitute(cache interface{}, subname, fmt string, option string) (value string, date interface{}) {
+func SetDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
-
-	if len(fmt) == 0 {
-		fmt = "2006-01-02T15:04:05"
-	}
+	defaultFmt := "2006-01-02T15:04:05"
+	minFormatLen := min(len(defaultFmt), len(option))
 
 	if cache == nil {
-		if len(option) > 0 {
-			if t, err := time.Parse(fmt, option); err == nil {
-				inputTime = t
+		switch format {
+		case "unix":
+			if len(option) > 0 {
+				inputTime = createUnixTimeFromArg(option)
+			} else {
+				inputTime = time.Unix(0, 0)
 			}
+		case "utc":
+			if len(option) > 0 {
+				if tm, err := time.ParseInLocation(defaultFmt[:minFormatLen], option, time.UTC); err == nil {
+					inputTime = tm
+				}
+			}
+		case "local":
+			if len(option) > 0 {
+				if tm, err := time.ParseInLocation(defaultFmt[:minFormatLen], option, time.Local); err == nil {
+					inputTime = tm
+				}
+			}
+		default:
 		}
 	}
 	return "", inputTime
+}
+
+func createUnixTimeFromArg(input string) time.Time {
+	i, err := strconv.ParseInt(input, 10, 64)
+	if err != nil {
+		return time.Unix(0, 0)
+	}
+	tm := time.Unix(i, 0)
+	return tm
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
