@@ -7,5 +7,6 @@ func init() {
 }
 
 func AddCommands() {
-	shell.AddCommand("addresult", shell.CategoryUtilities, NewAddResultCommand())
+	shell.AddCommand("load", shell.CategoryUtilities, NewLoadCommand())
+	shell.AddCommand("dump", shell.CategoryUtilities, NewDumpCommand())
 }
