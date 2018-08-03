@@ -18,8 +18,15 @@ type Line struct {
 }
 
 // NewCommandLine -- parse command line into a Line
-func NewCommandLine(input string, shellPrefix string) (line *Line) {
+func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error) {
 	line = &Line{}
+	reterr = nil
+
+	defer func() {
+		if r := recover(); r != nil {
+			reterr = fmt.Errorf("Panic processing line: %v", r)
+		}
+	}()
 
 	line.OriginalLine = input
 	line.Echo = false

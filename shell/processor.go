@@ -48,10 +48,19 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 		fmt.Printf(prompt)
 	}
 	for !quit && scanner.Scan() {
-		line := NewCommandLine(scanner.Text(), shell)
+		line, err := NewCommandLine(scanner.Text(), shell)
+		if err != nil {
+			line, _ = NewCommandLine("ERROR", "")
+		}
 
 		switch line.Command {
 		case "":
+		case "ERROR":
+			LastError = 1
+			if err == nil {
+				err = errors.New("Invalid Command")
+			}
+			fmt.Fprintf(ErrorWriter(), "%s: %s\n", "Line Parse Error", err.Error())
 		case "QUIT":
 			fallthrough
 		case "Q":
@@ -292,7 +301,11 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 }
 
 func validateCmd(input string) error {
-	line := NewCommandLine(input, "")
+	line, err := NewCommandLine(input, "")
+	if err != nil {
+		return err
+	}
+
 	if line.IsComment {
 		return nil
 	}

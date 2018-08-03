@@ -6,5 +6,6 @@ import (
 	_ "github.com/brada954/restshell/commands/rest"
 	_ "github.com/brada954/restshell/commands/result"
 	_ "github.com/brada954/restshell/commands/util"
+	_ "github.com/brada954/restshell/functions"
 	_ "github.com/brada954/restshell/shell"
 )
