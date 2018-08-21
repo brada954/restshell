@@ -41,16 +41,96 @@ type Result struct {
 
 var client = &http.Client{Timeout: time.Duration(30 * time.Second)}
 
+var GetFirstNameDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getfirstname",
+	FunctionHelp:      "Get a random first name of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetFirstNameSubstitute,
+}
+
+var GetLastNameDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getlastname",
+	FunctionHelp:      "Get a random last name of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetLastNameSubstitute,
+}
+
+var GetPhoneDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getphone",
+	FunctionHelp:      "Get a random phone number of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetPhoneSubstitute,
+}
+
+var GetEmailDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getemail",
+	FunctionHelp:      "Get a random email address of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetEmailSubstitute,
+}
+
+var GetStreetDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getstreet",
+	FunctionHelp:      "Get a random street of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetStreetSubstitute,
+}
+
+var GetCityDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getcity",
+	FunctionHelp:      "Get a random city of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetCitySubstitute,
+}
+
+var GetStateDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getstate",
+	FunctionHelp:      "Get a random state of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetStateSubstitute,
+}
+
+var GetZipDefinition = shell.SubstitutionFunction{
+	Group:             "randomuser",
+	Name:              "getzip",
+	FunctionHelp:      "Get a random zip code of a consumer",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetZipSubstitute,
+}
+
 func init() {
 	// Register substitutes
-	shell.RegisterSubstitutionHandler("randomuser", "getfirstname", GetFirstNameSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getlastname", GetLastNameSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getphone", GetPhoneSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getemail", GetEmailSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getstreet", GetStreetSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getcity", GetCitySubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getstate", GetStateSubstitute)
-	shell.RegisterSubstitutionHandler("randomuser", "getzip", GetZipSubstitute)
+	shell.RegisterSubstitutionHandler(GetFirstNameDefinition)
+	shell.RegisterSubstitutionHandler(GetLastNameDefinition)
+	shell.RegisterSubstitutionHandler(GetPhoneDefinition)
+	shell.RegisterSubstitutionHandler(GetEmailDefinition)
+	shell.RegisterSubstitutionHandler(GetStreetDefinition)
+	shell.RegisterSubstitutionHandler(GetCityDefinition)
+	shell.RegisterSubstitutionHandler(GetStateDefinition)
+	shell.RegisterSubstitutionHandler(GetZipDefinition)
 }
 
 // GetFirstNameSubstitute -- Get a random first name
@@ -141,7 +221,7 @@ func getConsumer(cache interface{}) *Consumer {
 	if d, ok := cache.(*Consumer); !ok {
 		c, err := getRandomUserData()
 		if err != nil {
-			panic("User data not available")
+			panic("User data not available: " + err.Error())
 		}
 		return &c
 	} else {

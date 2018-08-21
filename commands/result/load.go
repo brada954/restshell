@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/brada954/restshell/shell"
 )
@@ -40,13 +41,6 @@ func (cmd *LoadCommand) Execute(args []string) error {
 		return shell.ErrArguments
 	}
 
-	contentType := "text/plain"
-	if *cmd.optionLoadXml {
-		contentType = "application/xml"
-	} else if *cmd.optionLoadJson {
-		contentType = "application/json"
-	}
-
 	// Execute commands
 	file, err := os.Open(args[0])
 	if err != nil {
@@ -58,6 +52,24 @@ func (cmd *LoadCommand) Execute(args []string) error {
 
 	if *cmd.optionSubstitute {
 		data = shell.PerformVariableSubstitution(data)
+	}
+
+	contentType := "text/plain"
+	if *cmd.optionLoadXml {
+		contentType = "application/xml"
+	} else if *cmd.optionLoadJson {
+		contentType = "application/json"
+	} else if *cmd.optionLoadText {
+		contentType = "text/plain"
+	} else {
+		// Very rudimentary tests for json and xml (TODO: Expand on)
+		d := strings.TrimSpace(data)
+		if d[0] == '<' && d[len(d)-1] == '>' {
+			contentType = "application/xml"
+		} else if (d[0] == '{' && d[len(d)-1] == '}') ||
+			(d[0] == '[' && d[len(d)-1] == ']') {
+			contentType = "application/json"
+		}
 	}
 
 	shell.PushText(contentType, data, err)

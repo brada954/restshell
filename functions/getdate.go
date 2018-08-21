@@ -1,66 +1,31 @@
-package shell
+package functions
 
 import (
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/brada954/restshell/shell"
 )
 
-func init() {
-	// Register substitutes
-	RegisterSubstitutionHandler("newguid", "newguid", NewGuidSubstitute)
-	RegisterSubstitutionHandler("tolower", "tolower", ToLowerSubstitute)
-	RegisterSubstitutionHandler("toupper", "toupper", ToUpperSubstitute)
-	RegisterSubstitutionHandler("date", "getdate", GetDateSubstitute)
-	RegisterSubstitutionHandler("date", "setdate", SetDateSubstitute)
-
+var GetDateDefinition = shell.SubstitutionFunction{
+	Name:              "getdate",
+	Group:             "date",
+	FunctionHelp:      "Generate a date",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          GetDateSubstitute,
 }
 
-// NewGuidSubstitute -- Implementatino of guid substitution
-func NewGuidSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
-	var guid uuid.UUID
-
-	if cache == nil {
-		var err error
-		if guid, err = uuid.NewV4(); err != nil {
-			guid = uuid.Nil
-		}
-	} else {
-		guid = cache.(uuid.UUID)
-	}
-
-	switch format {
-	default:
-		return guid.String(), guid
-	}
-}
-
-// ToLowerSubstitute -- returns the ToLower value from options parameter with format
-// options to use the option parameter in a variable lookup
-func ToLowerSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
-	if cache == nil {
-		if format == "var" {
-			value = GetGlobalString(option)
-		} else {
-			value = option
-		}
-	}
-	return strings.ToLower(value), value
-}
-
-// ToUpperSubstitute -- returns the ToUpper value from options parameter with format
-// options to use the option parameter in a variable lookup
-func ToUpperSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
-	if cache == nil {
-		if format == "var" {
-			value = GetGlobalString(option)
-		} else {
-			value = option
-		}
-	}
-	return strings.ToUpper(value), value
+var SetDateDefinition = shell.SubstitutionFunction{
+	Name:              "setdate",
+	Group:             "date",
+	FunctionHelp:      "Set a date value",
+	Formats:           nil,
+	OptionDescription: "",
+	Options:           nil,
+	Function:          SetDateSubstitute,
 }
 
 // GetDateSubstitute --

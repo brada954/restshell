@@ -21,6 +21,7 @@ type TopicInterface interface {
 var topicList []TopicInterface = []TopicInterface{
 	NewAuthTopic(),
 	NewBenchmarkTopic(),
+	NewSubstitutionTopic(),
 }
 
 func NewAboutCommand() *AboutCommand {

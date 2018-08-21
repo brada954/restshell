@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -28,6 +29,10 @@ func NewSetCommand() *SetCommand {
 
 func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[key[=[value]]...")
+	set.SetUsage(func() {
+		set.PrintUsage(shell.ConsoleWriter())
+		cmd.ExtendedUsage(shell.ConsoleWriter())
+	})
 	cmd.listOption = set.BoolLong("list", 'l', "List the globals")
 	cmd.initOnly = set.BoolLong("init", 'i', "Inialize if not set already")
 	cmd.valueIsPath = set.BoolLong("path", 'p', "Use value as a path into history buffer")
@@ -37,6 +42,11 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
+}
+
+func (cmd *SetCommand) ExtendedUsage(w io.Writer) {
+	fmt.Fprintf(w, "\nAdditional Information:\n")
+	fmt.Fprintf(w, "\nVariable substitution has powerful functions for generating substitution data as well.\nRun the command \"ABOUT SUBST\" for more info.\n")
 }
 
 func (cmd *SetCommand) Execute(args []string) error {

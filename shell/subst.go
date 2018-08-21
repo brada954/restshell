@@ -40,7 +40,9 @@ package shell
 
 import (
 	"fmt"
+	"io"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -54,26 +56,59 @@ type SubstitutionHandler func(cache interface{}, funcName string, fmt string, op
 // The function group name is used in the lookup
 type substitutionDataCache map[string]interface{}
 
-type substHandler struct {
-	group    string
-	function SubstitutionHandler
+// SubstitutionItemHelp -- Help strucsture for a format
+type SubstitutionItemHelp struct {
+	Item        string
+	Description string
+}
+
+// SubstitutionFunction -- a registration function for a handler and its help
+type SubstitutionFunction struct {
+	Name              string
+	Group             string
+	FunctionHelp      string
+	FormatDescription string
+	Formats           []SubstitutionItemHelp
+	OptionDescription string
+	Options           []SubstitutionItemHelp
+	Function          SubstitutionHandler
 }
 
 // Mapping of a function name to handler record identifying the group and handler
-var handlerMap = make(map[string]substHandler)
+var handlerMap = make(map[string]SubstitutionFunction)
 
-var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0-9\.]+)(?:,\s*\"([a-zA-Z0-9\.\,\;\:_\-\+\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
+var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0-9\.]*)(?:,\s*\"([a-zA-Z0-9\.\,\;\:_\-\+\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
 
 // RegisterSubstitutionHandler -- Register a substitution function
-func RegisterSubstitutionHandler(groupName string, funcName string, fn SubstitutionHandler) {
-	if _, ok := handlerMap[funcName]; !ok {
-		if IsDebugEnabled() {
-			fmt.Println("Registering:", groupName, funcName)
-		}
-		handlerMap[funcName] = substHandler{groupName, fn}
-	} else {
-		panic("Duplicate substitution registration: " + groupName + "." + funcName)
+func RegisterSubstitutionHandler(function SubstitutionFunction) {
+	if len(function.Name) == 0 {
+		panic("Substition Registration missing function name")
 	}
+
+	if len(function.Group) == 0 {
+		panic("Substition Registration missing group name")
+	}
+
+	if len(function.FunctionHelp) == 0 {
+		panic("Substitution Registration missing help")
+	}
+
+	if function.Function == nil {
+		panic("Substitution Registration missing function")
+	}
+
+	if _, ok := handlerMap[function.Name]; !ok {
+		if IsDebugEnabled() {
+			fmt.Println("Registering:", function.Group, function.Name)
+		}
+		handlerMap[function.Name] = function
+	} else {
+		panic("Duplicate substitution registration: " + function.Group + "." + function.Name)
+	}
+}
+
+func GetSubstitutionFunctions() {
+	return
 }
 
 // PerformVariableSubstitution -- perform substitution on a string
@@ -126,6 +161,33 @@ func IsVariableSubstitutionComplete(input string) bool {
 	return false // Note: this is returned in error situations as well (requires investigation)
 }
 
+// SubstitutionFunctionHelp -- Display help
+func SubstitutionFunctionHelp(o io.Writer) {
+	// keys := SortedMapKeys(handlerMap)
+	arr := make([]SubstitutionFunction, 0)
+	for _, v := range handlerMap {
+		arr = append(arr, v)
+	}
+
+	// Sort the array by group and function name
+	sort.Slice(arr, func(a, b int) bool {
+		if strings.ToLower(arr[a].Group) < strings.ToLower(arr[b].Group) {
+			return true
+		} else if strings.ToLower(arr[a].Group) > strings.ToLower(arr[b].Group) {
+			return false
+		}
+
+		if strings.ToLower(arr[a].Name) < strings.ToLower(arr[b].Name) {
+			return true
+		}
+		return false
+	})
+
+	for _, v := range arr {
+		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
+	}
+}
+
 func buildSubstitutionFunctionVars(input string) map[string]string {
 	var cache = make(substitutionDataCache, 0)
 	var localVars = make(map[string]string, 0)
@@ -164,15 +226,17 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 		}
 
 		if r, ok := handlerMap[fn]; ok {
-			cachekey := r.group + "__" + key
+			cachekey := r.Group + "__" + key
 			data, precached := cache[cachekey]
 			if !precached {
 				data = nil
 			}
 
-			v, c := r.function(data, fn, format, option)
-			localVars[varName] = v
-			cache[cachekey] = c
+			if r.Function != nil {
+				v, c := r.Function(data, fn, format, option)
+				localVars[varName] = v
+				cache[cachekey] = c
+			}
 		}
 	}
 	return localVars

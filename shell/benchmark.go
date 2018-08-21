@@ -43,7 +43,7 @@ func NewBenchmark(iterations int) Benchmark {
 		Iterations: make([]BenchmarkIteration, iterations, iterations),
 		StartTime:  time.Now(),
 	}
-	for i, _ := range result.Iterations {
+	for i := range result.Iterations {
 		result.Iterations[i].Iteration = i
 		result.Iterations[i].Messages = make([]string, 0)
 	}
