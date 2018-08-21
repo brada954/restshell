@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/brada954/restshell/shell"
 )
@@ -21,14 +22,15 @@ const (
 type PostCommand struct {
 	useAuthContext shell.Auth
 	// Place getopt option value pointers here
-	optionUsePut    *bool
-	optionUseOption *bool
-	optionJsonVar   *string
-	optionJson      *string
-	optionJsonFile  *string
-	optionXmlFile   *string
-	optionForm      *string
-	optionFormVar   *string
+	optionUsePut     *bool
+	optionUseOption  *bool
+	optionJsonVar    *string
+	optionJson       *string
+	optionJsonFile   *string
+	optionXmlFile    *string
+	optionForm       *string
+	optionFormVar    *string
+	optionLastResult *bool
 }
 
 func NewPostCommand() *PostCommand {
@@ -45,6 +47,7 @@ func (cmd *PostCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionFormVar = set.StringLong("form-var", 0, DefaultFormVar, "Use a named variable as body of form", "name")
 	cmd.optionJsonFile = set.StringLong("json-file", 0, DefaultJsonFile, "Use the given file for json request")
 	cmd.optionXmlFile = set.StringLong("xml-file", 0, DefaultXmlFile, "Use the given file for xml request")
+	cmd.optionLastResult = set.BoolLong("result", 0, "Use last result in post body")
 
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdRestclient)
 }
@@ -108,6 +111,18 @@ func (cmd *PostCommand) Execute(args []string) error {
 		useXml = true
 	} else if *cmd.optionFormVar != DefaultFormVar {
 		body = shell.GetGlobalStringWithFallback(*cmd.optionFormVar, "")
+	} else if *cmd.optionLastResult {
+		r, err := shell.PeekResult(0)
+		if err != nil {
+			return err
+		}
+		body = r.Text
+		switch strings.ToLower(r.ContentType) {
+		case "application/xml":
+			useXml = true
+		case "application/json":
+			useJson = true
+		}
 	}
 
 	if shell.IsVariableSubstitutionComplete(body) == false {

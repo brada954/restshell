@@ -281,6 +281,10 @@ func GetValueFromHistory(index int, path string) (string, error) {
 		return "", err
 	}
 
+	if path == "/" {
+		return result.Text, nil
+	}
+
 	node, err := GetNode(path, result)
 	if err != nil {
 		return "", err
