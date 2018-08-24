@@ -3,4 +3,7 @@
 #
 set _RANDOMUSERURL="http://randomuser.me/api"
 set _MYIPURL="http://api.ipify.org"
-alias BASEAPI "base http://api.ipify.org"
+set _ECHOURL="https://postman-echo.com"
+
+alias BASEMYIP "base http://api.ipify.org"
+alias BASEECHO "base https://postman-echo.com"
