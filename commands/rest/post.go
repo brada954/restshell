@@ -14,7 +14,8 @@ const (
 	DefaultJsonBody = ""
 	DefaultJsonFile = ""
 	DefaultFormBody = ""
-	DefaultXmlFile  = ""
+	DefaultXMLVar   = ""
+	DefaultXMLFile  = ""
 	DefaultFormVar  = ""
 )
 
@@ -26,7 +27,8 @@ type PostCommand struct {
 	optionJsonVar   *string
 	optionJson      *string
 	optionJsonFile  *string
-	optionXmlFile   *string
+	optionXMLFile   *string
+	optionXMLVar    *string
 	optionForm      *string
 	optionFormVar   *string
 }
@@ -44,11 +46,14 @@ func (cmd *PostCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionForm = set.StringLong("form", 0, DefaultFormBody, "Send the given form body", "form")
 	cmd.optionFormVar = set.StringLong("form-var", 0, DefaultFormVar, "Use a named variable as body of form", "name")
 	cmd.optionJsonFile = set.StringLong("json-file", 0, DefaultJsonFile, "Use the given file for json request")
-	cmd.optionXmlFile = set.StringLong("xml-file", 0, DefaultXmlFile, "Use the given file for xml request")
+	cmd.optionXMLVar = set.StringLong("xml-var", 0, DefaultXMLVar, "Use a named variable as body of XML request", "name")
+	cmd.optionXMLFile = set.StringLong("xml-file", 0, DefaultXMLFile, "Use the given file for xml request")
 
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdRestclient)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl,
+		shell.CmdBasicAuth, shell.CmdRestclient, shell.CmdFormatOutput)
 }
 
+// Execute -- Execute the post command
 func (cmd *PostCommand) Execute(args []string) error {
 	// Determine route
 	route := ""
@@ -81,6 +86,9 @@ func (cmd *PostCommand) Execute(args []string) error {
 	} else if *cmd.optionJsonVar != DefaultJsonVar {
 		body = shell.GetGlobalStringWithFallback(*cmd.optionJsonVar, "")
 		useJson = true
+	} else if *cmd.optionXMLVar != DefaultXMLVar {
+		body = shell.GetGlobalStringWithFallback(*cmd.optionXMLVar, "")
+		useXml = true
 	} else if *cmd.optionForm != DefaultFormBody {
 		body = *cmd.optionForm
 	} else if *cmd.optionJsonFile != DefaultJsonFile {
@@ -95,8 +103,8 @@ func (cmd *PostCommand) Execute(args []string) error {
 		}
 		body = shell.PerformVariableSubstitution(body)
 		useJson = true
-	} else if *cmd.optionXmlFile != DefaultXmlFile {
-		filename, err := shell.GetValidatedFileName(*cmd.optionXmlFile, ".xml")
+	} else if *cmd.optionXMLFile != DefaultXMLFile {
+		filename, err := shell.GetValidatedFileName(*cmd.optionXMLFile, ".xml")
 		if err != nil {
 			return err
 		}

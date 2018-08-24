@@ -1,4 +1,5 @@
 # This is an example template for a user init file for developers
 # Developers can copy this file to .rsconfig.user and then edit .rsconfig.user
 #
-alias BASEAPI "base http://api.ipify.org"
+alias BASEMYIP "base http://api.ipify.org"
+alias BASEECHO "base https://postman-echo.com"
