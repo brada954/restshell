@@ -113,22 +113,24 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 	if authContext != nil {
 		authContext.AddAuth(req)
 	}
-	req.Header.Add("Content-Type", "application/json")
-	if r.Debug {
-		for _, c := range req.Cookies() {
-			fmt.Fprintf(OutputWriter(), "Cookie:\n%s=%s\n", c.Name, c.Value)
-		}
-	}
 
 	// Add headers from command parsing/client configuration
 	if err := addHeaders(req, r.Headers); err != nil {
 		fmt.Fprintf(OutputWriter(), "Warning: %s\n", err.Error())
 	}
 
+	// TODO: What is the best content handling; was hardcoded to json
+	contentType := "appliation/json"
+	addDefaultContentType(req, contentType)
+
 	if r.Debug {
 		fmt.Fprintf(OutputWriter(), "Executing: (GET) %s\n", req.URL.String())
 		fmt.Fprintln(OutputWriter(), "Sending Headers:")
 		dumpHeaders(OutputWriter(), req)
+
+		for _, c := range req.Cookies() {
+			fmt.Fprintf(OutputWriter(), "Cookie:\n%s=%s\n", c.Name, c.Value)
+		}
 	}
 
 	resp, err := r.Client.Do(req)
@@ -204,26 +206,17 @@ func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url strin
 		authContext.AddAuth(req)
 	}
 
-	// TODO: Was "application/json"
-	if len(strings.TrimSpace(contentType)) > 0 {
-		contentTypeSet := false
-		for k := range req.Header {
-			if strings.ToLower(k) == "content-type" {
-				contentTypeSet = true
-			}
-		}
-		if !contentTypeSet {
-			req.Header.Add("Content-Type", contentType)
-		}
-	}
-
 	// Add headers from command parsing/client configuration
 	if err := addHeaders(req, r.Headers); err != nil {
 		fmt.Fprintf(OutputWriter(), "Warning: %s\n", err.Error())
 	}
 
+	addDefaultContentType(req, contentType)
+
 	if r.Debug {
 		fmt.Fprintf(OutputWriter(), "Executing: (%s) %s\n", method, req.URL.String())
+		fmt.Fprintln(OutputWriter(), "Sending Headers:")
+		dumpHeaders(OutputWriter(), req)
 	}
 
 	resp, err := r.Client.Do(req)
@@ -375,12 +368,24 @@ func addHeaders(req *http.Request, headerParam string) error {
 	}
 	for key, value := range headers {
 		fmt.Printf("Adding header: %s=%s\n", key, value)
-		if strings.ToLower(key) == "content-type" {
-			req.Header.Del(key)
-		}
 		req.Header.Add(key, value)
 	}
 	return nil
+}
+
+// addDefaultContentType -- adds the content type unless header exists
+func addDefaultContentType(req *http.Request, contentType string) {
+	if len(strings.TrimSpace(contentType)) > 0 {
+		contentTypeSet := false
+		for k := range req.Header {
+			if strings.ToLower(k) == "content-type" {
+				contentTypeSet = true
+			}
+		}
+		if !contentTypeSet {
+			req.Header.Add("Content-Type", contentType)
+		}
+	}
 }
 
 func dumpHeaders(w io.Writer, req *http.Request) {
