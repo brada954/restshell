@@ -208,7 +208,14 @@ func GetCitySubstitute(cache interface{}, subname string, format string, option 
 // GetStateSubstitute -- Get a random state
 func GetStateSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
 	c := getConsumer(cache)
-	return c.Location.State, c
+	switch format {
+	case "abbr":
+		fallthrough
+	case "code":
+		return mapStateToCode(c.Location.State), c
+	default:
+		return c.Location.State, c
+	}
 }
 
 // GetZipSubstitute -- Get a random zip code
@@ -267,4 +274,64 @@ func getRawPhone(phone string) string {
 	}
 	return reg.ReplaceAllString(phone, "")
 
+}
+
+func mapStateToCode(st string) string {
+	if c, ok := stateMap[st] ; ok {
+		return c
+	} 
+	return st
+}
+
+var stateMap = map[string]string {
+	"alabama" : "AL",
+	"alaska" : "AK",
+	"arizona" : "AZ",
+	"arkansas" : "AR",
+	"california": "CA",
+	"colorado" : "CO",
+	"connecticut" : "CT",
+	"delaware" : "DE",
+	"florida": "FL",
+	"georgia" : "GA",
+	"hawaii": "HI",
+	"idaho" : "ID",
+	"iowa": "IA",
+	"illinois": "IL",
+	"indiana" : "IN",
+	"kansas"  : "KS",
+	"kentucky": "KY",
+	"Louisiana" : "LA",
+	"maine": "ME",
+	"maryland": "MD",
+	"massachusetts": "MA",
+	"michigan": "MI",
+	"minnesota" : "MN",
+	"mississippi": "MS",
+	"missouri": "MO",
+	"montana" : "MT",
+	"nebraska" : "NB",
+	"nevada": "NV",
+	"new hampshire": "NH",
+	"new jersey": "NJ",
+	"new mexico" : "NM",
+	"new york": "NY",
+	"north carolina": "NC",
+	"north dakota": "ND",
+	"ohio": "OH",
+	"oklahama": "OK",
+	"oregon" : "OR",
+	"rhode island": "RI",
+	"pennsylvania": "PA",
+	"south carolina": "SC",
+	"south dakota": "SD",
+	"tennessee" : "TN",
+	"texas" : "TX",
+	"utah": "UT",
+	"vermont" : "VT",
+	"virginia" : "VA",
+	"washington": "WA",
+	"west virginia": "WV",
+	"wisconsin" : "WI",
+	"wyoming": "WY",
 }
