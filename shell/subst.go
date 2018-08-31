@@ -39,12 +39,25 @@
 package shell
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
 	"sort"
 	"strings"
 )
+
+// SubstitutionFunction -- a registration function for a handler and its help
+type SubstitutionFunction struct {
+	Name              string
+	Group             string
+	FunctionHelp      string
+	FormatDescription string
+	Formats           []SubstitutionItemHelp
+	OptionDescription string
+	Options           []SubstitutionItemHelp
+	Function          SubstitutionHandler
+}
 
 // SubstitutionHandler -- A handler returns a value for substitution given a function name. The handler may
 // be given a fmt string and option string to guide the appropriate formating of data.
@@ -60,18 +73,6 @@ type substitutionDataCache map[string]interface{}
 type SubstitutionItemHelp struct {
 	Item        string
 	Description string
-}
-
-// SubstitutionFunction -- a registration function for a handler and its help
-type SubstitutionFunction struct {
-	Name              string
-	Group             string
-	FunctionHelp      string
-	FormatDescription string
-	Formats           []SubstitutionItemHelp
-	OptionDescription string
-	Options           []SubstitutionItemHelp
-	Function          SubstitutionHandler
 }
 
 // Mapping of a function name to handler record identifying the group and handler
@@ -161,8 +162,53 @@ func IsVariableSubstitutionComplete(input string) bool {
 	return false // Note: this is returned in error situations as well (requires investigation)
 }
 
-// SubstitutionFunctionHelp -- Display help
-func SubstitutionFunctionHelp(o io.Writer) {
+// SubstitutionFunctionNames --
+func SubstitutionFunctionNames() []string {
+	names := make([]string, 0)
+	for _, f := range sortedSubstitutionFunctionList(true) {
+		names = append(names, f.Name)
+	}
+	return names
+}
+
+// SubstitutionFunctionHelp --
+func SubstitutionFunctionHelp(o io.Writer, funcName string) error {
+	if fn, ok := handlerMap[funcName]; ok {
+		if len(fn.Formats) > 0 {
+			if len(fn.FormatDescription) > 0 {
+				fmt.Fprintf(o, "  %s\n", fn.FormatDescription)
+			} else {
+				fmt.Fprintf(o, "  Format Specifiers:\n")
+			}
+			for _, f := range fn.Formats {
+				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
+			}
+		}
+		if len(fn.Options) > 0 {
+			if len(fn.OptionDescription) > 0 {
+				fmt.Fprintf(o, "  %s\n", fn.OptionDescription)
+			} else {
+				fmt.Fprintf(o, "  Options Specifiers:\n")
+			}
+			for _, f := range fn.Options {
+				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
+			}
+		}
+		return nil
+	} else {
+		return errors.New("Function not defined")
+	}
+}
+
+// SubstitutionFunctionHelpList -- Display help
+func SubstitutionFunctionHelpList(o io.Writer) {
+	arr := sortedSubstitutionFunctionList(true)
+	for _, v := range arr {
+		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
+	}
+}
+
+func sortedSubstitutionFunctionList(sortByGroup bool) []SubstitutionFunction {
 	// keys := SortedMapKeys(handlerMap)
 	arr := make([]SubstitutionFunction, 0)
 	for _, v := range handlerMap {
@@ -171,9 +217,9 @@ func SubstitutionFunctionHelp(o io.Writer) {
 
 	// Sort the array by group and function name
 	sort.Slice(arr, func(a, b int) bool {
-		if strings.ToLower(arr[a].Group) < strings.ToLower(arr[b].Group) {
+		if sortByGroup && strings.ToLower(arr[a].Group) < strings.ToLower(arr[b].Group) {
 			return true
-		} else if strings.ToLower(arr[a].Group) > strings.ToLower(arr[b].Group) {
+		} else if sortByGroup && strings.ToLower(arr[a].Group) > strings.ToLower(arr[b].Group) {
 			return false
 		}
 
@@ -182,10 +228,7 @@ func SubstitutionFunctionHelp(o io.Writer) {
 		}
 		return false
 	})
-
-	for _, v := range arr {
-		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
-	}
+	return arr
 }
 
 func buildSubstitutionFunctionVars(input string) map[string]string {
@@ -225,7 +268,9 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 			option = list[4]
 		}
 
+		fmt.Println("Function: ", fn)
 		if r, ok := handlerMap[fn]; ok {
+			fmt.Println("In handler found: ", fn)
 			cachekey := r.Group + "__" + key
 			data, precached := cache[cachekey]
 			if !precached {
@@ -233,6 +278,8 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 			}
 
 			if r.Function != nil {
+				fmt.Println("Calling handler found: ", fn)
+
 				v, c := r.Function(data, fn, format, option)
 				localVars[varName] = v
 				cache[cachekey] = c

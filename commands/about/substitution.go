@@ -1,7 +1,8 @@
 package about
 
 import (
-	"bytes"
+	"fmt"
+	"io"
 
 	"github.com/brada954/restshell/shell"
 )
@@ -55,12 +56,19 @@ func (a *SubstitutionTopic) GetDescription() string {
 	return a.Description
 }
 
-func (a *SubstitutionTopic) GetAbout() string {
-	functionInfo := "\n\nFunctions:\n"
+func (a *SubstitutionTopic) WriteAbout(o io.Writer) error {
+	fmt.Fprintf(o, a.About)
+	fmt.Fprintf(o, "\n\nFunctions:\n")
+	shell.SubstitutionFunctionHelpList(o)
+	fmt.Fprintf(o, "\nRun \"ABOUT SUBST {funcname}\" to get more details\n")
+	return nil
+}
 
-	buf := new(bytes.Buffer)
-	shell.SubstitutionFunctionHelp(buf)
-	help := buf.String()
-
-	return a.About + functionInfo + help
+func (a *SubstitutionTopic) WriteSubTopic(o io.Writer, fname string) error {
+	fmt.Fprintf(o, "Function: %s", fname)
+	err := shell.SubstitutionFunctionHelp(o, fname)
+	if err != nil {
+		return err
+	}
+	return nil
 }

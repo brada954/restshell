@@ -1,18 +1,22 @@
 package about
 
+import (
+	"fmt"
+	"io"
+)
+
 type AuthTopic struct {
-	Key string
-    Title string
-    Description string
-    About string
+	Key         string
+	Title       string
+	Description string
+	About       string
 }
 
 var localAuthTopic = &AuthTopic{
-	Key: "AUTH",
-	Title: "Authentication",
+	Key:         "AUTH",
+	Title:       "Authentication",
 	Description: "Authentication Objects for decorating REST calls",
-	About:
-`Authenticating REST API's is a rundandant task that would be cumbersome to
+	About: `Authenticating REST API's is a rundandant task that would be cumbersome to
 perform with each HTTP request, so authentication objects are used to store
 authentication information that can be applied to HTTP requests. There may 
 be various well known objects stored in the global store that can be
@@ -91,6 +95,7 @@ func (a *AuthTopic) GetDescription() string {
 	return a.Description
 }
 
-func (a *AuthTopic) GetAbout() string {
-	return a.About
+func (a *AuthTopic) WriteAbout(o io.Writer) error {
+	fmt.Fprintf(o, a.About)
+	return nil
 }

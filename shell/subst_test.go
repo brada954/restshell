@@ -2,34 +2,12 @@ package shell
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 )
 
 func TestSubstringMatch(t *testing.T) {
 	fmt.Println("Beginning test...")
+	// Need a real test; this actually doesn't substitute as the functions package is not included
 	result := PerformVariableSubstitution("this %%newguid(3)%% is a %%newguid(1,short)%% test %%newguid(3)%%")
 	fmt.Println("Result: ", result)
-}
-
-func TestToLowerSubstitution(t *testing.T) {
-	result := PerformVariableSubstitution("all text \"%%tolower(1,str,\"This Is A Test\")%%\" should be lower")
-	if result != strings.ToLower(result) {
-		t.Errorf("All text was not lower case: %s", result)
-	}
-
-	expected := "all text \"this is a test\" should be lower"
-	if result != expected {
-		t.Errorf("String missmatch: %s!=%s", expected, result)
-	}
-}
-
-func TestToLowerSubstitutionWithInvalidValue(t *testing.T) {
-	subString := "all text \"%%tolower(1,str,\"This Is #{}\")%%\" should be lower"
-	result := PerformVariableSubstitution(subString)
-
-	// Regex failure should perform no substitution
-	if result != subString {
-		t.Errorf("String missmatch: %s!=%s", subString, result)
-	}
 }

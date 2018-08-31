@@ -8,6 +8,11 @@ import (
 	"github.com/brada954/restshell/shell"
 )
 
+func init() {
+	shell.RegisterSubstitutionHandler(GetDateDefinition)
+	shell.RegisterSubstitutionHandler(SetDateDefinition)
+}
+
 // GetDateDefinition --
 var GetDateDefinition = shell.SubstitutionFunction{
 	Name:              "getdate",

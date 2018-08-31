@@ -5,6 +5,10 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+func init() {
+	shell.RegisterSubstitutionHandler(NewGuidDefinition)
+}
+
 var NewGuidDefinition = shell.SubstitutionFunction{
 	Name:              "newguid",
 	Group:             "newguid",
