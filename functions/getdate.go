@@ -8,16 +8,40 @@ import (
 	"github.com/brada954/restshell/shell"
 )
 
+// GetDateDefinition --
 var GetDateDefinition = shell.SubstitutionFunction{
 	Name:              "getdate",
 	Group:             "date",
 	FunctionHelp:      "Generate a date",
-	Formats:           nil,
-	OptionDescription: "",
-	Options:           nil,
-	Function:          GetDateSubstitute,
+	FormatDescription: "Format Parameter selects type of time:",
+	Formats: []shell.SubstitutionItemHelp{
+		shell.SubstitutionItemHelp{Item: "local", Description: "Local time value"},
+		shell.SubstitutionItemHelp{Item: "utc", Description: "Utc time value"},
+		shell.SubstitutionItemHelp{Item: "unix", Description: "Unix timestamp value"},
+	},
+	OptionDescription: "Option controls format of date string",
+	Options: []shell.SubstitutionItemHelp{
+		shell.SubstitutionItemHelp{
+			Item:        "{specification}",
+			Description: "Golang format string",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "2006-01-02 15:04:05.000",
+			Description: "Example Golang format for date and time",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "Mon",
+			Description: "Example Golang format for day of week",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "2006",
+			Description: "Example Golang format for year",
+		},
+	},
+	Function: GetDateSubstitute,
 }
 
+// SetDateDefinition --
 var SetDateDefinition = shell.SubstitutionFunction{
 	Name:              "setdate",
 	Group:             "date",
@@ -43,13 +67,14 @@ func GetDateSubstitute(cache interface{}, subname string, format string, option 
 	if len(option) == 0 {
 		option = defaultFmt
 	}
+
 	switch format {
 	case "utc":
-		return inputTime.UTC().Format(option), inputTime
+		return formatDate(inputTime.UTC(), option), inputTime
 	case "unix":
 		return strconv.FormatInt(inputTime.Unix(), 10), inputTime
 	case "local":
-		return inputTime.Local().Format(option), inputTime
+		return formatDate(inputTime.Local(), option), inputTime
 	default:
 		return inputTime.Format(option), inputTime
 	}
@@ -124,6 +149,17 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 		}
 	}
 	return "", inputTime
+}
+
+// formatDate -- formats with some special options beyond golang date format string
+func formatDate(t time.Time, option string) string {
+
+	switch option {
+	case "dayofweek":
+		return t.Weekday().String()
+	default:
+		return t.Format(option)
+	}
 }
 
 func createUnixTimeFromArg(input string) time.Time {
