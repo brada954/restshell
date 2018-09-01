@@ -297,10 +297,9 @@ func listfile(reader io.Reader, onlyHeader bool) {
 	quit := false
 	for !quit && scanner.Scan() {
 		input := scanner.Text()
-		input = strings.TrimSpace(input)
 
 		// Get first token for special handling
-		args := strings.SplitN(input, " ", 2)
+		args := strings.SplitN(strings.TrimSpace(input), " ", 2)
 		command := ""
 		if len(args) > 0 {
 			command = strings.ToUpper(args[0])
