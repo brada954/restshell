@@ -53,3 +53,30 @@ func GetValidatedFileName(file string, extension string) (string, error) {
 	}
 	return file, nil
 }
+
+// OpenFileForOutput -- open a file
+func OpenFileForOutput(name string, truncate bool, append bool) (*os.File, error) {
+	var file *os.File
+	if _, err := os.Stat(name); err == nil {
+		if !(truncate || append) {
+			return nil, errors.New("File exists; use --append or --truncate to use the file")
+		}
+		flags := os.O_APPEND | os.O_WRONLY
+		if truncate {
+			flags = os.O_WRONLY
+		}
+		file, err = os.OpenFile(name, flags, 0644)
+		if err != nil {
+			return nil, errors.New("Open failed: " + err.Error())
+		}
+		if truncate {
+			file.Truncate(0)
+		}
+	} else {
+		file, err = os.OpenFile(name, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, errors.New("Open failed: " + err.Error())
+		}
+	}
+	return file, nil
+}

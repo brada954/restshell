@@ -41,7 +41,16 @@ func RestCompletionHandler(response *RestResponse, err error, shortDisplay Short
 		}
 	}
 
-	response.DumpResponse(OutputWriter(), options...)
+	if filename := GetCmdOutputFileName(); filename != OptionDefaultOutputFile {
+		if o, err := OpenFileForOutput(filename, false, false); err != nil {
+			return err
+		} else {
+			defer o.Close()
+			response.DumpResponse(o, options...)
+		}
+	} else {
+		response.DumpResponse(OutputWriter(), options...)
+	}
 
 	// Return the short error message if not nil
 	if err != nil {
