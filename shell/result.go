@@ -114,12 +114,14 @@ func (r *Result) addParsedContentToResult(contentType string, data string) {
 }
 
 func (r *Result) DumpCookies(w io.Writer) {
+	fmt.Fprintln(w, "Cookies:")
 	for _, v := range r.cookies {
-		fmt.Fprintf(w, "Cookie: %s=%s (%v)\n", v.Name, v.Value, v.Expires)
+		fmt.Fprintf(w, "%s=%s (%v)\n", v.Name, v.Value, v.Expires)
 	}
 }
 
 func (r *Result) DumpHeader(w io.Writer) {
+	fmt.Fprintln(w, "Headers:")
 	for k, v := range r.HeaderMap {
 		fmt.Fprintf(w, "%s: %s\n", k, v)
 	}

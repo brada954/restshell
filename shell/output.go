@@ -30,7 +30,7 @@ func OutputResult(result Result, shortDisplay ShortDisplayFunc) (resperr error) 
 	resperr = nil
 
 	if IsCmdDebugEnabled() {
-		fmt.Fprintln(ConsoleWriter(), "Displaying response:")
+		fmt.Fprintln(ConsoleWriter(), "Begin Response:")
 	}
 
 	outputWriter := OutputWriter()
@@ -46,18 +46,17 @@ func OutputResult(result Result, shortDisplay ShortDisplayFunc) (resperr error) 
 	options := GetDefaultDisplayOptions()
 	if IsShort(options) {
 		if shortDisplay == nil || result.HttpStatus != http.StatusOK {
+			// On error, we do not use short display as it may not handle
+			// error conditions
 			options = append(options, Body)
-		} else {
-			resperr = shortDisplay(outputWriter, result)
+			shortDisplay = nil
 		}
 	}
 
-	// Dump the other result content if enabled via options
+	// Dump the result content if enabled via options before response
 	result.DumpResult(outputWriter, options...)
-
-	// Return the short error message if not nil
-	if resperr != nil {
-		return resperr
+	if IsShort(options) && shortDisplay != nil {
+		return shortDisplay(outputWriter, result)
 	}
 
 	// Return error for http status errors
