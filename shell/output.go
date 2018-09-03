@@ -1,23 +1,26 @@
 package shell
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/subchen/go-xmldom"
 )
 
 // ShortDisplayFunc -- A function can be used to pretty format the output or condense it
 type ShortDisplayFunc func(io.Writer, Result) error
 
-func RestCompletionHandler(response *RestResponse, err error, shortDisplay ShortDisplayFunc) error {
+func RestCompletionHandler(response *RestResponse, resperr error, shortDisplay ShortDisplayFunc) error {
 
+	if resperr != nil {
+		PushError(resperr)
+		return errors.New("Network Error: " + resperr.Error())
+	}
+
+	PushResponse(response, resperr)
+	result, err := PeekResult(0)
 	if err != nil {
-		return errors.New("Network Error: " + err.Error())
+		return errors.New("Error: Unable to get the result")
 	}
 
 	if IsCmdDebugEnabled() {
@@ -27,12 +30,8 @@ func RestCompletionHandler(response *RestResponse, err error, shortDisplay Short
 	options := GetDefaultDisplayOptions()
 	if IsShort(options) {
 		if shortDisplay != nil {
-			data, err := PeekResult(0)
-			if err != nil {
-				return errors.New("Warning: Unable to parse response")
-			}
-			if data.HttpStatus == http.StatusOK {
-				err = shortDisplay(OutputWriter(), data)
+			if result.HttpStatus == http.StatusOK {
+				resperr = shortDisplay(OutputWriter(), result)
 			} else {
 				options = append(options, Body)
 			}
@@ -46,26 +45,22 @@ func RestCompletionHandler(response *RestResponse, err error, shortDisplay Short
 			return err
 		} else {
 			defer o.Close()
-			response.DumpResponse(o, options...)
+			result.DumpResult(o, options...)
 		}
 	} else {
-		response.DumpResponse(OutputWriter(), options...)
+		result.DumpResult(OutputWriter(), options...)
 	}
 
 	// Return the short error message if not nil
-	if err != nil {
-		return err
+	if resperr != nil {
+		return resperr
 	}
 
 	// Return error for http status errors
-	if response.GetStatus() != http.StatusOK {
-		return makeStatusError(response.httpResp)
+	if result.HttpStatus != http.StatusOK {
+		return fmt.Errorf("HTTP Status: %s", result.HttpStatusString)
 	}
 	return nil
-}
-
-func makeStatusError(resp *http.Response) error {
-	return fmt.Errorf("HTTP Status: %s", resp.Status)
 }
 
 func ColumnizeTokens(tokens []string, columns int, width int) []string {
@@ -165,59 +160,6 @@ func GetDefaultDisplayOptions() []DisplayOption {
 		result = append(result, Pretty)
 	}
 	return result
-}
-
-func (resp *RestResponse) DumpCookies(w io.Writer) {
-	for _, v := range resp.GetCookies() {
-		fmt.Fprintf(w, "Cookie: %s=%s (%v)\n", v.Name, v.Value, v.Expires)
-	}
-}
-
-func (resp *RestResponse) DumpHeader(w io.Writer) {
-	for k, v := range resp.GetHeader() {
-		fmt.Fprintf(w, "%s: %s\n", k, v)
-	}
-}
-
-func (resp *RestResponse) DumpResponse(w io.Writer, options ...DisplayOption) {
-	if IsStatus(options) && !IsHeaders(options) {
-		fmt.Fprintf(w, "HEADER: Status(%s)\n", resp.httpResp.Status)
-	}
-
-	if IsHeaders(options) {
-		resp.DumpHeader(w)
-	}
-
-	if IsCookies(options) {
-		resp.DumpCookies(w)
-	}
-
-	if IsBody(options) {
-		if IsStringBinary(resp.Text) {
-			fmt.Fprintln(w, "Response contains too many unprintable characters to display")
-		} else {
-			line := resp.Text
-			if IsPrettyPrint(options) {
-				switch getResultTypeFromContentType(resp.GetContentType()) {
-				case "xml":
-					{
-						if doc, err := xmldom.ParseXML(line); err == nil {
-							line = doc.XMLPrettyEx("    ")
-						}
-					}
-				case "json":
-					{
-						var prettyJSON bytes.Buffer
-						err := json.Indent(&prettyJSON, []byte(line), "", "\t")
-						if err == nil {
-							line = prettyJSON.String()
-						}
-					}
-				}
-			}
-			fmt.Fprintf(w, "Response:\n%s\n", line)
-		}
-	}
 }
 
 func isOptionEnabled(list []DisplayOption, option DisplayOption) bool {

@@ -18,7 +18,6 @@ import (
 type RestClient struct {
 	Debug   bool
 	Verbose bool
-	History bool
 	Headers string
 	Client  *http.Client
 }
@@ -33,7 +32,6 @@ func NewRestClient() RestClient {
 	return RestClient{
 		Debug:   false,
 		Verbose: false,
-		History: true,
 		Headers: "",
 		Client:  &http.Client{Timeout: time.Duration(30 * time.Second)},
 	}
@@ -43,7 +41,6 @@ func NewRestClientFromOptions() RestClient {
 	client := RestClient{
 		Debug:   IsCmdDebugEnabled(),
 		Verbose: IsCmdVerboseEnabled() && !IsCmdSilentEnabled(),
-		History: true,
 		Client:  &http.Client{Timeout: time.Duration(GetCmdTimeoutValueMs()) * time.Millisecond},
 	}
 
@@ -63,10 +60,6 @@ func NewRestClientFromOptions() RestClient {
 
 	client.Headers = GetCmdHeaderValues("")
 	return client
-}
-
-func (r *RestClient) DisableHistory() {
-	r.History = false
 }
 
 func (r *RestClient) DisableRedirect() {
@@ -96,16 +89,6 @@ func (r *RestClient) DoGet(authContext Auth, url string) (resultResponse *RestRe
 }
 
 func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resultResponse *RestResponse, resultError error) {
-	if r.History {
-		defer func() {
-			if resultError != nil {
-				PushError(resultError)
-			} else {
-				PushResponse(resultResponse, resultError)
-			}
-		}()
-	}
-
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, errors.New("Building request: " + err.Error())
@@ -180,16 +163,6 @@ func (r *RestClient) DoWithForm(method string, authContext Auth, url string, dat
 
 // DoMethodWithBody - Perform a HTTP request for the given method type and content provided
 func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url string, contentType string, data string) (resultResponse *RestResponse, resultError error) {
-	if r.History {
-		defer func() {
-			if resultError != nil {
-				PushError(resultError)
-			} else {
-				PushResponse(resultResponse, resultError)
-			}
-		}()
-	}
-
 	if r.Debug {
 		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", data)
 	}
