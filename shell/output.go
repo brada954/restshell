@@ -23,33 +23,37 @@ func RestCompletionHandler(response *RestResponse, resperr error, shortDisplay S
 		return errors.New("Error: Unable to get the result")
 	}
 
+	return OutputResult(result, shortDisplay)
+}
+
+func OutputResult(result Result, shortDisplay ShortDisplayFunc) (resperr error) {
+	resperr = nil
+
 	if IsCmdDebugEnabled() {
 		fmt.Fprintln(ConsoleWriter(), "Displaying response:")
 	}
 
-	options := GetDefaultDisplayOptions()
-	if IsShort(options) {
-		if shortDisplay != nil {
-			if result.HttpStatus == http.StatusOK {
-				resperr = shortDisplay(OutputWriter(), result)
-			} else {
-				options = append(options, Body)
-			}
-		} else {
-			options = append(options, Body)
-		}
-	}
-
+	outputWriter := OutputWriter()
 	if filename := GetCmdOutputFileName(); filename != OptionDefaultOutputFile {
 		if o, err := OpenFileForOutput(filename, false, false); err != nil {
 			return err
 		} else {
 			defer o.Close()
-			result.DumpResult(o, options...)
+			outputWriter = o
 		}
-	} else {
-		result.DumpResult(OutputWriter(), options...)
 	}
+
+	options := GetDefaultDisplayOptions()
+	if IsShort(options) {
+		if shortDisplay == nil || result.HttpStatus != http.StatusOK {
+			options = append(options, Body)
+		} else {
+			resperr = shortDisplay(outputWriter, result)
+		}
+	}
+
+	// Dump the other result content if enabled via options
+	result.DumpResult(outputWriter, options...)
 
 	// Return the short error message if not nil
 	if resperr != nil {
