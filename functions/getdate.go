@@ -48,13 +48,34 @@ var GetDateDefinition = shell.SubstitutionFunction{
 
 // SetDateDefinition --
 var SetDateDefinition = shell.SubstitutionFunction{
-	Name:              "setdate",
-	Group:             "date",
-	FunctionHelp:      "Set a date value",
-	Formats:           nil,
+	Name:         "setdate",
+	Group:        "date",
+	FunctionHelp: "Set a date value",
+	Formats: []shell.SubstitutionItemHelp{
+		shell.SubstitutionItemHelp{Item: "local", Description: "Local time value"},
+		shell.SubstitutionItemHelp{Item: "utc", Description: "Utc time value"},
+		shell.SubstitutionItemHelp{Item: "unix", Description: "Unix timestamp value"},
+	},
 	OptionDescription: "",
-	Options:           nil,
-	Function:          SetDateSubstitute,
+	Options: []shell.SubstitutionItemHelp{
+		shell.SubstitutionItemHelp{
+			Item:        "{specification}",
+			Description: "Golang format string",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "2006-01-02 15:04:05.000",
+			Description: "Example Golang format for date and time",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "Mon",
+			Description: "Example Golang format for day of week",
+		},
+		shell.SubstitutionItemHelp{
+			Item:        "2006",
+			Description: "Example Golang format for year",
+		},
+	},
+	Function: SetDateSubstitute,
 }
 
 // GetDateSubstitute --

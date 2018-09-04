@@ -151,7 +151,7 @@ func makeXMLDOM(data string) (*xmldom.Document, error) {
 
 func makeRootMap(text string) interface{} {
 	m := make(map[string]interface{})
-	m["/"] = text
+	m["/"] = strings.TrimSpace(text)
 	return m
 }
 

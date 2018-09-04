@@ -60,12 +60,11 @@ func (a *SubstitutionTopic) WriteAbout(o io.Writer) error {
 	fmt.Fprintf(o, a.About)
 	fmt.Fprintf(o, "\n\nFunctions:\n")
 	shell.SubstitutionFunctionHelpList(o)
-	fmt.Fprintf(o, "\nRun \"ABOUT SUBST {funcname}\" to get more details\n")
+	fmt.Fprintf(o, "\nRun \"ABOUT SUBST {funcname}\" to get more details\n\n")
 	return nil
 }
 
 func (a *SubstitutionTopic) WriteSubTopic(o io.Writer, fname string) error {
-	fmt.Fprintf(o, "Function: %s", fname)
 	err := shell.SubstitutionFunctionHelp(o, fname)
 	if err != nil {
 		return err

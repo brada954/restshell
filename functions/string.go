@@ -13,20 +13,24 @@ func init() {
 }
 
 var ToLowerDefinition = shell.SubstitutionFunction{
-	Name:              "tolower",
-	Group:             "tolower",
-	FunctionHelp:      "Lower case an options parameter as identified by format",
-	Formats:           nil,
+	Name:         "tolower",
+	Group:        "tolower",
+	FunctionHelp: "Lower case an options parameter as identified by format",
+	Formats: []shell.SubstitutionItemHelp{
+		{"var", "Option is a variable name"},
+	},
 	OptionDescription: "",
 	Options:           nil,
 	Function:          ToLowerSubstitute,
 }
 
 var ToUpperDefinition = shell.SubstitutionFunction{
-	Name:              "toupper",
-	Group:             "toupper",
-	FunctionHelp:      "Upper case an options parameter as identified by format",
-	Formats:           nil,
+	Name:         "toupper",
+	Group:        "toupper",
+	FunctionHelp: "Upper case an options parameter as identified by format",
+	Formats: []shell.SubstitutionItemHelp{
+		{"var", "Option is a variable name"},
+	},
 	OptionDescription: "",
 	Options:           nil,
 	Function:          ToUpperSubstitute,

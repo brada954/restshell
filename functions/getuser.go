@@ -62,13 +62,20 @@ var GetLastNameDefinition = shell.SubstitutionFunction{
 }
 
 var GetPhoneDefinition = shell.SubstitutionFunction{
-	Group:             "randomuser",
-	Name:              "getphone",
-	FunctionHelp:      "Get a random phone number of a consumer",
-	Formats:           nil,
+	Group:        "randomuser",
+	Name:         "getphone",
+	FunctionHelp: "Get a random phone number of a consumer",
+	Formats: []shell.SubstitutionItemHelp{
+		{"raw", "Raw unformatted phone number"},
+		{"dots", "Format phone with periods"},
+		{"dashes", "Format phone with dashes"},
+	},
 	OptionDescription: "",
-	Options:           nil,
-	Function:          GetPhoneSubstitute,
+	Options: []shell.SubstitutionItemHelp{
+		{"main", "(Default) Provide the main phone number"},
+		{"Cell", "Provide the cell phone number instead of main"},
+	},
+	Function: GetPhoneSubstitute,
 }
 
 var GetEmailDefinition = shell.SubstitutionFunction{
@@ -102,10 +109,13 @@ var GetCityDefinition = shell.SubstitutionFunction{
 }
 
 var GetStateDefinition = shell.SubstitutionFunction{
-	Group:             "randomuser",
-	Name:              "getstate",
-	FunctionHelp:      "Get a random state of a consumer",
-	Formats:           nil,
+	Group:        "randomuser",
+	Name:         "getstate",
+	FunctionHelp: "Get a random state of a consumer",
+	Formats: []shell.SubstitutionItemHelp{
+		{"default", "Full state name"},
+		{"abbr", "Abbreviated state code"},
+	},
 	OptionDescription: "",
 	Options:           nil,
 	Function:          GetStateSubstitute,
@@ -182,6 +192,8 @@ func GetPhoneSubstitute(cache interface{}, subname string, format string, option
 		default:
 			return phone, c
 		}
+	case "formatted":
+		fallthrough
 	default:
 		return phone, c
 	}
@@ -277,61 +289,61 @@ func getRawPhone(phone string) string {
 }
 
 func mapStateToCode(st string) string {
-	if c, ok := stateMap[st] ; ok {
+	if c, ok := stateMap[st]; ok {
 		return c
-	} 
+	}
 	return st
 }
 
-var stateMap = map[string]string {
-	"alabama" : "AL",
-	"alaska" : "AK",
-	"arizona" : "AZ",
-	"arkansas" : "AR",
-	"california": "CA",
-	"colorado" : "CO",
-	"connecticut" : "CT",
-	"delaware" : "DE",
-	"florida": "FL",
-	"georgia" : "GA",
-	"hawaii": "HI",
-	"idaho" : "ID",
-	"iowa": "IA",
-	"illinois": "IL",
-	"indiana" : "IN",
-	"kansas"  : "KS",
-	"kentucky": "KY",
-	"Louisiana" : "LA",
-	"maine": "ME",
-	"maryland": "MD",
-	"massachusetts": "MA",
-	"michigan": "MI",
-	"minnesota" : "MN",
-	"mississippi": "MS",
-	"missouri": "MO",
-	"montana" : "MT",
-	"nebraska" : "NB",
-	"nevada": "NV",
-	"new hampshire": "NH",
-	"new jersey": "NJ",
-	"new mexico" : "NM",
-	"new york": "NY",
+var stateMap = map[string]string{
+	"alabama":        "AL",
+	"alaska":         "AK",
+	"arizona":        "AZ",
+	"arkansas":       "AR",
+	"california":     "CA",
+	"colorado":       "CO",
+	"connecticut":    "CT",
+	"delaware":       "DE",
+	"florida":        "FL",
+	"georgia":        "GA",
+	"hawaii":         "HI",
+	"idaho":          "ID",
+	"iowa":           "IA",
+	"illinois":       "IL",
+	"indiana":        "IN",
+	"kansas":         "KS",
+	"kentucky":       "KY",
+	"Louisiana":      "LA",
+	"maine":          "ME",
+	"maryland":       "MD",
+	"massachusetts":  "MA",
+	"michigan":       "MI",
+	"minnesota":      "MN",
+	"mississippi":    "MS",
+	"missouri":       "MO",
+	"montana":        "MT",
+	"nebraska":       "NB",
+	"nevada":         "NV",
+	"new hampshire":  "NH",
+	"new jersey":     "NJ",
+	"new mexico":     "NM",
+	"new york":       "NY",
 	"north carolina": "NC",
-	"north dakota": "ND",
-	"ohio": "OH",
-	"oklahama": "OK",
-	"oregon" : "OR",
-	"rhode island": "RI",
-	"pennsylvania": "PA",
+	"north dakota":   "ND",
+	"ohio":           "OH",
+	"oklahama":       "OK",
+	"oregon":         "OR",
+	"rhode island":   "RI",
+	"pennsylvania":   "PA",
 	"south carolina": "SC",
-	"south dakota": "SD",
-	"tennessee" : "TN",
-	"texas" : "TX",
-	"utah": "UT",
-	"vermont" : "VT",
-	"virginia" : "VA",
-	"washington": "WA",
-	"west virginia": "WV",
-	"wisconsin" : "WI",
-	"wyoming": "WY",
+	"south dakota":   "SD",
+	"tennessee":      "TN",
+	"texas":          "TX",
+	"utah":           "UT",
+	"vermont":        "VT",
+	"virginia":       "VA",
+	"washington":     "WA",
+	"west virginia":  "WV",
+	"wisconsin":      "WI",
+	"wyoming":        "WY",
 }

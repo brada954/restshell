@@ -174,6 +174,7 @@ func SubstitutionFunctionNames() []string {
 // SubstitutionFunctionHelp --
 func SubstitutionFunctionHelp(o io.Writer, funcName string) error {
 	if fn, ok := handlerMap[funcName]; ok {
+		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(fn.Name), fn.FunctionHelp)
 		if len(fn.Formats) > 0 {
 			if len(fn.FormatDescription) > 0 {
 				fmt.Fprintf(o, "  %s\n", fn.FormatDescription)
@@ -194,6 +195,7 @@ func SubstitutionFunctionHelp(o io.Writer, funcName string) error {
 				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
 			}
 		}
+		fmt.Fprintln(o)
 		return nil
 	} else {
 		return errors.New("Function not defined")
