@@ -211,7 +211,6 @@ func SubstitutionFunctionHelpList(o io.Writer) {
 }
 
 func sortedSubstitutionFunctionList(sortByGroup bool) []SubstitutionFunction {
-	// keys := SortedMapKeys(handlerMap)
 	arr := make([]SubstitutionFunction, 0)
 	for _, v := range handlerMap {
 		arr = append(arr, v)
@@ -270,9 +269,7 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 			option = list[4]
 		}
 
-		fmt.Println("Function: ", fn)
 		if r, ok := handlerMap[fn]; ok {
-			fmt.Println("In handler found: ", fn)
 			cachekey := r.Group + "__" + key
 			data, precached := cache[cachekey]
 			if !precached {
@@ -280,8 +277,6 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 			}
 
 			if r.Function != nil {
-				fmt.Println("Calling handler found: ", fn)
-
 				v, c := r.Function(data, fn, format, option)
 				localVars[varName] = v
 				cache[cachekey] = c
