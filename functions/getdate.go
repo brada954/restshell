@@ -1,7 +1,6 @@
 package functions
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -182,9 +181,7 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 func CreateDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
 
-	fmt.Printf("Cache is %v\n", cache)
 	if cache == nil {
-		fmt.Println("Nill cache in CreateDate")
 		switch format {
 		case "unix":
 			inputTime = time.Unix(0, 0)

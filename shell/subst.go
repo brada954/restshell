@@ -279,7 +279,9 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 			if r.Function != nil {
 				if v, c := r.Function(data, fn, format, option); c != nil {
 					localVars[varName] = v
-					cache[cachekey] = c
+					if data == nil {
+						cache[cachekey] = c
+					}
 				}
 			}
 		}
