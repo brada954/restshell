@@ -33,7 +33,7 @@ func testAString(t *testing.T, line string, expected []string) {
 		t.Errorf("Invalid number of tokens %d!=%d for line: %s", len(expected), len(args), line)
 	}
 
-	for i := 0; i < min(len(args), len(expected)); i++ {
+	for i := 0; i < getmin(len(args), len(expected)); i++ {
 		if args[i] != expected[i] {
 			t.Errorf("arg[%d] does not match: %s!=%s", i, args[i], expected[i])
 		}
@@ -71,7 +71,7 @@ func testSubstitution(t *testing.T, input string, expected string) {
 	}
 }
 
-func min(x, y int) int {
+func getmin(x, y int) int {
 	if x < y {
 		return x
 	}

@@ -39,6 +39,7 @@ const (
 	OptionDefaultIterationsThrottleMs = 0
 	OptionDefaultBasicAuth            = "[user][,pwd]"
 	OptionDefaultQueryParamAuth       = "[[name,value]...]"
+	OptionDefaultOutputFile           = ""
 )
 
 // Structure for all common option values
@@ -70,6 +71,7 @@ type StandardOptions struct {
 	headerOutputOption   *bool
 	cookieOutputOption   *bool
 	fullOutputOption     *bool
+	fileOutputOption     *string
 	prettyPrintOption    *bool
 }
 
@@ -256,6 +258,9 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			if globalOptions.fullOutputOption == nil {
 				globalOptions.fullOutputOption = set.BoolLong("out-full", 0, "Output all response data")
 			}
+			if globalOptions.fileOutputOption == nil {
+				globalOptions.fileOutputOption = set.StringLong("out-file", 0, "", "Output result to a file")
+			}
 			if globalOptions.prettyPrintOption == nil {
 				globalOptions.prettyPrintOption = set.BoolLong("pretty", 0, "Pretty print output")
 			}
@@ -377,6 +382,10 @@ func IsCmdOutputShortEnabled() bool {
 
 func IsCmdOutputBodyEnabled() bool {
 	return (globalOptions.bodyOutputOption != nil && *globalOptions.bodyOutputOption) || (IsCmdVerboseEnabled() && !IsCmdOutputShortEnabled())
+}
+
+func GetCmdOutputFileName() string {
+	return globalOptions.GetCmdOutputFileName()
 }
 
 func IsCmdPrettyPrintEnabled() bool {
@@ -559,6 +568,13 @@ func (o *StandardOptions) IsOutputShortEnabled() bool {
 
 func (o *StandardOptions) IsOutputBodyEnabled() bool {
 	return o.bodyOutputOption != nil && *o.bodyOutputOption
+}
+
+func (o *StandardOptions) GetCmdOutputFileName() string {
+	if o.fileOutputOption != nil && *o.fileOutputOption != OptionDefaultOutputFile {
+		return *o.fileOutputOption
+	}
+	return OptionDefaultOutputFile
 }
 
 func (o *StandardOptions) IsPrettyPrintEnabled() bool {

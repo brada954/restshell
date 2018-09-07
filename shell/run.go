@@ -191,7 +191,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		return errors.New("Too many nested scripts script")
 	}
 
-	runSilent := IsCmdSilentEnabled()
+	runSilent := IsCmdSilentEnabled() || *cmd.list
 	i := iterations
 	var result error = nil
 	var commands int

@@ -1,5 +1,10 @@
 package about
 
+import (
+	"fmt"
+	"io"
+)
+
 type BenchmarkTopic struct {
 	Key         string
 	Title       string
@@ -77,6 +82,7 @@ func (a *BenchmarkTopic) GetDescription() string {
 	return a.Description
 }
 
-func (a *BenchmarkTopic) GetAbout() string {
-	return a.About
+func (a *BenchmarkTopic) WriteAbout(o io.Writer) error {
+	fmt.Fprintf(o, a.About)
+	return nil
 }

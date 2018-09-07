@@ -1,5 +1,9 @@
 # This is an example template for a user init file for developers
 # Developers can copy this file to .rsconfig.user and then edit .rsconfig.user
 #
+set _RANDOMUSERURL="http://randomuser.me/api"
+set _MYIPURL="http://api.ipify.org"
+set _ECHOURL="https://postman-echo.com"
+
 alias BASEMYIP "base http://api.ipify.org"
 alias BASEECHO "base https://postman-echo.com"

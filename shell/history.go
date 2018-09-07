@@ -16,106 +16,6 @@ import (
 
 var history = make([]Result, 0)
 
-// Result -- a result that can be placed in the history buffer
-// and used by assertion handlers
-type Result struct {
-	Text        string
-	Map         interface{}
-	XMLDocument *xmldom.Document
-	Error       error
-	HttpStatus  int
-	ContentType string
-	HeaderMap   map[string]string
-	CookieMap   map[string]string
-	AuthMap     interface{}
-}
-
-// GetObjectMap -- short cut to get an object if the result was a json object
-// returns false if it is not a json(-like) object
-func (r *Result) GetObjectMap() (map[string]interface{}, bool) {
-	if m, ok := r.Map.(map[string]interface{}); ok {
-		return m, true
-	}
-	return nil, false
-}
-
-// GetArrayMap -- short cut to get an array if the result was a json array
-// returns false if it is not a json(-like) object
-func (r *Result) GetArrayMap() ([]interface{}, bool) {
-	if m, ok := r.Map.([]interface{}); ok {
-		return m, true
-	}
-	return nil, false
-}
-
-func (r *Result) addCookieMap(resp *RestResponse) error {
-	cookies := make(map[string]string, 0)
-	for _, cookie := range resp.GetCookies() {
-		cookies[cookie.Name] = cookie.Value
-	}
-	r.HeaderMap = cookies
-	return nil // TODO: Are there any error conditions
-}
-
-func (r *Result) addHeaderMap(resp *RestResponse) error {
-	headers := make(map[string]string, 0)
-	for n, values := range resp.GetHeader() {
-		headers[n] = values[0]
-
-		// Special code that evalutes authorization header as a JWT
-		// This may need revisiting to be more acceptable of possibiltiies
-		if n == "Authorization" {
-			authmap, err := decodeJwtClaims(values[0])
-			if err == nil {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintf(ConsoleWriter(), "Pushing AuthMap:\n%v\n", authmap)
-				}
-				r.AuthMap = authmap
-			} else {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintln(ConsoleWriter(), "Unable to decode JWT")
-				}
-			}
-		}
-	}
-	r.HeaderMap = headers
-	return nil // TODO: Are there any error conditions
-}
-
-func (r *Result) addParsedContentToResult(contentType string, data string) {
-	r.ContentType = contentType
-
-	switch getResultTypeFromContentType(r.ContentType) {
-	case "xml":
-		{
-			doc, err := makeXMLDOM(data)
-			if err != nil {
-				fmt.Fprintln(ErrorWriter(), "WARNING: XML ERROR: ", err)
-				r.Map = makeRootMap(data)
-			} else {
-				r.XMLDocument = doc
-			}
-		}
-	case "json":
-		{
-			resultMap, err := makeResultMapFromJson(data)
-			if err != nil {
-				fmt.Fprintln(ErrorWriter(), "WARNING: JSON ERROR: ", err)
-				resultMap = makeRootMap(data)
-			}
-			r.Map = resultMap
-		}
-	case "text":
-		r.Map = makeRootMap(data)
-	case "html":
-		r.Map = makeRootMap(data)
-	case "csv":
-		r.Map = makeRootMap(data)
-	default:
-		r.Map = makeRootMap("Unsupported content type returned: " + r.ContentType)
-	}
-}
-
 // Error variables
 var (
 	ErrArguments        = errors.New("Invalid arguments")
@@ -145,6 +45,7 @@ func PushResponse(resp *RestResponse, resperror error) error {
 	result.Text = resp.Text
 	result.Error = resperror
 	result.HttpStatus = resp.GetStatus()
+	result.HttpStatusString = resp.GetStatusString()
 	result.addParsedContentToResult(resp.GetContentType(), resp.Text)
 
 	PushResult(result)
@@ -160,6 +61,7 @@ func PushText(contentType string, data string, resperror error) error {
 	result.Text = data
 	result.Error = resperror
 	result.HttpStatus = http.StatusOK
+	result.HttpStatusString = http.StatusText(http.StatusOK)
 	result.addParsedContentToResult(contentType, data)
 
 	PushResult(result)
@@ -177,6 +79,7 @@ func PushError(resperror error) error {
 		result.Text = resperror.Error()
 		result.Error = resperror
 		result.HttpStatus = -1
+		result.HttpStatusString = "No Response Received"
 		result.Map = makeRootMap(result.Text)
 	}
 
@@ -248,7 +151,7 @@ func makeXMLDOM(data string) (*xmldom.Document, error) {
 
 func makeRootMap(text string) interface{} {
 	m := make(map[string]interface{})
-	m["/"] = text
+	m["/"] = strings.TrimSpace(text)
 	return m
 }
 
@@ -279,6 +182,10 @@ func GetValueFromHistory(index int, path string) (string, error) {
 	result, err := PeekResult(index)
 	if err != nil {
 		return "", err
+	}
+
+	if path == "/" {
+		return result.Text, nil
 	}
 
 	node, err := GetNode(path, result)
