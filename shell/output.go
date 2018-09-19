@@ -35,7 +35,7 @@ func OutputResult(result Result, shortDisplay ShortDisplayFunc) (resperr error) 
 
 	outputWriter := OutputWriter()
 	if filename := GetCmdOutputFileName(); filename != OptionDefaultOutputFile {
-		if o, err := OpenFileForOutput(filename, false, false); err != nil {
+		if o, err := OpenFileForOutput(filename, false, false, true); err != nil {
 			return err
 		} else {
 			defer o.Close()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -55,10 +56,22 @@ func GetValidatedFileName(file string, extension string) (string, error) {
 }
 
 // OpenFileForOutput -- open a file
-func OpenFileForOutput(name string, truncate bool, append bool) (*os.File, error) {
+func OpenFileForOutput(name string, truncate bool, append bool, newfile bool) (*os.File, error) {
 	var file *os.File
 	if _, err := os.Stat(name); err == nil {
 		if !(truncate || append) {
+			if newfile {
+				err = errors.New("Exists")
+				for suffix := 1; err.Error() == "Exists"; suffix++ {
+					file, err := openNewFileWithSuffix(name, suffix)
+					if err != nil && err.Error() != "Exists" {
+						return nil, err
+					}
+					if err == nil {
+						return file, nil
+					}
+				}
+			}
 			return nil, errors.New("File exists; use --append or --truncate to use the file")
 		}
 		flags := os.O_APPEND | os.O_WRONLY
@@ -79,4 +92,26 @@ func OpenFileForOutput(name string, truncate bool, append bool) (*os.File, error
 		}
 	}
 	return file, nil
+}
+
+func openNewFileWithSuffix(name string, suffix int) (*os.File, error) {
+	rootName := name
+	ext := ""
+	i := strings.LastIndex(name, ".")
+	if i >= 0 {
+		rootName = name[:i]
+		ext = name[i:]
+	}
+
+	name = rootName + strconv.Itoa(suffix) + ext
+	if _, err := os.Stat(name); err == nil {
+		return nil, errors.New("Exists")
+	} else {
+		var file *os.File
+		file, err = os.OpenFile(name, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+		return file, nil
+	}
 }

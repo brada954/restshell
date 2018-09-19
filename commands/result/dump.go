@@ -35,10 +35,15 @@ func (cmd *DumpCommand) Execute(args []string) error {
 		return errors.New("No result to dump")
 	}
 
-	return shell.OutputResult(result, displayBytesRead)
+	dispfunc := displayBytesRead
+	if shell.GetCmdOutputFileName() != "" {
+		// If a file is specified; do not display the short form
+		dispfunc = nil
+	}
+	return shell.OutputResult(result, dispfunc)
 }
 
 func displayBytesRead(o io.Writer, result shell.Result) error {
-	fmt.Fprintf(shell.OutputWriter(), "Result is %d bytes long\n", len(result.Text))
+	fmt.Fprintf(o, "Result is %d bytes long\n", len(result.Text))
 	return nil
 }
