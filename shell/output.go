@@ -215,3 +215,9 @@ func IsStringBinary(text string) bool {
 	}
 	return false
 }
+
+func OnVerbose(format string, a ...interface{}) {
+	if IsCmdVerboseEnabled() {
+		fmt.Fprintf(OutputWriter(), format, a...)
+	}
+}

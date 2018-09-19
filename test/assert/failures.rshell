@@ -1,0 +1,12 @@
+REM =========================================================
+REM ==  TEST ASSERT FAILURES
+REM == 
+REM ==  All the following tests should fail
+REM =========================================================
+assert --clear --new
+assert eq -v --test test notthis
+REM =========================================================
+REM ==
+REM == Summary should have All failures
+REM ==
+assert --report-sum --new 
