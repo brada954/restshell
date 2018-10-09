@@ -9,6 +9,7 @@ import (
 
 type JobProcessor func() (*RestResponse, error)
 type JobCompletion func(job int, bm *Benchmark, resp *RestResponse)
+type JobMaker func() JobProcessor
 
 // Process jobs concurrently
 // Note: RestClient will open new connections for each worker because
@@ -22,7 +23,7 @@ type JobCompletion func(job int, bm *Benchmark, resp *RestResponse)
 // time should not be affected as long as MaxIdleConsPerHost isn't
 // exceeded or some other anomallys of Go or the OS)
 //
-func ProcessJob(processor JobProcessor, completion JobCompletion, cancel *bool) *Benchmark {
+func ProcessJob(makeJob JobMaker, completion JobCompletion, cancel *bool) *Benchmark {
 	iterations := GetCmdIterationValue()
 	concurrency := GetCmdConcurrencyValue()
 	warming := 0
@@ -53,10 +54,10 @@ func ProcessJob(processor JobProcessor, completion JobCompletion, cancel *bool) 
 				if cancel != nil && *cancel {
 					break
 				}
+
 				if job >= 0 {
-					if throttle := GetCmdIterationThrottleMs(); throttle > 0 {
-						Delay(time.Duration(throttle) * time.Millisecond)
-					}
+					processor := makeJobWithThrottle(makeJob, GetCmdIterationThrottleMs())
+
 					bm.StartIteration(job)
 					resp, err := processor()
 					bm.EndIteration(job)
@@ -73,7 +74,8 @@ func ProcessJob(processor JobProcessor, completion JobCompletion, cancel *bool) 
 						}
 					}
 				} else {
-					// Performing warming; do not care
+					// Performing warming; do not care ab out throttling or results
+					processor := makeJob()
 					_, _ = processor()
 				}
 			}
@@ -92,7 +94,7 @@ func ProcessJob(processor JobProcessor, completion JobCompletion, cancel *bool) 
 
 	// Run the jobs
 	bm.Start()
-	for i, _ := range bm.Iterations {
+	for i := range bm.Iterations {
 		if *cancel {
 			break
 		}
@@ -109,4 +111,24 @@ func ProcessJob(processor JobProcessor, completion JobCompletion, cancel *bool) 
 	waitGroup.Wait()
 	bm.End()
 	return &bm
+}
+
+// Function overlaps the creation of a job with a delay as job
+// creation could potentially make network calls
+func makeJobWithThrottle(makejob JobMaker, throttleMs int) JobProcessor {
+	var processor JobProcessor
+
+	if throttleMs > 0 {
+		// When throttling overlap make job and delay
+		messages := make(chan bool)
+		go func() {
+			Delay(time.Duration(throttleMs) * time.Millisecond)
+			messages <- true
+		}()
+		processor = makejob()
+		_ = <-messages
+	} else {
+		processor = makejob()
+	}
+	return processor
 }
