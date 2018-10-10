@@ -75,14 +75,6 @@ func TestIsNotDateAssert(t *testing.T) {
 	testDateNotParsed(t, "2016-05-12T15:03:23.123Z -500")
 }
 
-func TestRegexModifier(t *testing.T) {
-	testRegexMod(t, "failed", "This is a error message for a failed operation", "failed")
-	testRegexMod(t, "failed", "This is an error message", "")
-	testRegexMod(t, "\\((\\d*)\\)$", "Error code (27)", "27")
-	testRegexMod(t, "test (this( app)) end", "my test this app end", "this app app")
-	testRegexMod(t, "test (this( app)) end", "my texst this app end", "")
-}
-
 func testDateParsed(t *testing.T, d string) {
 	if err := isDate(d); err != nil {
 		t.Errorf(err.Error())
@@ -137,18 +129,5 @@ func testIsLte(t *testing.T, i interface{}, value string, success bool) {
 		t.Errorf("IsLte failed unexpectedly: %s", err.Error())
 	} else if err == nil && !success {
 		t.Errorf("IsLte unexpected succeeded: %v!>=%s", i, value)
-	}
-}
-
-func testRegexMod(t *testing.T, pattern string, value interface{}, expected string) {
-	valueModifierFunc := NullModifier
-	valueModifierFunc = MakeRegExModifier(pattern, valueModifierFunc)
-
-	newval, err := valueModifierFunc(value)
-	if err != nil {
-		t.Errorf("Regex modifier error %s!=%s: %s", expected, newval, err.Error())
-	}
-	if newval != expected {
-		t.Errorf("Regex Modifier Failed: %s!=%s", expected, newval)
 	}
 }

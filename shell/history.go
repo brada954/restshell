@@ -228,6 +228,52 @@ func GetValueFromAuthHistory(index int, path string) (string, error) {
 	}
 }
 
+func GetValueFromCookieHistory(index int, path string) (string, error) {
+	result, err := PeekResult(index)
+	if err != nil {
+		return "", err
+	}
+
+	if IsCmdDebugEnabled() {
+		fmt.Fprintf(ConsoleWriter(), "Cookie:\n%v\n", result.CookieMap)
+	}
+
+	node, err := GetJsonNode(path, convertToJSONMap(result.CookieMap))
+	if err != nil {
+		return "", err
+	}
+
+	switch t := node.(type) {
+	case string:
+		return t, nil
+	default:
+		return "", errors.New("Invalid data type found")
+	}
+}
+
+func GetValueFromHeaderHistory(index int, path string) (string, error) {
+	result, err := PeekResult(index)
+	if err != nil {
+		return "", err
+	}
+
+	if IsCmdDebugEnabled() {
+		fmt.Fprintf(ConsoleWriter(), "Headers:\n%v\n", result.HeaderMap)
+	}
+
+	node, err := GetJsonNode(path, convertToJSONMap(result.HeaderMap))
+	if err != nil {
+		return "", err
+	}
+
+	switch t := node.(type) {
+	case string:
+		return t, nil
+	default:
+		return "", errors.New("Invalid data type found")
+	}
+}
+
 // GetNodeFromXml - given an xpath return the node or nodes returned with
 // the inner text
 func GetNodeFromXml(path string, doc *xmldom.Document) (result interface{}, rtnerror error) {
@@ -468,4 +514,12 @@ func decodeString(val string) string {
 		fmt.Fprintln(ErrorWriter(), "Base64 Decoder: ", err.Error())
 	}
 	return string(s)
+}
+
+func convertToJSONMap(m map[string]string) map[string]interface{} {
+	result := make(map[string]interface{})
+	for n, v := range m {
+		result[n] = v
+	}
+	return result
 }

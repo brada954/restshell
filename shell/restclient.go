@@ -103,7 +103,7 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 	}
 
 	// TODO: What is the best content handling; was hardcoded to json
-	contentType := "appliation/json"
+	contentType := "application/json"
 	addDefaultContentType(req, contentType)
 
 	if r.Debug {

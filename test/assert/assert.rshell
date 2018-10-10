@@ -1,0 +1,18 @@
+REM =========================================================
+REM ==  TEST ASSERTS
+REM =========================================================
+assert --clear --new
+assert eq -v --test --len "1234" 4
+assert eq -v --test --int "1234" 1234
+assert eq -v --test "testthis" testthis
+assert eq -v --test "testthis" testthis
+assert neq -v --test "notthis" testthis
+assert neq -v --test "notthis" testthis
+
+# An oddity is that --int modifier does not handle float strings
+# convert to float type first
+assert eq -v --test --int --float 12.4 12
+assert isint -v --test --int --float 123.3
+assert --report --new 
+REM =========================================================
+assert --report-sum --new 

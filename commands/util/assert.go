@@ -11,30 +11,26 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
+	"github.com/brada954/restshell/shell/modifiers"
 )
 
 type AssertCommand struct {
-	clearOption              *bool
-	newOption                *bool
-	reportOption             *bool
-	reportAllOption          *bool
-	summaryOption            *bool
-	allowNil                 *bool
-	messageOption            *string
-	testOption               *bool
-	skipOnErrOption          *bool
-	useAuthTokenMap          *bool
-	useLengthModifier        *bool
-	useToLowerModifier       *bool
-	useToUpperModifier       *bool
-	useRegexModifier         *string
-	useStringToIntModifier   *bool
-	useStringToFloatModifier *bool
-	executedAsserts          int
-	failedAsserts            int
-	totalFailures            int
-	totalExecuted            int
-	totalSkipped             int
+	clearOption     *bool
+	newOption       *bool
+	reportOption    *bool
+	reportAllOption *bool
+	summaryOption   *bool
+	allowNil        *bool
+	messageOption   *string
+	testOption      *bool
+	skipOnErrOption *bool
+	useAuthTokenMap *bool
+	executedAsserts int
+	failedAsserts   int
+	totalFailures   int
+	totalExecuted   int
+	totalSkipped    int
+	modifierOptions modifiers.ModifierOptions
 }
 
 func NewAssertCommand() *AssertCommand {
@@ -47,8 +43,6 @@ func (cmd *AssertCommand) GetSubCommands() []string {
 		"ISDATE", "NOSTR", "NODATE", "EQDATE", "ISERR", "NOERR", "HSTATUS", "EX", "NEX", "REGMATCH"}
 	return shell.SortedStringSlice(commands)
 }
-
-type ValueModifier func(i interface{}) (interface{}, error)
 
 func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	set.SetProgram("assert [sub command]")
@@ -67,12 +61,7 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.allowNil = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
 	cmd.useAuthTokenMap = set.BoolLong("auth-claims", 0, "Assert against auth claims")
-	cmd.useToLowerModifier = set.BoolLong("to-lower", 0, "Convert string value to lowercase")
-	cmd.useToUpperModifier = set.BoolLong("to-upper", 0, "Convert string value to uppercase")
-	cmd.useRegexModifier = set.StringLong("regex", 0, "", "Use regex to extract from value (1st)")
-	cmd.useStringToIntModifier = set.BoolLong("int", 0, "Convert string value to int (2nd)")
-	cmd.useStringToFloatModifier = set.BoolLong("float", 0, "Convert string value to float (3rd)")
-	cmd.useLengthModifier = set.BoolLong("len", 0, "Use the length of the value (4th)")
+	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
@@ -112,30 +101,7 @@ func (cmd *AssertCommand) Execute(args []string) error {
 		return shell.ErrArguments
 	}
 
-	// Order is a set precendence; changing order can be catastrophic. Generally, the
-	// modifiers call the previous modifier before performing its own task.
-	//
-	// For example, conversion of string to int is initialized before string to float, so
-	// a string containing float can be converted to float and then to int. A "float string",
-	// will fail to convert to int because of the period in the text string.
-	valueModifierFunc := NullModifier
-	if *cmd.useToLowerModifier {
-		valueModifierFunc = MakeStringToLowerModifier(valueModifierFunc)
-	} else if *cmd.useToUpperModifier {
-		valueModifierFunc = MakeStringToUpperModifier(valueModifierFunc)
-	}
-	if len(*cmd.useRegexModifier) > 0 {
-		valueModifierFunc = MakeRegExModifier(*cmd.useRegexModifier, valueModifierFunc)
-	}
-	if *cmd.useStringToFloatModifier {
-		valueModifierFunc = MakeToFloatModifier(valueModifierFunc)
-	}
-	if *cmd.useStringToIntModifier {
-		valueModifierFunc = MakeToIntModifier(valueModifierFunc)
-	}
-	if *cmd.useLengthModifier {
-		valueModifierFunc = MakeLengthModifier(valueModifierFunc)
-	}
+	valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
 
 	result, err := shell.PeekResult(0)
 	if err != nil {
@@ -210,7 +176,7 @@ func (cmd *AssertCommand) executeReporting() error {
 	return reterr
 }
 
-func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, result shell.Result, args []string) (reterr error) {
+func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueModifier, result shell.Result, args []string) (reterr error) {
 	defer func() {
 		if reterr != nil && len(args) > 1 {
 			reterr = errors.New(args[1] + ": " + reterr.Error())
@@ -242,12 +208,12 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 		switch args[0] {
 		case "ISERR":
 			if result.Error != nil {
-				return nil
+				return onSuccessVerbose(nil, "Result was an error as expected")
 			}
 			return errors.New("Unexpected success; error did not happen")
 		case "NOERR":
 			if result.Error == nil {
-				return nil
+				return onSuccessVerbose(nil, "Result was a success as expected")
 			}
 			return errors.New("Unexpected error: " + result.Error.Error())
 		default:
@@ -265,7 +231,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 			if result.HttpStatus != status {
 				return fmt.Errorf("Expected status %d; got %d", status, result.HttpStatus)
 			}
-			return nil
+			return onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
 		}
 	}
 
@@ -288,7 +254,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 			if err != nil {
 				switch args[0] {
 				case "NEX":
-					return nil
+					return onSuccessVerbose(nil, "Path %s does not exist as expected", path)
 				case "EX":
 					return errors.New("Expected path does not exist: " + path)
 				default:
@@ -301,7 +267,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 	if args[0] == "NEX" {
 		return errors.New("Path unexpectedly exists: " + path)
 	} else if args[0] == "EX" {
-		return nil
+		return onSuccessVerbose(nil, "Path %s exists as expected", path)
 	}
 
 	newnode, err := valueModifierFunc(node)
@@ -313,28 +279,28 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 	if len(args) == 2 {
 		switch args[0] {
 		case "NIL":
-			return isNil(node)
+			return onSuccessVerbose(isNil(node), "Node at %s was nil as expected", path)
 		case "NNIL":
-			return isNotNil(node)
+			return onSuccessVerbose(isNotNil(node), "Node at %s was not nil as expected", path)
 		case "ISOBJ":
-			return isObject(node)
+			return onSuccessVerbose(isObject(node), "Node at %s was an object as expected", path)
 		case "ISARRAY":
-			return isArray(node)
+			return onSuccessVerbose(isArray(node), "Node at %s was an array as expected", path)
 		case "ISDATE":
-			return isDate(node)
+			return onSuccessVerbose(isDate(node), "Node at %s was a date as expected", path)
 		case "NODATE":
-			return isNotDate(node)
+			return onSuccessVerbose(isNotDate(node), "Node at %s was not a date as expected", path)
 		case "ISSTR":
-			return isString(node)
+			return onSuccessVerbose(isString(node), "Node at %s was a string as expected", path)
 		case "NOSTR":
-			return isNotString(node)
+			return onSuccessVerbose(isNotString(node), "Node at %s was not a string as expected", path)
 		case "ISINT":
-			return isInt(node)
+			return onSuccessVerbose(isInt(node), "Node at %s was an integer as expected", path)
 		case "ISFLOAT":
-			return isFloat(node)
+			return onSuccessVerbose(isFloat(node), "Node at %s was a float as expected", path)
 		case "ISNUM":
 			if isFloat(node) == nil || isInt(node) == nil {
-				return nil
+				return onSuccessVerbose(nil, "Node at %s was a number as expected", path)
 			}
 			return fmt.Errorf("Type was not a number: %v", reflect.TypeOf(node))
 		default:
@@ -352,21 +318,21 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc ValueModifier, res
 
 		switch args[0] {
 		case "EQ":
-			return isEqual(node, value)
+			return onSuccessVerbose(isEqual(node, value), "Value at %s equaled %s as expected", path, value)
 		case "NEQ":
-			return isNotEqual(node, value)
+			return onSuccessVerbose(isNotEqual(node, value), "Value at %s did not equal %s as expected", path, value)
 		case "GT":
-			return isGt(node, value)
+			return onSuccessVerbose(isGt(node, value), "Value at %s was greater than %s as expected", path, value)
 		case "GTE":
-			return isGte(node, value)
+			return onSuccessVerbose(isGte(node, value), "Value at %s was equal or greater than %s as expected", path, value)
 		case "LT":
-			return isLt(node, value)
+			return onSuccessVerbose(isLt(node, value), "Value at %s was lessor than %s as expected", path, value)
 		case "LTE":
-			return isLte(node, value)
+			return onSuccessVerbose(isLte(node, value), "Value at %s was equal or lessor than %s as expected", path, value)
 		case "EQDATE":
-			return isDateEqual(node, value)
+			return onSuccessVerbose(isDateEqual(node, value), "Date at %s was equal to %s as expected", path, value)
 		case "REGMATCH":
-			return isRegexMatch(node, value)
+			return onSuccessVerbose(isRegexMatch(node, value), "Value at %s matched pattern %s as expected", path, value)
 		default:
 			return shell.ErrArguments
 		}
@@ -653,31 +619,6 @@ func isFloat(i interface{}) error {
 	return fmt.Errorf("Value was not an float: type=%v", reflect.TypeOf(i))
 }
 
-func getLength(i interface{}) int {
-	switch v := i.(type) {
-	case string:
-		return len(v)
-	case int:
-		return getIntLength(v)
-	case int64:
-		return getIntLength(int(v))
-	}
-	return -1
-}
-
-func getIntLength(i int) int {
-	s := strconv.Itoa(i)
-	return len(s)
-}
-
-func getInt64Length(i int64) int {
-	length := 1
-	for ; i >= 10; i = i / 10 {
-		length = length + 1
-	}
-	return length
-}
-
 ///////////////////////////////////////////////////////////////////////
 // Date functions -- TODO: There are different formats to support
 // Only works if expecting typical golang time displayed.
@@ -717,172 +658,12 @@ func isDateEqual(i interface{}, value string) error {
 	return fmt.Errorf("Date values not equal: %v!=%v", expectedDate, date)
 }
 
-////////////////////////////////////
-//  Value Modifier functions
-//
-func NullModifier(i interface{}) (interface{}, error) {
-	return i, nil
-}
-
-func NilModifier(i interface{}) (interface{}, error) {
-	if i == nil {
-		return "{nil}", nil
-	}
-	return i, nil
-}
-
-// LengthModifier -- Convert the interface value to a length if valid or return error
-func LengthModifier(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case string:
-		return len(v), nil
-	case float64:
-		// TODO: this is not counting decimal portion
-		// (probably because float error can make it really long for some values)
-		return getIntLength(int(v)), nil
-	case int:
-		return getIntLength(v), nil
-	case int64:
-		return getInt64Length(v), nil
-	case map[string]interface{}:
-		return len(v), nil
-	case []interface{}:
-		return len(v), nil
-	default:
-		return nil, fmt.Errorf("Invalid type (%v) for len()", reflect.TypeOf(i))
-	}
-}
-
-// ConvertToIntModifier -- A value modifier to make a string or a float64
-// an integer (float64's will round down)
-// Note: XML floats are strings, need to be converted to float then an int
-func ConvertToIntModifier(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case string:
-		i, err := strconv.Atoi(v)
-		if err != nil {
-			return nil, err
+func onSuccessVerbose(err error, format string, a ...interface{}) error {
+	if err == nil {
+		if format[len(format)-1:] != "\n" {
+			format = format + "\n"
 		}
-		return i, nil
-	case float64:
-		return int64(v), nil
+		shell.OnVerbose(format, a...)
 	}
-	return nil, fmt.Errorf("Invalid type (%v) to make int", reflect.TypeOf(i))
-}
-
-// ConvertToFloatModifier -- convert a scaler to a floating value
-func ConvertToFloatModifier(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case string:
-		i, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return nil, err
-		}
-		return i, nil
-	case int:
-		return float64(v), nil
-	case int32:
-		return float64(v), nil
-	case int64:
-		return float64(v), nil
-	case float64:
-		return float64(v), nil
-	case float32:
-		return float64(v), nil
-	}
-	return nil, fmt.Errorf("Invalid type (%v) to make float", reflect.TypeOf(i))
-}
-
-func StringToLowerModifier(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case string:
-		return strings.ToLower(v), nil
-	}
-	return nil, fmt.Errorf("Invalid type make lowercase: %v", reflect.TypeOf(i))
-}
-
-func StringToUpperModifier(i interface{}) (interface{}, error) {
-	switch v := i.(type) {
-	case string:
-		return strings.ToUpper(v), nil
-	}
-	return nil, fmt.Errorf("Invalid type make uppercase: %v", reflect.TypeOf(i))
-}
-
-func MakeLengthModifier(vmod ValueModifier) ValueModifier {
-	return func(i interface{}) (interface{}, error) {
-		v, err := vmod(i)
-		if err != nil {
-			return v, err
-		}
-		return LengthModifier(v)
-	}
-}
-
-func MakeToIntModifier(vmod ValueModifier) ValueModifier {
-	return func(i interface{}) (interface{}, error) {
-		v, err := vmod(i)
-		if err != nil {
-			return v, err
-		}
-		return ConvertToIntModifier(v)
-	}
-}
-
-func MakeToFloatModifier(vmod ValueModifier) ValueModifier {
-	return func(i interface{}) (interface{}, error) {
-		v, err := vmod(i)
-		if err != nil {
-			return v, err
-		}
-		return ConvertToFloatModifier(v)
-	}
-}
-
-func MakeStringToLowerModifier(vmod ValueModifier) ValueModifier {
-	return func(i interface{}) (interface{}, error) {
-		v, err := vmod(i)
-		if err != nil {
-			return v, err
-		}
-		return StringToLowerModifier(v)
-	}
-}
-
-func MakeStringToUpperModifier(vmod ValueModifier) ValueModifier {
-	return func(i interface{}) (interface{}, error) {
-		v, err := vmod(i)
-		if err != nil {
-			return v, err
-		}
-		return StringToUpperModifier(v)
-	}
-}
-
-func MakeRegExModifier(pattern string, vmod ValueModifier) ValueModifier {
-	regexp, regexerr := regexp.Compile(pattern)
-	return func(i interface{}) (interface{}, error) {
-		newValue, err := vmod(i)
-		if err != nil {
-			return newValue, err
-		}
-
-		if regexerr != nil {
-			return newValue, regexerr
-		}
-
-		switch v := newValue.(type) {
-		case string:
-			values := regexp.FindStringSubmatch(v)
-			if len(values) == 0 {
-				return "", nil
-			} else if len(values) > 1 {
-				return strings.Join(values[1:], ""), nil
-			} else {
-				return values[0], nil
-			}
-		default:
-			return nil, errors.New("Invalid type for regexp()")
-		}
-	}
+	return err
 }
