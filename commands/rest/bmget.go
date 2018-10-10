@@ -53,16 +53,19 @@ func (cmd *BmGetCommand) Execute(args []string) error {
 	// Execute command using the job processor which supports
 	// iterations and concurrency
 	var client = shell.NewRestClientFromOptions()
-	job := func() (*shell.RestResponse, error) {
+
+	jobMaker := func() shell.JobProcessor {
 		rc := &client
 		if shell.IsCmdReconnectEnabled() {
 			tmprc := shell.NewRestClientFromOptions()
 			rc = &tmprc
 		}
-		return rc.DoMethod(method, authContext, url)
+		return func() (*shell.RestResponse, error) {
+			return rc.DoMethod(method, authContext, url)
+		}
 	}
 
-	bm := shell.ProcessJob(job, nil, &cmd.aborted)
+	bm := shell.ProcessJob(jobMaker, nil, &cmd.aborted)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"

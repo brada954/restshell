@@ -35,6 +35,7 @@ type BenchmarkIteration struct {
 	Messages  []string
 	Custom    interface{}
 	start     time.Time
+	end       time.Time
 }
 
 func NewBenchmark(iterations int) Benchmark {
@@ -128,6 +129,7 @@ func (bm *Benchmark) StartIteration(i int) {
 
 func (bm *Benchmark) EndIteration(i int) {
 	bm.Iterations[i].WallTime = int64(CalcTimeSince(bm.Iterations[i].start))
+	bm.Iterations[i].end = bm.Iterations[i].start.Add(time.Duration(bm.Iterations[i].WallTime))
 }
 
 func (bm *Benchmark) SetIterationStatus(i int, err error) {
@@ -226,26 +228,26 @@ func (bm *Benchmark) Dump(label string, opts StandardOptions, showIterations boo
 }
 
 func (bm *Benchmark) DumpIterations(opts StandardOptions) {
-	var headingFmt = "-,%s,%s,%s,%s\n"
-	var displayFmt = "-,%d,%f,%s,%s\n"
+	var headingFmt = "-,%s,%s,%s,%s,%s,%s\n"
+	var displayFmt = "-,%d,%f,%d,%d,%s,%s\n"
 	if opts.IsFormattedCsvEnabled() {
-		displayFmt = "-,%d,%s,%s,%s\n"
+		displayFmt = "-,%d,%s,%d,%d,%s,%s\n"
 	} else if opts.IsCsvOutputEnabled() {
 		// CSV which is default
 	} else {
-		headingFmt = "  %9s  %8s  %3s  %s\n"
-		displayFmt = "  %9d %9s  %3s  %s\n"
+		headingFmt = "  %9s  %8s  %10s  %10s  %3s  %s\n"
+		displayFmt = "  %9d %9s  %10d  %10d  %3s  %s\n"
 	}
 	if len(headingFmt) > 0 && !opts.IsHeaderDisabled() {
-		fmt.Fprintf(OutputWriter(), headingFmt, "Iteration", "WallTime", "Err", "Message")
+		fmt.Fprintf(OutputWriter(), headingFmt, "Iteration", "WallTime", "Start", "End", "Err", "Message")
 	}
 
 	for _, v := range bm.Iterations {
-		v.DumpLine(opts, displayFmt)
+		v.DumpLine(opts, displayFmt, bm.StartTime)
 	}
 }
 
-func (bi *BenchmarkIteration) DumpLine(opts StandardOptions, displayFmt string) {
+func (bi *BenchmarkIteration) DumpLine(opts StandardOptions, displayFmt string, start time.Time) {
 	errMark := ""
 	errMsg := ""
 	if bi.Err != nil {
@@ -258,6 +260,8 @@ func (bi *BenchmarkIteration) DumpLine(opts StandardOptions, displayFmt string) 
 			displayFmt,
 			bi.Iteration,
 			bi.WallTimeInMs(),
+			bi.start.Sub(start),
+			bi.end.Sub(start),
 			errMark,
 			errMsg,
 		)
@@ -266,6 +270,8 @@ func (bi *BenchmarkIteration) DumpLine(opts StandardOptions, displayFmt string) 
 			displayFmt,
 			bi.Iteration,
 			bi.WallTimeFmt(),
+			bi.start.Sub(start),
+			bi.end.Sub(start),
 			errMark,
 			errMsg,
 		)

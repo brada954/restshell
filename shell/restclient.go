@@ -38,10 +38,23 @@ func NewRestClient() RestClient {
 }
 
 func NewRestClientFromOptions() RestClient {
+
 	client := RestClient{
 		Debug:   IsCmdDebugEnabled(),
 		Verbose: IsCmdVerboseEnabled() && !IsCmdSilentEnabled(),
-		Client:  &http.Client{Timeout: time.Duration(GetCmdTimeoutValueMs()) * time.Millisecond},
+		Client: &http.Client{
+			Timeout: time.Duration(GetCmdTimeoutValueMs()) * time.Millisecond,
+		},
+	}
+
+	// Create non-default transport to break connecxtion pooling
+	if IsCmdReconnectEnabled() {
+		client.Client.Transport = &http.Transport{
+			MaxIdleConns:          1000,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
 	}
 
 	if IsCmdLocalCertsEnabled() {
