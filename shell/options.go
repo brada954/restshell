@@ -240,7 +240,7 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 				globalOptions.noRedirectOption = set.BoolLong("noredirect", 0, "Do not follow redirects on requests")
 			}
 			if globalOptions.headersOption == nil {
-				globalOptions.headersOption = set.StringLong("headers", 0, "", "Set the headers [k=v]")
+				globalOptions.headersOption = set.StringLong("headers", 0, "", "Set the headers [k=v,k=v]")
 			}
 		case CmdFormatOutput:
 			if globalOptions.shortOutputOption == nil {
