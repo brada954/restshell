@@ -28,6 +28,20 @@ var (
 	ErrArrayOutOfBounds = errors.New("Array index out of bounds")
 )
 
+// ResultContentType -- types of result data
+type ResultContentType string
+
+// Types of result data
+var (
+	ResultContentUnknown ResultContentType = "unknown"
+	ResultContentXml     ResultContentType = "xml"
+	ResultContentJson    ResultContentType = "json"
+	ResultContentText    ResultContentType = "text"
+	ResultContentHtml    ResultContentType = "html"
+	ResultContentCsv     ResultContentType = "csv"
+	ResultContentForm    ResultContentType = "form"
+)
+
 //
 // PushResponse -- Push a RestResponse into the history buffer
 //
@@ -89,31 +103,31 @@ func PushError(resperror error) error {
 
 // getResultTypeFromResponse -- Get the result type
 //   xml, json, text, html, css, csv, media, unknown
-func getResultTypeFromContentType(contentType string) string {
+func getResultTypeFromContentType(contentType string) ResultContentType {
 	// Split off parameters
 	parts := strings.Split(contentType, ";")
 	if len(parts) == 0 {
-		return "unknown"
+		return ResultContentUnknown
 	}
 
 	contentType = strings.TrimSpace(strings.ToLower(parts[0]))
 	if strings.HasPrefix(contentType, "application/xml") ||
 		strings.HasSuffix(contentType, "+xml") {
-		return "xml"
+		return ResultContentXml
 	} else if strings.HasPrefix(contentType, "application/json") ||
 		strings.HasSuffix(contentType, "+json") {
-		return "json"
+		return ResultContentJson
 	} else if strings.HasPrefix(contentType, "text/plain") ||
 		strings.HasPrefix(contentType, "text/calendar") ||
 		strings.HasPrefix(contentType, "text/css") {
-		return "text"
+		return ResultContentText
 	} else if strings.HasPrefix(contentType, "text/html") {
-		return "html"
+		return ResultContentHtml
 	} else if strings.Contains(contentType, "text/csv") {
-		return "csv"
+		return ResultContentCsv
 	}
 
-	return "unknown"
+	return ResultContentUnknown
 }
 
 func makeResultMapFromJson(data string) (interface{}, error) {

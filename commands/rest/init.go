@@ -11,4 +11,5 @@ func AddCommands() {
 	shell.AddCommand("get", shell.CategoryHttp, NewGetCommand())
 	shell.AddCommand("post", shell.CategoryHttp, NewPostCommand())
 	shell.AddCommand("bmget", shell.CategoryBenchmarks, NewBmGetCommand())
+	shell.AddCommand("bmpost", shell.CategoryBenchmarks, NewBmPostCommand())
 }
