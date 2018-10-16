@@ -69,6 +69,7 @@ func ProcessJob(makeJob JobMaker, completion JobCompletion, cancel *bool) *Bench
 							completion(job, &bm, resp)
 						} else if resp.GetStatus() != http.StatusOK {
 							// Handle default completion
+							// TODO: This should not be an error
 							msg := resp.GetStatusString()
 							bm.SetIterationStatus(job, errors.New(msg))
 						}

@@ -51,7 +51,7 @@ func (cmd *PostCommand) Execute(args []string) error {
 		return err
 	}
 
-	body := postBody.Body()
+	body := postBody.Content()
 	if *cmd.useSubstitution {
 		body = shell.PerformVariableSubstitution(body)
 	}

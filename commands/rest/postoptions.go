@@ -37,7 +37,7 @@ type PostBody struct {
 }
 
 // Body -- the body of a post
-func (pb *PostBody) Body() string {
+func (pb *PostBody) Content() string {
 	if pb == nil {
 		return ""
 	}

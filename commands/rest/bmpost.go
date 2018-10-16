@@ -1,15 +1,16 @@
 package rest
 
 import (
-	"net/http"
+	"strings"
 
 	"github.com/brada954/restshell/shell"
 )
 
 type BmPostCommand struct {
 	// Place getopt option value pointers here
-	optionUsePut   *bool
-	optionUsePatch *bool
+	useSubstitution             *bool
+	useSubstitutionPerIteration *bool
+	postOptions                 PostOptions
 	// Processing variables
 	aborted bool
 }
@@ -20,8 +21,9 @@ func NewBmPostCommand() *BmPostCommand {
 
 func (cmd *BmPostCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
-	cmd.optionUsePut = set.BoolLong("put", 0, "Use HTTP PUT method")
-	cmd.optionUsePatch = set.BoolLong("patch", 0, "Use HTTP PATCH method")
+	cmd.useSubstitution = set.BoolLong("subst", 0, "Run variable substitution on initial post data")
+	cmd.useSubstitutionPerIteration = set.BoolLong("subst-per-call", 0, "Run variable substitution on post data for each post")
+	cmd.postOptions = AddPostOptions(set)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
 }
 
@@ -40,11 +42,15 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 		return shell.PushError(shell.ErrArguments)
 	}
 
-	method := http.MethodPost
-	if *cmd.optionUsePut {
-		method = http.MethodPut
-	} else if *cmd.optionUsePatch {
-		method = http.MethodPatch
+	method := cmd.postOptions.GetPostMethod()
+	postBody, err := cmd.postOptions.GetPostBody()
+	if err != nil {
+		return err
+	}
+
+	body := postBody.Content()
+	if *cmd.useSubstitution {
+		body = shell.PerformVariableSubstitution(body)
 	}
 
 	// Get an auth context
@@ -53,18 +59,27 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	// Execute command using the job processor which supports
 	// iterations and concurrency
 	var client = shell.NewRestClientFromOptions()
-	job := func() (*shell.RestResponse, error) {
+	jobMaker := func() shell.JobProcessor {
 		rc := &client
 		if shell.IsCmdReconnectEnabled() {
 			tmprc := shell.NewRestClientFromOptions()
 			rc = &tmprc
 		}
 
-		return rc.DoMethod(method, authContext, url)
-	}
+		postdata := body
+		if *cmd.useSubstitutionPerIteration {
+			postdata = shell.PerformVariableSubstitution(postdata)
+		}
 
-	jobMaker := func() shell.JobProcessor {
-		return job
+		return func() (*shell.RestResponse, error) {
+			if strings.HasSuffix(postBody.ContentType(), "xml") {
+				return rc.DoWithXml(method, authContext, url, postdata)
+			} else if strings.HasSuffix(postBody.ContentType(), "json") {
+				return rc.DoWithJson(method, authContext, url, postdata)
+			} else {
+				return rc.DoWithForm(method, authContext, url, postdata)
+			}
+		}
 	}
 
 	// Need to consider having a make job function
