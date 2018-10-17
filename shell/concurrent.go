@@ -114,6 +114,17 @@ func ProcessJob(makeJob JobMaker, completion JobCompletion, cancel *bool) *Bench
 	return &bm
 }
 
+// MakeJobCompletionForExpectedStatus -- Create a completion handler
+// to accept a different status than StatusOK
+func MakeJobCompletionForExpectedStatus(status int) JobCompletion {
+	return func(job int, bm *Benchmark, resp *RestResponse) {
+		if resp.GetStatus() != status {
+			msg := resp.GetStatusString()
+			bm.SetIterationStatus(job, errors.New(msg))
+		}
+	}
+}
+
 // Function overlaps the creation of a job with a delay as job
 // creation could potentially make network calls
 func makeJobWithThrottle(makejob JobMaker, throttleMs int) JobProcessor {

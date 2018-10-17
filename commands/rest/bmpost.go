@@ -10,6 +10,7 @@ type BmPostCommand struct {
 	// Place getopt option value pointers here
 	useSubstitution             *bool
 	useSubstitutionPerIteration *bool
+	optionExpectedStatus        *int
 	postOptions                 PostOptions
 	// Processing variables
 	aborted bool
@@ -23,6 +24,7 @@ func (cmd *BmPostCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.useSubstitution = set.BoolLong("subst", 0, "Run variable substitution on initial post data")
 	cmd.useSubstitutionPerIteration = set.BoolLong("subst-per-call", 0, "Run variable substitution on post data for each post")
+	cmd.optionExpectedStatus = set.IntLong("expect-status", 0, 200, "Expected status from post [default=200]")
 	cmd.postOptions = AddPostOptions(set)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
 }
@@ -56,8 +58,8 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	// Get an auth context
 	var authContext = shell.GetCmdBasicAuthContext(shell.GetCmdQueryParamAuthContext(GetBaseAuthContext()))
 
-	// Execute command using the job processor which supports
-	// iterations and concurrency
+	// Build the job processor that can perform substitution
+	// on each iteration if required
 	var client = shell.NewRestClientFromOptions()
 	jobMaker := func() shell.JobProcessor {
 		rc := &client
@@ -82,10 +84,9 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 		}
 	}
 
-	// Need to consider having a make job function
-	// that can do pre-processing
-
-	bm := shell.ProcessJob(jobMaker, nil, &cmd.aborted)
+	// Execute command using the job processor which supports
+	// iterations and concurrency
+	bm := shell.ProcessJob(jobMaker, shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus), &cmd.aborted)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"
