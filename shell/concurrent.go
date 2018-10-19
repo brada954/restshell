@@ -2,6 +2,7 @@ package shell
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -56,10 +57,15 @@ func ProcessJob(makeJob JobMaker, completion JobCompletion, cancel *bool) *Bench
 				}
 
 				if job >= 0 {
-					processor := makeJobWithThrottle(makeJob, GetCmdIterationThrottleMs())
-
+					processor, err := makeJobWithThrottle(makeJob, GetCmdIterationThrottleMs())
+					if err != nil {
+						bm.StartIteration(job)
+						bm.EndIteration(job)
+						bm.SetIterationStatus(job, err)
+						continue
+					}
 					bm.StartIteration(job)
-					resp, err := processor()
+					resp, err := callJobWithPanicHandler(processor)
 					bm.EndIteration(job)
 					if err != nil {
 						bm.SetIterationStatus(job, err)
@@ -68,16 +74,18 @@ func ProcessJob(makeJob JobMaker, completion JobCompletion, cancel *bool) *Bench
 							// Handle command specific completion
 							completion(job, &bm, resp)
 						} else if resp.GetStatus() != http.StatusOK {
-							// Handle default completion
-							// TODO: This should not be an error
+							// Handle default completion; expects 200 status
+							// Use a custom completion handler for different statuses
 							msg := resp.GetStatusString()
 							bm.SetIterationStatus(job, errors.New(msg))
 						}
 					}
 				} else {
 					// Performing warming; do not care ab out throttling or results
-					processor := makeJob()
-					_, _ = processor()
+					processor, err := makeJobWithThrottle(makeJob, 0)
+					if err == nil {
+						_, _ = callJobWithPanicHandler(processor)
+					}
 				}
 			}
 		}()
@@ -127,8 +135,14 @@ func MakeJobCompletionForExpectedStatus(status int) JobCompletion {
 
 // Function overlaps the creation of a job with a delay as job
 // creation could potentially make network calls
-func makeJobWithThrottle(makejob JobMaker, throttleMs int) JobProcessor {
-	var processor JobProcessor
+func makeJobWithThrottle(makejob JobMaker, throttleMs int) (processor JobProcessor, err error) {
+	defer func() {
+		// Absorb panics from make job
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Make Job Panic'ed: %v", r)
+			processor = nil
+		}
+	}()
 
 	if throttleMs > 0 {
 		// When throttling overlap make job and delay
@@ -142,5 +156,17 @@ func makeJobWithThrottle(makejob JobMaker, throttleMs int) JobProcessor {
 	} else {
 		processor = makejob()
 	}
-	return processor
+	return processor, nil
+}
+
+func callJobWithPanicHandler(processor JobProcessor) (resp *RestResponse, err error) {
+	defer func() {
+		// Absorb panics from make job
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Job Panic'ed: %v", r)
+			resp = nil
+		}
+	}()
+
+	return processor()
 }

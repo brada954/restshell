@@ -270,10 +270,19 @@ func getRandomUserData() (Consumer, error) {
 	}
 
 	err = json.Unmarshal(body, &result)
+	if err != nil {
+		if shell.IsCmdDebugEnabled() {
+			fmt.Println(string(body))
+		}
+		return consumer, err
+	}
+
 	if len(result.Consumers) == 0 {
 		return consumer, errors.New("No users returned")
 	}
-	fmt.Printf("%v\n", result.Consumers[0])
+	if shell.IsCmdDebugEnabled() {
+		fmt.Printf("%v\n", result.Consumers[0])
+	}
 	return result.Consumers[0], err
 }
 
