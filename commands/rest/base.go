@@ -8,6 +8,7 @@ import (
 	"github.com/brada954/restshell/shell"
 )
 
+// Constants for keys of stored globals
 var (
 	RESTBASEURLKEY  = "RestBaseUrl"
 	RESTBASEAUTHKEY = "RestBaseAuth"
@@ -15,7 +16,8 @@ var (
 
 type BaseCommand struct {
 	// Place getopt option value pointers here
-	clearOption *bool
+	clearOption     *bool
+	clearAuthOption *bool
 }
 
 func NewBaseCommand() *BaseCommand {
@@ -25,6 +27,7 @@ func NewBaseCommand() *BaseCommand {
 func (cmd *BaseCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[baseurl]")
 	cmd.clearOption = set.BoolLong("clear", 'c', "Clear the base URL")
+	cmd.clearAuthOption = set.BoolLong("clear-auth", 0, "Clear the base auth context")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth)
 }
 
@@ -32,6 +35,10 @@ func (cmd *BaseCommand) Execute(args []string) error {
 	// Validate arguments
 	if *cmd.clearOption {
 		shell.RemoveGlobal(RESTBASEURLKEY)
+		shell.SetAuthContext(RESTBASEAUTHKEY, nil)
+	}
+
+	if *cmd.clearAuthOption {
 		shell.SetAuthContext(RESTBASEAUTHKEY, nil)
 	}
 

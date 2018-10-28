@@ -45,13 +45,11 @@ var AnonymousAuth = NoAuth{}
 var authContexts map[string]Auth = map[string]Auth{
 	"Anon":    AnonymousAuth,
 	"Default": BasicAuth{},
-	"User":    CookieAuth{},
-	"Gers":    QueryParamAuth{},
 }
 
 func GetAuthContext(ctx string) (Auth, error) {
 	auth, ok := authContexts[ctx]
-	if !ok {
+	if !ok || auth == nil {
 		return nil, errors.New("Not Found")
 	}
 	return auth, nil
@@ -95,32 +93,6 @@ func (a NoAuth) AddAuth(req *http.Request) {
 
 func (a NoAuth) ToString() string {
 	return "{no auth}"
-}
-
-func NewCookieAuth(n string, t string) CookieAuth {
-	return CookieAuth{n, t}
-}
-
-func (a CookieAuth) IsAuthed() bool {
-	return a.AuthToken != ""
-}
-
-func (a CookieAuth) AddAuth(req *http.Request) {
-	if a.IsAuthed() {
-		if IsCmdDebugEnabled() {
-			fmt.Fprintf(ConsoleWriter(), "Adding cookie to request: %s\n", a.AuthToken)
-		}
-		cookie := http.Cookie{Name: a.CookieName, Value: a.AuthToken}
-		req.AddCookie(&cookie)
-	} else {
-		if IsCmdDebugEnabled() {
-			fmt.Fprintln(ConsoleWriter(), "Cookie is not authed, not adding")
-		}
-	}
-}
-
-func (a CookieAuth) ToString() string {
-	return a.CookieName
 }
 
 func NewJwtHeaderAuth(t string) JwtHeaderAuth {

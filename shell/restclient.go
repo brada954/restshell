@@ -124,8 +124,9 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 		fmt.Fprintln(OutputWriter(), "Sending Headers:")
 		dumpHeaders(OutputWriter(), req)
 
+		fmt.Fprintln(OutputWriter(), "Sending Cookies:")
 		for _, c := range req.Cookies() {
-			fmt.Fprintf(OutputWriter(), "Cookie:\n%s=%s\n", c.Name, c.Value)
+			fmt.Fprintf(OutputWriter(), "%s=%s\n", c.Name, c.Value)
 		}
 	}
 
