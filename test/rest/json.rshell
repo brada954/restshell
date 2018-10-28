@@ -37,4 +37,23 @@ assert noerr
 assert hstatus 404
 assert --report
 REM ####################################################################
+REM ##
+REM ## Post a json parameter to fake JSON Api
+REM ##
+@post -s --json "{}" /posts
+assert noerr
+assert hstatus 201
+assert EQ id 101
+assert --report
+REM ####################################################################
+REM ##
+REM ## Post a json parameter to fake JSON Api
+REM ##
+set -v $TESTJSONPOST={}
+@post -s --json-var $TESTJSONPOST /posts
+assert noerr
+assert hstatus 201
+assert EQ id 101
+assert --report
+REM ####################################################################
 assert --report-sum
