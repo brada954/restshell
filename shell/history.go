@@ -18,14 +18,16 @@ var history = make([]Result, 0)
 
 // Error variables
 var (
-	ErrArguments        = errors.New("Invalid arguments")
-	ErrInvalidValue     = errors.New("Invalid value type")
-	ErrNotFound         = errors.New("Node not found")
-	ErrInvalidKey       = errors.New("Node path error")
-	ErrUnexpectedType   = errors.New("Node is unexpected type")
-	ErrDataType         = errors.New("Invalid history data type")
-	ErrNoHistory        = errors.New("History not present")
-	ErrArrayOutOfBounds = errors.New("Array index out of bounds")
+	ErrArguments         = errors.New("Invalid arguments")
+	ErrInvalidValue      = errors.New("Invalid value type")
+	ErrNotFound          = errors.New("Node not found")
+	ErrInvalidKey        = errors.New("Node path error")
+	ErrUnexpectedType    = errors.New("Node is unexpected type")
+	ErrDataType          = errors.New("Invalid history data type")
+	ErrNoHistory         = errors.New("History not present")
+	ErrArrayOutOfBounds  = errors.New("Array index out of bounds")
+	ErrInvalidSubCommand = errors.New("Invalid sub-command")
+	ErrNotImplemented    = errors.New("Command not implemented")
 )
 
 // ResultContentType -- types of result data

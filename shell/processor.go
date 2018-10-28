@@ -218,7 +218,7 @@ func parseAndExecute(cmd Command, command string, tokens []string) error {
 		if len(tokens) > 1 && !strings.HasPrefix(tokens[1], "-") {
 			subCommand = strings.ToUpper(tokens[1])
 			if !ContainsCommand(subCommand, subCommands) {
-				return errors.New("Invalid sub-command: " + command + " " + subCommand)
+				return errors.New("Invalid sub-command: " + subCommand)
 			}
 			parseTokens = makeSubTokenArray(command, tokens[2:])
 		}
