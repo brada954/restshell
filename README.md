@@ -18,7 +18,6 @@ Assuming the go environment is setup correctly, get the code:
 
 To build, open a command window at the root of the repository and execute:
 
-    cd restshell
     go build
 
 To run, execute:
@@ -63,31 +62,29 @@ complicated test scripts.
 For more information consult the repository README.md file
 
 Http commands:
-  BASE        GET         POST
+  BASE        GET         POST        LOGIN
 
 Benchmark commands:
-  BMGET
+  BMGET       BMPOST
 
 Result Processing commands:
   ASSERT
 
 Utility commands:
-  REM         RUN         QUIT        SET         ALIAS
-  DEBUG       SILENT      DIFF        VERBOSE     DIR
-  CD          LOG         ENV         SLEEP       PAUSE
-  EXAMPLE     EXQUERY
+  REM         RUN         QUIT        LOAD        DUMP
+  SET         ALIAS       DEBUG       SILENT      DIFF
+  VERBOSE     DIR         CD          LOG         ENV
+  SLEEP       PAUSE
 
 Help commands:
   ABOUT       VERSION     HELP
-
-Kubernetes commands:
-  KUBECTL
 
 The following are special command modifiers:
 
 #  A comment character which needs to be the first character on the line
 @  An echo character which can echo the executing command including
    expanded variables and aliases
+   
 >> get --help
 Usage: GET [-dhsv] [--basic-auth value] [--certs] [--delete] [--head] [--headers value] [--nocert] [--noredirect] [--out-body] [--out-cookie] [--out-full] [--out-header] [--out-short] [--query-auth value] [-u value] [service route]
      --basic-auth=value

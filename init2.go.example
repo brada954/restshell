@@ -5,5 +5,5 @@ package main
 
 // Import command packages below as the example
 import (
-	_ "github.com/brada954/restshell/commands/example"
+	_ "github.com/brada954/restshell-example/commands/example"
 )
