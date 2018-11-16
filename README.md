@@ -3,13 +3,15 @@
 NOTE: This repository is still getting structured and some key features are still being developed. Future changes may break current usage patterns until settled.
 
 ## Overview
-RestShell is a command line driven program to execute commands and tests against REST API's or other services. Commands are intended to simplify the developer experience exercising the system as well as create repeatable tests that can easily be used by testers and developers in different environments.
+RestShell is a command line driven program to execute commands and tests against REST API's or other services. Restshell can extend its command library with custom commands to simplify interacting with specific applications or environments.
 
-RestShell has a scripting and analysis facilities to implement repeatable and disectable tests. Tests can be added through specialized commands to handle complex systems, or tests can leverage the basic capabilities and more extensive scripting. Tests can also handle verification needs as well as benchmarking and load testing.
+RestShell includes scripting and assertion facilities to implement repeatable and automated tests similar to unit testing frameworks. Tests can use the provided commands within scripts or developers can create specialized commands for more complex needs. Restshell commands can help with benchmarking and load testing as well.
 
-The benefit of RestShell is it is easy to build and maintain a library of tests that can be exectued in automation systems as well as easy to use in developer environments when isolating issues under debug. Best practices can be used to ensure scripts work in various environments.
+RestShell was designed to be used in test and developer environments to help ensure developers can reproduce issues discovered in testing as well as isolating the specific functions that have issues. Best practices can be used to ensure scripts work in various environments.
 
-Note: Developers are encouraged to develop their own commands to target the API's they are testing. Many of the ease-of-use features are part of private commands not included in the public version. Stay tuned for more examples demonstrating these capabilities as the generic commands get updated (see restshell-example repository).
+> Note: Developers are encouraged to develop custom commands targeting their application needs. A custom command that executes a logon to a custom app would be easier to use then a generic post command and extracting authentication tokens. Many of the ease-of-use features are part of private commands not included in the public version. 
+
+See the restshell-example repository to an example on building a custom Restshell.
 
 ## Build
 Assuming the go environment is setup correctly, get the code:
@@ -32,7 +34,7 @@ After invoking RestShell, a command can be entered with any required or optional
 ```
 >> get --url http://api.ipify.org/?format=json  
 Response:
-{"ip":"73.49.22.163"}
+{"ip":"123.123.123.123"}
 >> assert ISSTR ip  
 >> assert NOSTR ip  
 ASSERT: ip: Value was an unexpected string
@@ -114,7 +116,7 @@ Usage: GET [-dhsv] [--basic-auth value] [--certs] [--delete] [--head] [--headers
 RestShell has a few command line options like -d and -v which can turn on global debug output and verbose output from all commmands instead of setting the parameter on each command.
 
 An RestShell command can be provided as arguments to RestShell when running from a shell and RestShell will execute that command and exit:
-        C:\RestShell sleep 1000
+    C:\RestShell sleep 1000
 
 ## General Operations
 
@@ -183,6 +185,12 @@ This typical commands make it easy to manage the auth context between calls. The
 To add a command, create a new package to hold your commands. The command package should use an init() function to register the commands with the shell (see restshell-example\commands\example). To link the new command package with RestShell, create an init2.go file (there is an example) to have an import reference to the new command package. This go mechanism will import of the command package and its init functino can register its commands with the RestShell.
 
 Alternatively, you can fork or copy the restshell-example repository and use your own main function and build process to use RestShell as just another package. Your main function will just call shell.RunShell() to host the RestShell shell and you can initialize all the private functions you want included.
+
+### Shell Capabilities
+More to come here but:  
+There are capabilities to handle authentication contexts and variables to be shared between commands. There are helpers to handle common handling of benchmarking, output generation, and command option handling.
+
+Review the restshell command source code to learn more.
 
 ## Dependencies
 This program uses:  
