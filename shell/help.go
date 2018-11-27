@@ -33,11 +33,13 @@ For more information consult the repository README.md file
 		}
 	}
 
-	var finaltext = `The following are special command modifiers:
+	var finaltext = `Command modifiers when prefixing command:
 
-#  A comment character which needs to be the first character on the line
-@  An echo character which can echo the executing command including 
-   expanded variables and aliases`
+#  Comment character to ignore the content on the line (must be first)
+@  Echo character to display the executing command including 
+   expanded variables and aliases
+$  Skip variable substitution on the command line
+`
 
 	fmt.Fprintln(ConsoleWriter())
 	fmt.Fprintln(ConsoleWriter(), finaltext)

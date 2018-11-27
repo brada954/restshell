@@ -47,7 +47,10 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 		if strings.HasPrefix(line.CmdLine, "@") {
 			line.Echo = true
 			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "@"))
-		} else if strings.HasPrefix(line.CmdLine, "!") {
+		} else if strings.HasPrefix(line.CmdLine, "$") {
+			line.NoSubstitute = true
+			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "$"))
+		} else if strings.HasPrefix(line.CmdLine, "!") { // Legacy character to be deprecated
 			line.NoSubstitute = true
 			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "!"))
 		} else {
