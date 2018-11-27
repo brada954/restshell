@@ -9,6 +9,21 @@ import (
 	"strings"
 )
 
+// GetFileContentsOfType -- read the file contents using a default extension
+// if one was not provided
+func GetFileContentsOfType(file string, extension string) (string, error) {
+	filename, err := GetValidatedFileName(file, extension)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := GetFileContents(filename)
+	if err != nil {
+		return "", err
+	}
+	return body, nil
+}
+
 func GetFileContents(filename string) (string, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {

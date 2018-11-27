@@ -16,6 +16,7 @@ const (
 	DefaultXMLVar   = ""
 	DefaultXMLFile  = ""
 	DefaultFormVar  = ""
+	DefaultBodyFile = ""
 )
 
 type PostOptions struct {
@@ -28,6 +29,7 @@ type PostOptions struct {
 	optionXMLVar     *string
 	optionForm       *string
 	optionFormVar    *string
+	optionBodyFile   *string
 	optionLastResult *bool
 }
 
@@ -61,15 +63,25 @@ func AddPostOptions(set shell.CmdSet) PostOptions {
 	options.optionJson = set.StringLong("json", 0, DefaultJsonBody, "Send the given json in the body", "json")
 	options.optionForm = set.StringLong("form", 0, DefaultFormBody, "Send the given form body", "form")
 	options.optionFormVar = set.StringLong("form-var", 0, DefaultFormVar, "Use a named variable as body of form", "name")
-	options.optionJsonFile = set.StringLong("json-file", 0, DefaultJsonFile, "Use the given file for json request")
+	options.optionJsonFile = set.StringLong("json-file", 0, DefaultJsonFile, "Use the given file for json request", "file")
 	options.optionXMLVar = set.StringLong("xml-var", 0, DefaultXMLVar, "Use a named variable as body of XML request", "name")
-	options.optionXMLFile = set.StringLong("xml-file", 0, DefaultXMLFile, "Use the given file for xml request")
+	options.optionXMLFile = set.StringLong("xml-file", 0, DefaultXMLFile, "Use the given file for xml request", "file")
+	options.optionBodyFile = set.StringLong("body", 0, DefaultBodyFile, "Send the given file in the body", "file")
 	options.optionLastResult = set.BoolLong("result", 0, "Use last result in post body")
 	return options
 }
 
+func getPostBodyFromFile(filename, extension, contentType string) (*PostBody, error) {
+	body, err := shell.GetFileContentsOfType(filename, extension)
+	if err != nil {
+		return nil, err
+	}
+	return &PostBody{body: body, contentType: contentType}, nil
+}
+
 // GetPostBody -- Get a post body based on post options
 func (p *PostOptions) GetPostBody() (*PostBody, error) {
+
 	if *p.optionJson != DefaultJsonBody {
 		return &PostBody{body: *p.optionJson, contentType: "application/json"}, nil
 	} else if *p.optionJsonVar != DefaultJsonVar {
@@ -79,26 +91,11 @@ func (p *PostOptions) GetPostBody() (*PostBody, error) {
 	} else if *p.optionForm != DefaultFormBody {
 		return &PostBody{body: *p.optionForm, contentType: "application/x-www-form-urlencoded"}, nil
 	} else if *p.optionJsonFile != DefaultJsonFile {
-		filename, err := shell.GetValidatedFileName(*p.optionJsonFile, "json")
-		if err != nil {
-			return nil, err
-		}
-
-		body, err := shell.GetFileContents(filename)
-		if err != nil {
-			return nil, err
-		}
-		return &PostBody{body: body, contentType: "application/json"}, nil
+		return getPostBodyFromFile(*p.optionJsonFile, "json", "application/json")
 	} else if *p.optionXMLFile != DefaultXMLFile {
-		filename, err := shell.GetValidatedFileName(*p.optionXMLFile, ".xml")
-		if err != nil {
-			return nil, err
-		}
-		body, err := shell.GetFileContents(filename)
-		if err != nil {
-			return nil, err
-		}
-		return &PostBody{body: body, contentType: "application/xml"}, nil
+		return getPostBodyFromFile(*p.optionXMLFile, "xml", "application/xml")
+	} else if *p.optionBodyFile != DefaultBodyFile {
+		return getPostBodyFromFile(*p.optionBodyFile, "txt", "text/plain")
 	} else if *p.optionFormVar != DefaultFormVar {
 		return &PostBody{body: shell.GetGlobalStringWithFallback(*p.optionFormVar, ""), contentType: "application/x-www-form-urlencoded"}, nil
 	} else if *p.optionLastResult {

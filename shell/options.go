@@ -259,7 +259,7 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 				globalOptions.fullOutputOption = set.BoolLong("out-full", 0, "Output all response data")
 			}
 			if globalOptions.fileOutputOption == nil {
-				globalOptions.fileOutputOption = set.StringLong("out-file", 0, "", "Output result to a file")
+				globalOptions.fileOutputOption = set.StringLong("out-file", 0, "", "Output result to a file", "file")
 			}
 			if globalOptions.prettyPrintOption == nil {
 				globalOptions.prettyPrintOption = set.BoolLong("pretty", 0, "Pretty print output")
