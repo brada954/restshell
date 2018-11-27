@@ -43,20 +43,7 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 	}
 
 	// Process prefixes, Triming them one at a time
-	for notDone := true; notDone; {
-		if strings.HasPrefix(line.CmdLine, "@") {
-			line.Echo = true
-			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "@"))
-		} else if strings.HasPrefix(line.CmdLine, "$") {
-			line.NoSubstitute = true
-			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "$"))
-		} else if strings.HasPrefix(line.CmdLine, "!") { // Legacy character to be deprecated
-			line.NoSubstitute = true
-			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "!"))
-		} else {
-			notDone = false
-		}
-	}
+	line.handleSpecialCharacters()
 
 	if len(shellPrefix) > 0 {
 		line.CmdLine = strings.TrimSpace(shellPrefix + line.CmdLine)
@@ -74,6 +61,7 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 		} else {
 			line.CmdLine = alias
 		}
+		line.handleSpecialCharacters()
 	}
 
 	if !line.NoSubstitute {
@@ -103,5 +91,22 @@ func (line *Line) splitCommandAndArgs() {
 	}
 	if len(args) > 1 {
 		line.ArgString = strings.TrimSpace(args[1])
+	}
+}
+
+func (line *Line) handleSpecialCharacters() {
+	for notDone := true; notDone; {
+		if strings.HasPrefix(line.CmdLine, "@") {
+			line.Echo = true
+			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "@"))
+		} else if strings.HasPrefix(line.CmdLine, "$") {
+			line.NoSubstitute = true
+			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "$"))
+		} else if strings.HasPrefix(line.CmdLine, "!") { // Legacy character to be deprecated
+			line.NoSubstitute = true
+			line.CmdLine = strings.TrimSpace(strings.TrimLeft(line.CmdLine, "!"))
+		} else {
+			notDone = false
+		}
 	}
 }
