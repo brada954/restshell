@@ -25,6 +25,7 @@ type AssertCommand struct {
 	testOption      *bool
 	skipOnErrOption *bool
 	useAuthTokenMap *bool
+	expectError     *bool
 	executedAsserts int
 	failedAsserts   int
 	totalFailures   int
@@ -61,6 +62,7 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.allowNil = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
 	cmd.useAuthTokenMap = set.BoolLong("auth-claims", 0, "Assert against auth claims")
+	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
@@ -117,7 +119,7 @@ func (cmd *AssertCommand) Execute(args []string) error {
 	}
 
 	err = cmd.executeAssertions(valueModifierFunc, result, args)
-	if err != nil {
+	if (*cmd.expectError && err == nil) || (!*cmd.expectError && err != nil) {
 		cmd.failedAsserts = cmd.failedAsserts + 1
 		cmd.totalFailures = cmd.totalFailures + 1
 	}

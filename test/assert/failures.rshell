@@ -1,12 +1,16 @@
 REM =========================================================
 REM ==  TEST ASSERT FAILURES
 REM == 
-REM ==  All the following tests should fail
+REM ==  All the following tests should fail but
+REM ==  not counted as failures
 REM =========================================================
-assert --clear --new
-assert eq -v --test test notthis
+assert --new
+assert eq -v --test --expect-error test notthis
+assert isint -v --test --float --expect-error 123.3
 REM =========================================================
 REM ==
-REM == Summary should have All failures
+REM == Summary failures indicate unexpected successful asserts
 REM ==
+assert --report
 assert --report-sum --new 
+REM =========================================================

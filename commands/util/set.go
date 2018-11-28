@@ -160,12 +160,16 @@ func processArg(cmd *SetCommand, arg string) {
 		}
 
 		if len(value) > 0 || *cmd.allowEmpty {
+			var err error = nil
+
 			if *cmd.initOnly {
-				shell.InitializeGlobal(parts[0], value)
+				err = shell.InitializeGlobal(parts[0], value)
 			} else {
-				shell.SetGlobal(parts[0], value)
+				err = shell.SetGlobal(parts[0], value)
 			}
-			if shell.IsCmdVerboseEnabled() {
+			if err != nil {
+				fmt.Fprintf(shell.ErrorWriter(), "%s: %s\n", err.Error(), parts[0])
+			} else if shell.IsCmdVerboseEnabled() {
 				fmt.Fprintf(shell.OutputWriter(), "%s=%s\n", parts[0], shell.GetGlobal(parts[0]))
 			}
 		}

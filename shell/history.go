@@ -21,7 +21,8 @@ var (
 	ErrArguments         = errors.New("Invalid arguments")
 	ErrInvalidValue      = errors.New("Invalid value type")
 	ErrNotFound          = errors.New("Node not found")
-	ErrInvalidKey        = errors.New("Node path error")
+	ErrInvalidPath       = errors.New("Node path error")
+	ErrInvalidKey        = errors.New("Invalid key")
 	ErrUnexpectedType    = errors.New("Node is unexpected type")
 	ErrDataType          = errors.New("Invalid history data type")
 	ErrNoHistory         = errors.New("History not present")
@@ -338,7 +339,7 @@ func GetJsonNode(path string, i interface{}) (interface{}, error) {
 	}
 
 	if len(parts) <= 0 {
-		return nil, ErrInvalidKey
+		return nil, ErrInvalidPath
 	}
 
 	arrIndex := -1
@@ -346,7 +347,7 @@ func GetJsonNode(path string, i interface{}) (interface{}, error) {
 	if len(arrParts) > 1 {
 		index, err := strconv.Atoi(strings.Trim(arrParts[1], "]"))
 		if err != nil {
-			return nil, ErrInvalidKey
+			return nil, ErrInvalidPath
 		}
 		arrIndex = index
 	}

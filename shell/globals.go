@@ -24,6 +24,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -52,15 +53,24 @@ func EnableGlobalOptions() {
 	displayHelp = getopt.BoolLong("help", 'h', "Display help")
 }
 
-func SetGlobal(key string, value interface{}) {
+func SetGlobal(key string, value interface{}) error {
+	if !IsValidKey(key) {
+		return ErrInvalidKey
+	}
 	globalStore[key] = value
+	return nil
 }
 
 // Only set the global if not initialized already
-func InitializeGlobal(key string, value interface{}) {
+func InitializeGlobal(key string, value interface{}) error {
+	if !IsValidKey(key) {
+		return ErrInvalidKey
+	}
+
 	if _, ok := globalStore[key]; !ok {
 		globalStore[key] = value
 	}
+	return nil
 }
 
 func GetGlobal(key string) interface{} {
@@ -122,6 +132,14 @@ func EnumerateGlobals(fn func(key string, value interface{}), filter func(string
 
 func RemoveGlobal(key string) {
 	delete(globalStore, key)
+}
+
+func IsValidKey(key string) bool {
+	var isValidKey = regexp.MustCompile(`^[a-zA-Z$_]+$`).MatchString
+	if !isValidKey(key) {
+		return false
+	}
+	return true
 }
 
 //////////////////////////////////////////////////////////////////////////

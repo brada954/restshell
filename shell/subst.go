@@ -78,7 +78,7 @@ type SubstitutionItemHelp struct {
 // Mapping of a function name to handler record identifying the group and handler
 var handlerMap = make(map[string]SubstitutionFunction)
 
-var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0-9\.]*)(?:,\s*\"([a-zA-Z0-9=\.\,\;\:_\-\+\*\?\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
+var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0-9\.$_]*)(?:,\s*\"([a-zA-Z0-9=\.\,\;\:_\-\+\*\?\\\/\$\%\@\!\~\'\s]+?)\")?)?\s*\)%%`
 
 // RegisterSubstitutionHandler -- Register a substitution function
 func RegisterSubstitutionHandler(function SubstitutionFunction) {

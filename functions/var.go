@@ -21,14 +21,13 @@ var Quote = shell.SubstitutionFunction{
 }
 
 // Quote -- quote the input string including escaping inner quotes and escape sequences
-func QuoteSubstitute(cache interface{}, subname string, format string, option string) (value string, data interface{}) {
+func QuoteSubstitute(cache interface{}, funcName string, format string, option string) (value string, data interface{}) {
 	if cache == nil {
-		if format == "var" {
-			value = shell.GetGlobalString(option)
-		} else {
-			value = option
-		}
+		value = shell.GetGlobalString(format)
+	} else {
+		value = cache.(string)
 	}
+
 	return QuoteString(value), value
 }
 
