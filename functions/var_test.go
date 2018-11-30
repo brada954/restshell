@@ -13,7 +13,7 @@ func TestQuoteSubstitution(t *testing.T) {
 
 func testQuoteSubstitution(t *testing.T, input string, expected string) {
 	shell.SetGlobal("testvar", input)
-	result := shell.PerformVariableSubstitution("JSON: %%quote(1,var,\"testvar\")%%.")
+	result := shell.PerformVariableSubstitution("JSON: %%quote(1,testvar)%%.")
 	expected = "JSON: " + expected + "."
 	if result != expected {
 		t.Errorf("Text was not expected: %s!=%s", expected, result)

@@ -90,7 +90,7 @@ func testConvertToIntModError(t *testing.T, value interface{}, expected string) 
 
 	// Consider having a 0 value for nil??? TBD
 	if err.Error() != expected {
-		t.Errorf("ConvertToInt returned unexpected error: %s!=%d", expected, err.Error())
+		t.Errorf("ConvertToInt returned unexpected error: %s!=%s", expected, err.Error())
 	}
 }
 

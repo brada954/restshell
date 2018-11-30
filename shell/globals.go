@@ -135,7 +135,7 @@ func RemoveGlobal(key string) {
 }
 
 func IsValidKey(key string) bool {
-	var isValidKey = regexp.MustCompile(`^[a-zA-Z$_]+$`).MatchString
+	var isValidKey = regexp.MustCompile(`^[a-zA-Z0-9$_]+$`).MatchString
 	if !isValidKey(key) {
 		return false
 	}

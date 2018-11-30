@@ -43,6 +43,7 @@ var (
 	ResultContentHtml    ResultContentType = "html"
 	ResultContentCsv     ResultContentType = "csv"
 	ResultContentForm    ResultContentType = "form"
+	ResultContentBinary  ResultContentType = "binary"
 )
 
 //
@@ -126,6 +127,8 @@ func getResultTypeFromContentType(contentType string) ResultContentType {
 		return ResultContentText
 	} else if strings.HasPrefix(contentType, "text/html") {
 		return ResultContentHtml
+	} else if strings.HasPrefix(contentType, "application/octet-stream") {
+		return ResultContentBinary
 	} else if strings.Contains(contentType, "text/csv") {
 		return ResultContentCsv
 	}

@@ -108,6 +108,8 @@ func (r *Result) addParsedContentToResult(contentType string, data string) {
 		r.Map = makeRootMap(data)
 	case "csv":
 		r.Map = makeRootMap(data)
+	case ResultContentBinary:
+		r.Map = makeRootMap("")
 	default:
 		r.Map = makeRootMap("Unsupported content type returned: " + r.ContentType)
 	}
