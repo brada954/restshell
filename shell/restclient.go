@@ -354,7 +354,6 @@ func addHeaders(req *http.Request, headerParam string) error {
 		}
 	}
 	for key, value := range headers {
-		fmt.Printf("Adding header: %s=%s\n", key, value)
 		req.Header.Add(key, value)
 	}
 	return nil
