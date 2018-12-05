@@ -101,5 +101,28 @@ func (cmd *LoginCommand) SetCookieAuth(args []string) error {
 }
 
 func (cmd *LoginCommand) SetHeaderAuth(args []string) error {
-	return shell.ErrNotImplemented
+	authContext := NewHeaderAuth()
+	errCnt := 0
+
+	// Execute commands
+	for _, arg := range args {
+		headers := strings.Split(arg, ";")
+		for _, c := range headers {
+			pair := strings.SplitN(c, "=", 2)
+			if len(pair) == 2 {
+				for _, v := range strings.Split(pair[1], ",") {
+					authContext.AddHeader(pair[0], v)
+				}
+			} else {
+				fmt.Fprintf(shell.ErrorWriter(), "Skipping invalid header: %s\n", c)
+				errCnt++
+			}
+		}
+	}
+
+	if errCnt == 0 {
+		shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
+		return nil
+	}
+	return errors.New("Invalid parameters, no authentication saved")
 }
