@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/brada954/restshell/shell"
+	"github.com/brada954/restshell/shell/modifiers"
 )
 
 // Support for unittesting
@@ -24,6 +25,7 @@ type SetCommand struct {
 	valueIsEnvVar     *bool
 	allowEmpty        *bool
 	deleteTempOption  *bool
+	modifierOptions   modifiers.ModifierOptions
 }
 
 func NewSetCommand() *SetCommand {
@@ -47,6 +49,7 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	cmd.valueIsFile = set.BoolLong("file", 0, "Use the value as a file name to read for value")
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
+	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
@@ -88,6 +91,7 @@ func processArg(cmd *SetCommand, arg string) {
 		shell.RemoveGlobal(parts[0])
 	} else {
 		var value = ""
+
 		if len(parts) > 1 {
 			value = parts[1]
 		}
@@ -161,6 +165,14 @@ func processArg(cmd *SetCommand, arg string) {
 
 		if len(value) > 0 || *cmd.allowEmpty {
 			var err error = nil
+
+			valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
+			if v, err := valueModifierFunc(value); err != nil {
+				fmt.Fprintln(shell.ErrorWriter(), "Modifier Failure:", err.Error())
+				return
+			} else {
+				value = fmt.Sprintf("%v", v)
+			}
 
 			if *cmd.initOnly {
 				err = shell.InitializeGlobal(parts[0], value)

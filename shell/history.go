@@ -152,10 +152,7 @@ func makeResultMapFromJson(data string) (interface{}, error) {
 		return m, nil
 	}
 
-	if IsCmdDebugEnabled() {
-		fmt.Fprintln(ConsoleWriter(), "Unknown/unsupported data type for history buffer")
-	}
-	return nil, ErrUnexpectedType
+	return makeRootMap(fmt.Sprintf("%v", f)), nil
 }
 
 func makeXMLDOM(data string) (*xmldom.Document, error) {
@@ -202,10 +199,6 @@ func GetValueFromHistory(index int, path string) (string, error) {
 	result, err := PeekResult(index)
 	if err != nil {
 		return "", err
-	}
-
-	if path == "/" {
-		return result.Text, nil
 	}
 
 	node, err := GetNode(path, result)
