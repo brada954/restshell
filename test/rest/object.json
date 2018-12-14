@@ -1,0 +1,5 @@
+{
+    "string": "this is a \"string\"",
+    "number" : 123.343,
+    "int" : 321
+}

@@ -152,7 +152,9 @@ func makeResultMapFromJson(data string) (interface{}, error) {
 		return m, nil
 	}
 
-	return makeRootMap(fmt.Sprintf("%v", f)), nil
+	m := make(map[string]interface{}, 1)
+	m["/"] = f
+	return m, nil
 }
 
 func makeXMLDOM(data string) (*xmldom.Document, error) {
