@@ -12,6 +12,7 @@ type ModifierOptions struct {
 	strToIntOption   *bool
 	strToFloatOption *bool
 	lenOption        *bool
+	quoteOption      *bool
 }
 
 // AddModifierOptions -- Add options for modifiers
@@ -23,6 +24,7 @@ func AddModifierOptions(set shell.CmdSet) ModifierOptions {
 	options.strToIntOption = set.BoolLong("int", 0, "Convert string value to int (2nd)")
 	options.strToFloatOption = set.BoolLong("float", 0, "Convert string value to float (3rd)")
 	options.lenOption = set.BoolLong("len", 0, "Use the length of the value (4th)")
+	options.quoteOption = set.BoolLong("quote", 0, "Quote a string and escape internal quotes")
 	return options
 }
 
@@ -44,6 +46,9 @@ func ConstructModifier(options ModifierOptions) ValueModifier {
 	}
 	if len(*options.regexOption) > 0 {
 		valueModifierFunc = MakeRegExModifier(*options.regexOption, valueModifierFunc)
+	}
+	if *options.quoteOption {
+		valueModifierFunc = MakeQuoteModifier(valueModifierFunc)
 	}
 	if *options.strToFloatOption {
 		valueModifierFunc = MakeToFloatModifier(valueModifierFunc)
