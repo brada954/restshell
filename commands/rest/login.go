@@ -85,7 +85,7 @@ func (cmd *LoginCommand) SetCookieAuth(args []string) error {
 		for _, c := range cookies {
 			pair := strings.SplitN(c, "=", 2)
 			if len(pair) == 2 {
-				authContext.AddCookie(pair[0], pair[1])
+				authContext.AddCookie(strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1]))
 			} else {
 				fmt.Fprintf(shell.ErrorWriter(), "Skipping invalid cookie: %s\n", c)
 				errCnt++
@@ -111,7 +111,7 @@ func (cmd *LoginCommand) SetHeaderAuth(args []string) error {
 			pair := strings.SplitN(c, "=", 2)
 			if len(pair) == 2 {
 				for _, v := range strings.Split(pair[1], ",") {
-					authContext.AddHeader(pair[0], v)
+					authContext.AddHeader(strings.TrimSpace(pair[0]), strings.TrimSpace(v))
 				}
 			} else {
 				fmt.Fprintf(shell.ErrorWriter(), "Skipping invalid header: %s\n", c)
