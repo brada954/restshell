@@ -16,6 +16,7 @@ type LoadCommand struct {
 	optionLoadJson   *bool
 	optionLoadText   *bool
 	optionSubstitute *bool
+	optionLoadVar    *bool
 }
 
 func NewLoadCommand() *LoadCommand {
@@ -23,11 +24,12 @@ func NewLoadCommand() *LoadCommand {
 }
 
 func (cmd *LoadCommand) AddOptions(set shell.CmdSet) {
-	set.SetParameters("file")
+	set.SetParameters("file|variable")
 
 	cmd.optionLoadXml = set.BoolLong("xml", 0, "Load as XML content")
 	cmd.optionLoadJson = set.BoolLong("json", 0, "Load as JSON content")
 	cmd.optionLoadText = set.BoolLong("text", 0, "Load as text content")
+	cmd.optionLoadVar = set.BoolLong("var", 0, "Load the variable value")
 	cmd.optionSubstitute = set.BoolLong("subst", 0, "Perform string substitution on loaded content")
 
 	// Add command helpers for verbose, debug, restclient and output formatting
@@ -41,14 +43,23 @@ func (cmd *LoadCommand) Execute(args []string) error {
 		return shell.ErrArguments
 	}
 
-	// Execute commands
-	file, err := os.Open(args[0])
-	if err != nil {
-		return err
-	}
+	var data string
 
-	b, err := ioutil.ReadAll(file)
-	data := string(b)
+	// Execute commands
+	if *cmd.optionLoadVar {
+		data = shell.GetGlobalString(args[0])
+	} else {
+		file, err := os.Open(args[0])
+		if err != nil {
+			return err
+		}
+
+		b, err := ioutil.ReadAll(file)
+		if err != nil {
+			return err
+		}
+		data = string(b)
+	}
 
 	if *cmd.optionSubstitute {
 		data = shell.PerformVariableSubstitution(data)
@@ -72,7 +83,7 @@ func (cmd *LoadCommand) Execute(args []string) error {
 		}
 	}
 
-	shell.PushText(contentType, data, err)
+	shell.PushText(contentType, data, nil)
 
 	if shell.IsCmdDebugEnabled() || shell.IsCmdVerboseEnabled() {
 		if shell.IsStringBinary(data) {
