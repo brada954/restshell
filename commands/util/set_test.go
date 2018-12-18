@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/brada954/restshell/shell"
-	"github.com/pborman/getopt/v2"
 )
 
 func TestEnvSetWithFoundEnvVar(t *testing.T) {
@@ -24,7 +23,7 @@ func TestEnvSetWithFoundEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 
 	processArg(cmd, varName+"=xyz")
@@ -49,7 +48,7 @@ func TestEnvSetWithNotFoundEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 
 	processArg(cmd, varName+"=xyz")
@@ -79,7 +78,7 @@ func TestEnvSetWithEmptyEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 
 	processArg(cmd, varName+"=xyz")
@@ -106,7 +105,7 @@ func TestEnvInitWithFoundEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 	cmd.initOnly = &trueValue
 
@@ -133,7 +132,7 @@ func TestEnvInitWithNotFoundEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 	cmd.initOnly = &trueValue
 
@@ -168,7 +167,7 @@ func TestEnvAllowEmptyWithEmptyEnvVar(t *testing.T) {
 	}
 
 	cmd := NewSetCommand()
-	cmd.AddOptions(getopt.New())
+	cmd.AddOptions(shell.NewCmdSet())
 	cmd.valueIsEnvVar = &trueValue
 	cmd.allowEmpty = &trueValue
 
