@@ -50,7 +50,7 @@ func (r *Result) addCookieMap(resp *RestResponse) error {
 	for _, cookie := range r.cookies {
 		cookies[cookie.Name] = cookie.Value
 	}
-	r.HeaderMap = cookies
+	r.CookieMap = cookies
 	return nil // TODO: Are there any error conditions
 }
 

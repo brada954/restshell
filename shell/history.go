@@ -46,6 +46,131 @@ var (
 	ResultContentBinary  ResultContentType = "binary"
 )
 
+// HistoryOptions -- Common options for modifiers
+type HistoryOptions struct {
+	valueIsResultPath *bool // default path into the history result
+	valueIsAuthPath   *bool
+	valueIsCookiePath *bool
+	valueIsHeaderPath *bool
+}
+
+type HistoryPathType int
+
+// Path options scenarios for different use cases
+const (
+	ResultPath     HistoryPathType = 1
+	AuthPath       HistoryPathType = 2
+	CookiePath     HistoryPathType = 3
+	HeaderPath     HistoryPathType = 4
+	AllPaths       HistoryPathType = 8
+	AlternatePaths HistoryPathType = 9 // All paths but default as default is assumed
+)
+
+// AddModifierOptions -- Add options for modifiers
+func AddHistoryOptions(set CmdSet, histType ...HistoryPathType) HistoryOptions {
+	options := HistoryOptions{}
+
+	if isHistoryOptionsRequested(ResultPath, histType) {
+		options.valueIsResultPath = set.BoolLong("path", 'p', "Use path/value to reference value in history")
+	}
+
+	if isHistoryOptionsRequested(AuthPath, histType) {
+		options.valueIsAuthPath = set.BoolLong("path-auth", 0, "Use path/value to reference JWT AuthToken value in history")
+	}
+
+	if isHistoryOptionsRequested(CookiePath, histType) {
+		options.valueIsCookiePath = set.BoolLong("path-cookie", 0, "Use path/value to reference Cookie value in history")
+	}
+	if isHistoryOptionsRequested(HeaderPath, histType) {
+		options.valueIsHeaderPath = set.BoolLong("path-header", 0, "Use path/value to reference Header value in history")
+	}
+
+	return options
+}
+
+// IsPathOption -- Is the history path option selected
+func (ho HistoryOptions) IsResultPathOption() bool {
+	return ho.valueIsResultPath != nil && *ho.valueIsResultPath
+}
+
+// IsAuthPath -- Is the Authenticadtion token path option selected to parse JWT
+func (ho HistoryOptions) IsAuthPath() bool {
+	return ho.valueIsAuthPath != nil && *ho.valueIsAuthPath
+}
+
+// IsCookiePath -- Is the cookie path option selected to extract cookie
+func (ho HistoryOptions) IsCookiePath() bool {
+	return ho.valueIsCookiePath != nil && *ho.valueIsCookiePath
+}
+
+// IsHeaderPath -- Is the history path option selected
+func (ho HistoryOptions) IsHeaderPath() bool {
+	return ho.valueIsHeaderPath != nil && *ho.valueIsHeaderPath
+}
+
+// IsPathOptionEnabled -- True if any history path option is enabled
+func (ho HistoryOptions) IsHistoryPathOptionEnabled() bool {
+	if ho.IsResultPathOption() || ho.IsAuthPath() || ho.IsCookiePath() || ho.IsHeaderPath() {
+		return true
+	}
+	return false
+}
+
+func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, error) {
+
+	if ho.IsAuthPath() {
+		return GetValueFromAuthHistory(index, path)
+	}
+
+	if ho.IsCookiePath() {
+		return GetValueFromCookieHistory(index, path)
+	}
+
+	if ho.IsHeaderPath() {
+		return GetValueFromHeaderHistory(index, path)
+	}
+	return GetValueFromResultHistory(index, path)
+}
+
+func (ho HistoryOptions) GetNode(path string, result Result) (interface{}, error) {
+	if ho.IsAuthPath() {
+		return GetJsonNode(path, result.AuthMap)
+	} else if ho.IsCookiePath() {
+		return GetMapNode(path, result.CookieMap)
+	} else if ho.IsHeaderPath() {
+		return GetMapNode(path, result.HeaderMap)
+	} else {
+		return GetNode(path, result)
+	}
+}
+
+func isHistoryOptionsRequested(t HistoryPathType, list []HistoryPathType) bool {
+	var hasAllPaths, hasAltPaths bool
+
+	for _, v := range list {
+		if v == AllPaths {
+			hasAllPaths = true
+		}
+
+		if v == AlternatePaths {
+			hasAltPaths = true
+		}
+
+		if t == v {
+			return true
+		}
+	}
+
+	if hasAllPaths {
+		return true
+	}
+
+	if hasAltPaths && t != ResultPath {
+		return true
+	}
+	return false
+}
+
 //
 // PushResponse -- Push a RestResponse into the history buffer
 //
@@ -197,7 +322,7 @@ func PeekResult(index int) (Result, error) {
 	return history[len(history)-(1+index)], nil
 }
 
-func GetValueFromHistory(index int, path string) (string, error) {
+func GetValueFromResultHistory(index int, path string) (string, error) {
 	result, err := PeekResult(index)
 	if err != nil {
 		return "", err
@@ -253,7 +378,7 @@ func GetValueFromCookieHistory(index int, path string) (string, error) {
 		fmt.Fprintf(ConsoleWriter(), "Cookie:\n%v\n", result.CookieMap)
 	}
 
-	node, err := GetJsonNode(path, convertToJSONMap(result.CookieMap))
+	node, err := GetMapNode(path, result.CookieMap)
 	if err != nil {
 		return "", err
 	}
@@ -276,7 +401,7 @@ func GetValueFromHeaderHistory(index int, path string) (string, error) {
 		fmt.Fprintf(ConsoleWriter(), "Headers:\n%v\n", result.HeaderMap)
 	}
 
-	node, err := GetJsonNode(path, convertToJSONMap(result.HeaderMap))
+	node, err := GetMapNode(path, result.HeaderMap)
 	if err != nil {
 		return "", err
 	}
@@ -325,6 +450,14 @@ func GetNode(path string, result Result) (interface{}, error) {
 		return GetNodeFromXml(path, result.XMLDocument)
 	} else {
 		return GetJsonNode(path, result.Map)
+	}
+}
+
+func GetMapNode(key string, m map[string]string) (interface{}, error) {
+	if v, ok := m[key]; ok {
+		return v, nil
+	} else {
+		return nil, ErrNotFound
 	}
 }
 
@@ -531,10 +664,11 @@ func decodeString(val string) string {
 	return string(s)
 }
 
-func convertToJSONMap(m map[string]string) map[string]interface{} {
-	result := make(map[string]interface{})
-	for n, v := range m {
-		result[n] = v
-	}
-	return result
-}
+// func convertToJSONMap(m map[string]string) map[string]interface{} {
+// 	result := make(map[string]interface{})
+// 	for n, v := range m {
+// 		fmt.Println("node:", n, v)
+// 		result[n] = v
+// 	}
+// 	return result
+// }

@@ -24,7 +24,6 @@ type AssertCommand struct {
 	messageOption   *string
 	testOption      *bool
 	skipOnErrOption *bool
-	useAuthTokenMap *bool
 	expectError     *bool
 	executedAsserts int
 	failedAsserts   int
@@ -32,6 +31,7 @@ type AssertCommand struct {
 	totalExecuted   int
 	totalSkipped    int
 	modifierOptions modifiers.ModifierOptions
+	historyOptions  shell.HistoryOptions
 }
 
 func NewAssertCommand() *AssertCommand {
@@ -61,9 +61,9 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.testOption = set.BoolLong("test", 0, "Use first argument as the value for testing")
 	cmd.allowNil = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
-	cmd.useAuthTokenMap = set.BoolLong("auth-claims", 0, "Assert against auth claims")
 	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
+	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AlternatePaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
@@ -226,6 +226,12 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 	if len(args) == 2 {
 		switch args[0] {
 		case "HSTATUS":
+			if strings.ToUpper(args[1]) == "OK" || strings.ToUpper(args[1]) == "SUCCESS" {
+				if result.HttpStatus == 200 || result.HttpStatus == 201 {
+					onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
+				}
+			}
+
 			status, err := strconv.Atoi(args[1])
 			if err != nil {
 				return errors.New("Invaid status argument: " + args[1])
@@ -248,11 +254,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 			}
 		} else {
 			var err error
-			if *cmd.useAuthTokenMap {
-				node, err = shell.GetJsonNode(path, result.AuthMap)
-			} else {
-				node, err = shell.GetNode(path, result)
-			}
+			node, err = cmd.historyOptions.GetNode(path, result)
 			if err != nil {
 				switch args[0] {
 				case "NEX":
