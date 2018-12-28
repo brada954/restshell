@@ -220,13 +220,13 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		case "HSTATUS":
 			if strings.ToUpper(args[1]) == "OK" || strings.ToUpper(args[1]) == "SUCCESS" {
 				if result.HttpStatus == 200 || result.HttpStatus == 201 {
-					onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
+					return onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
 				}
 			}
 
 			status, err := strconv.Atoi(args[1])
 			if err != nil {
-				return errors.New("Invaid status argument: " + args[1])
+				return errors.New("Invalid status argument: " + args[1])
 			}
 			if result.HttpStatus != status {
 				return fmt.Errorf("Expected status %d; got %d", status, result.HttpStatus)

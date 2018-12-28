@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/subchen/go-xmldom"
 )
@@ -24,6 +25,73 @@ type Result struct {
 	AuthMap          HistoryMap
 	cookies          []*http.Cookie
 	headers          map[string]string
+}
+
+type ResultPayloadType int
+
+// Path options scenarios for different use cases
+const (
+	ResultPath     ResultPayloadType = 1
+	AuthPath       ResultPayloadType = 2
+	CookiePath     ResultPayloadType = 3
+	HeaderPath     ResultPayloadType = 4
+	AllPaths       ResultPayloadType = 8
+	AlternatePaths ResultPayloadType = 9 // All paths but default as default is assumed
+)
+
+func (r *Result) DumpCookies(w io.Writer) {
+	fmt.Fprintln(w, "Cookies:")
+	for _, v := range r.cookies {
+		fmt.Fprintf(w, "%s=%s (%v)\n", v.Name, v.Value, v.Expires)
+	}
+}
+
+func (r *Result) DumpHeader(w io.Writer) {
+	fmt.Fprintln(w, "Headers:")
+	for k, v := range r.headers {
+		fmt.Fprintf(w, "%s: %s\n", k, v)
+	}
+}
+
+func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
+	if IsStatus(options) && !IsHeaders(options) {
+		fmt.Fprintf(w, "HEADER: Status(%s)\n", r.HttpStatusString)
+	}
+
+	if IsHeaders(options) {
+		r.DumpHeader(w)
+	}
+
+	if IsCookies(options) {
+		r.DumpCookies(w)
+	}
+
+	if IsBody(options) {
+		if IsStringBinary(r.Text) {
+			fmt.Fprintln(w, "Response contains too many unprintable characters to display")
+		} else {
+			line := r.Text
+			if IsPrettyPrint(options) {
+				switch getResultTypeFromContentType(r.ContentType) {
+				case "xml":
+					{
+						if doc, err := xmldom.ParseXML(line); err == nil {
+							line = doc.XMLPrettyEx("    ")
+						}
+					}
+				case "json":
+					{
+						var prettyJSON bytes.Buffer
+						err := json.Indent(&prettyJSON, []byte(line), "", "\t")
+						if err == nil {
+							line = prettyJSON.String()
+						}
+					}
+				}
+			}
+			fmt.Fprintf(w, "Response:\n%s\n", line)
+		}
+	}
 }
 
 func (r *Result) addCookieMap(resp *RestResponse) error {
@@ -101,57 +169,33 @@ func (r *Result) addParsedContentToResult(contentType string, data string) {
 	}
 }
 
-func (r *Result) DumpCookies(w io.Writer) {
-	fmt.Fprintln(w, "Cookies:")
-	for _, v := range r.cookies {
-		fmt.Fprintf(w, "%s=%s (%v)\n", v.Name, v.Value, v.Expires)
-	}
-}
-
-func (r *Result) DumpHeader(w io.Writer) {
-	fmt.Fprintln(w, "Headers:")
-	for k, v := range r.headers {
-		fmt.Fprintf(w, "%s: %s\n", k, v)
-	}
-}
-
-func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
-	if IsStatus(options) && !IsHeaders(options) {
-		fmt.Fprintf(w, "HEADER: Status(%s)\n", r.HttpStatusString)
+// getResultTypeFromResponse -- Get the result type
+//   xml, json, text, html, css, csv, media, unknown
+func getResultTypeFromContentType(contentType string) ResultContentType {
+	// Split off parameters
+	parts := strings.Split(contentType, ";")
+	if len(parts) == 0 {
+		return ResultContentUnknown
 	}
 
-	if IsHeaders(options) {
-		r.DumpHeader(w)
+	contentType = strings.TrimSpace(strings.ToLower(parts[0]))
+	if strings.HasPrefix(contentType, "application/xml") ||
+		strings.HasSuffix(contentType, "+xml") {
+		return ResultContentXml
+	} else if strings.HasPrefix(contentType, "application/json") ||
+		strings.HasSuffix(contentType, "+json") {
+		return ResultContentJson
+	} else if strings.HasPrefix(contentType, "text/plain") ||
+		strings.HasPrefix(contentType, "text/calendar") ||
+		strings.HasPrefix(contentType, "text/css") {
+		return ResultContentText
+	} else if strings.HasPrefix(contentType, "text/html") {
+		return ResultContentHtml
+	} else if strings.HasPrefix(contentType, "application/octet-stream") {
+		return ResultContentBinary
+	} else if strings.Contains(contentType, "text/csv") {
+		return ResultContentCsv
 	}
 
-	if IsCookies(options) {
-		r.DumpCookies(w)
-	}
-
-	if IsBody(options) {
-		if IsStringBinary(r.Text) {
-			fmt.Fprintln(w, "Response contains too many unprintable characters to display")
-		} else {
-			line := r.Text
-			if IsPrettyPrint(options) {
-				switch getResultTypeFromContentType(r.ContentType) {
-				case "xml":
-					{
-						if doc, err := xmldom.ParseXML(line); err == nil {
-							line = doc.XMLPrettyEx("    ")
-						}
-					}
-				case "json":
-					{
-						var prettyJSON bytes.Buffer
-						err := json.Indent(&prettyJSON, []byte(line), "", "\t")
-						if err == nil {
-							line = prettyJSON.String()
-						}
-					}
-				}
-			}
-			fmt.Fprintf(w, "Response:\n%s\n", line)
-		}
-	}
+	return ResultContentUnknown
 }

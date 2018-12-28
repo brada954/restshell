@@ -56,34 +56,22 @@ type HistoryOptions struct {
 	valueIsHeaderPath *bool
 }
 
-type HistoryPathType int
-
-// Path options scenarios for different use cases
-const (
-	ResultPath     HistoryPathType = 1
-	AuthPath       HistoryPathType = 2
-	CookiePath     HistoryPathType = 3
-	HeaderPath     HistoryPathType = 4
-	AllPaths       HistoryPathType = 8
-	AlternatePaths HistoryPathType = 9 // All paths but default as default is assumed
-)
-
 // AddModifierOptions -- Add options for modifiers
-func AddHistoryOptions(set CmdSet, histType ...HistoryPathType) HistoryOptions {
+func AddHistoryOptions(set CmdSet, payloadType ...ResultPayloadType) HistoryOptions {
 	options := HistoryOptions{}
 
-	if isHistoryOptionsRequested(ResultPath, histType) {
+	if isHistoryOptionsRequested(ResultPath, payloadType) {
 		options.valueIsResultPath = set.BoolLong("path", 'p', "Use path/value to reference value in history")
 	}
 
-	if isHistoryOptionsRequested(AuthPath, histType) {
+	if isHistoryOptionsRequested(AuthPath, payloadType) {
 		options.valueIsAuthPath = set.BoolLong("path-auth", 0, "Use path/value to reference JWT AuthToken value in history")
 	}
 
-	if isHistoryOptionsRequested(CookiePath, histType) {
+	if isHistoryOptionsRequested(CookiePath, payloadType) {
 		options.valueIsCookiePath = set.BoolLong("path-cookie", 0, "Use path/value to reference Cookie value in history")
 	}
-	if isHistoryOptionsRequested(HeaderPath, histType) {
+	if isHistoryOptionsRequested(HeaderPath, payloadType) {
 		options.valueIsHeaderPath = set.BoolLong("path-header", 0, "Use path/value to reference Header value in history")
 	}
 
@@ -146,7 +134,7 @@ func (ho HistoryOptions) GetNode(path string, result Result) (interface{}, error
 	}
 }
 
-func isHistoryOptionsRequested(t HistoryPathType, list []HistoryPathType) bool {
+func isHistoryOptionsRequested(t ResultPayloadType, list []ResultPayloadType) bool {
 	var hasAllPaths, hasAltPaths bool
 
 	for _, v := range list {
@@ -234,37 +222,6 @@ func PushError(resperror error) error {
 
 	PushResult(result)
 	return resperror
-}
-
-// getResultTypeFromResponse -- Get the result type
-//   xml, json, text, html, css, csv, media, unknown
-func getResultTypeFromContentType(contentType string) ResultContentType {
-	// Split off parameters
-	parts := strings.Split(contentType, ";")
-	if len(parts) == 0 {
-		return ResultContentUnknown
-	}
-
-	contentType = strings.TrimSpace(strings.ToLower(parts[0]))
-	if strings.HasPrefix(contentType, "application/xml") ||
-		strings.HasSuffix(contentType, "+xml") {
-		return ResultContentXml
-	} else if strings.HasPrefix(contentType, "application/json") ||
-		strings.HasSuffix(contentType, "+json") {
-		return ResultContentJson
-	} else if strings.HasPrefix(contentType, "text/plain") ||
-		strings.HasPrefix(contentType, "text/calendar") ||
-		strings.HasPrefix(contentType, "text/css") {
-		return ResultContentText
-	} else if strings.HasPrefix(contentType, "text/html") {
-		return ResultContentHtml
-	} else if strings.HasPrefix(contentType, "application/octet-stream") {
-		return ResultContentBinary
-	} else if strings.Contains(contentType, "text/csv") {
-		return ResultContentCsv
-	}
-
-	return ResultContentUnknown
 }
 
 // PushResult -- push a Result structure into the history buffer
