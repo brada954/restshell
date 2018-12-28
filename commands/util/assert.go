@@ -190,18 +190,10 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		if result.Error != nil {
 			errStr = "HasErr"
 		}
-
-		rootStr := "Json Response"
-		if m, ok := result.GetObjectMap(); ok {
-			if _, hasRoot := m["/"]; hasRoot {
-				rootStr = "Rooted Text Response"
-			}
-		}
 		fmt.Fprintf(shell.ConsoleWriter(),
-			"Result: %s HttpStatus:%d %s\n",
+			"Result: %s HttpStatus:%d\n",
 			errStr,
 			result.HttpStatus,
-			rootStr,
 		)
 	}
 

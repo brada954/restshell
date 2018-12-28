@@ -2,16 +2,14 @@ package shell
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"reflect"
+	"time"
+
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/subchen/go-xmldom"
 )
 
 var history = make([]Result, 0)
@@ -45,6 +43,10 @@ var (
 	ResultContentForm    ResultContentType = "form"
 	ResultContentBinary  ResultContentType = "binary"
 )
+
+type HistoryMap interface {
+	GetNode(string) (interface{}, error)
+}
 
 // HistoryOptions -- Common options for modifiers
 type HistoryOptions struct {
@@ -134,13 +136,13 @@ func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, er
 
 func (ho HistoryOptions) GetNode(path string, result Result) (interface{}, error) {
 	if ho.IsAuthPath() {
-		return GetJsonNode(path, result.AuthMap)
+		return result.AuthMap.GetNode(path)
 	} else if ho.IsCookiePath() {
-		return GetMapNode(path, result.CookieMap)
+		return result.CookieMap.GetNode(path)
 	} else if ho.IsHeaderPath() {
-		return GetMapNode(path, result.HeaderMap)
+		return result.HeaderMap.GetNode(path)
 	} else {
-		return GetNode(path, result)
+		return result.BodyMap.GetNode(path)
 	}
 }
 
@@ -176,20 +178,21 @@ func isHistoryOptionsRequested(t HistoryPathType, list []HistoryPathType) bool {
 //
 func PushResponse(resp *RestResponse, resperror error) error {
 	var result Result
+	{
+		if err := result.addCookieMap(resp); err != nil {
+			fmt.Fprintf(ConsoleWriter(), "WARNING: parsing cookies returned: %s", err.Error())
+		}
 
-	if err := result.addCookieMap(resp); err != nil {
-		fmt.Fprintf(ConsoleWriter(), "WARNING: parsing cookies returned: %s", err.Error())
+		if err := result.addHeaderMap(resp); err != nil {
+			fmt.Fprintf(ConsoleWriter(), "WARNING: parsing header returned: %s", err.Error())
+		}
+
+		result.Text = resp.Text
+		result.Error = resperror
+		result.HttpStatus = resp.GetStatus()
+		result.HttpStatusString = resp.GetStatusString()
+		result.addParsedContentToResult(resp.GetContentType(), resp.Text)
 	}
-
-	if err := result.addHeaderMap(resp); err != nil {
-		fmt.Fprintf(ConsoleWriter(), "WARNING: parsing header returned: %s", err.Error())
-	}
-
-	result.Text = resp.Text
-	result.Error = resperror
-	result.HttpStatus = resp.GetStatus()
-	result.HttpStatusString = resp.GetStatusString()
-	result.addParsedContentToResult(resp.GetContentType(), resp.Text)
 
 	PushResult(result)
 	return resperror
@@ -200,12 +203,13 @@ func PushResponse(resp *RestResponse, resperror error) error {
 //
 func PushText(contentType string, data string, resperror error) error {
 	var result Result
-
-	result.Text = data
-	result.Error = resperror
-	result.HttpStatus = http.StatusOK
-	result.HttpStatusString = http.StatusText(http.StatusOK)
-	result.addParsedContentToResult(contentType, data)
+	{
+		result.Text = data
+		result.Error = resperror
+		result.HttpStatus = http.StatusOK
+		result.HttpStatusString = http.StatusText(http.StatusOK)
+		result.addParsedContentToResult(contentType, data)
+	}
 
 	PushResult(result)
 	return resperror
@@ -213,17 +217,19 @@ func PushText(contentType string, data string, resperror error) error {
 
 // PushError - push a result that is a single string with the error message
 func PushError(resperror error) error {
+
 	var result Result
 	{
-		emptyMap := make(map[string]string, 0)
+		emptyMap, _ := NewSimpleHistoryMap(make(map[string]string, 0))
+		errorMap, _ := NewTextHistoryMap(resperror.Error())
 
+		result.BodyMap = errorMap
 		result.HeaderMap = emptyMap
 		result.CookieMap = emptyMap
 		result.Text = resperror.Error()
 		result.Error = resperror
 		result.HttpStatus = -1
 		result.HttpStatusString = "No Response Received"
-		result.Map = makeRootMap(result.Text)
 	}
 
 	PushResult(result)
@@ -261,44 +267,6 @@ func getResultTypeFromContentType(contentType string) ResultContentType {
 	return ResultContentUnknown
 }
 
-func makeResultMapFromJson(data string) (interface{}, error) {
-	var f interface{}
-
-	err := json.Unmarshal([]byte(data), &f)
-	if err != nil {
-		return nil, err
-	}
-
-	if m, ok := f.(map[string]interface{}); ok {
-		return m, nil
-	}
-
-	if m, ok := f.([]interface{}); ok {
-		return m, nil
-	}
-
-	m := make(map[string]interface{}, 1)
-	m["/"] = f
-	return m, nil
-}
-
-func makeXMLDOM(data string) (*xmldom.Document, error) {
-	wrapper := xmldom.Must(xmldom.ParseXML("<assertwrapper></assertwrapper>"))
-	data = strings.TrimSpace(data)
-	if doc, err := xmldom.ParseXML(data); err != nil {
-		return wrapper, err
-	} else {
-		wrapper.Root.AppendChild(doc.Root)
-		return wrapper, nil
-	}
-}
-
-func makeRootMap(text string) interface{} {
-	m := make(map[string]interface{})
-	m["/"] = strings.TrimSpace(text)
-	return m
-}
-
 // PushResult -- push a Result structure into the history buffer
 func PushResult(result Result) error {
 	if IsCmdDebugEnabled() {
@@ -328,7 +296,7 @@ func GetValueFromResultHistory(index int, path string) (string, error) {
 		return "", err
 	}
 
-	node, err := GetNode(path, result)
+	node, err := result.BodyMap.GetNode(path)
 	if err != nil {
 		return "", err
 	}
@@ -349,11 +317,7 @@ func GetValueFromAuthHistory(index int, path string) (string, error) {
 		return "", err
 	}
 
-	if IsCmdDebugEnabled() {
-		fmt.Fprintf(ConsoleWriter(), "AuthMap:\n%v\n", result.AuthMap)
-	}
-
-	node, err := GetJsonNode(path, result.AuthMap)
+	node, err := result.AuthMap.GetNode(path)
 	if err != nil {
 		return "", err
 	}
@@ -378,7 +342,7 @@ func GetValueFromCookieHistory(index int, path string) (string, error) {
 		fmt.Fprintf(ConsoleWriter(), "Cookie:\n%v\n", result.CookieMap)
 	}
 
-	node, err := GetMapNode(path, result.CookieMap)
+	node, err := result.CookieMap.GetNode(path)
 	if err != nil {
 		return "", err
 	}
@@ -401,7 +365,7 @@ func GetValueFromHeaderHistory(index int, path string) (string, error) {
 		fmt.Fprintf(ConsoleWriter(), "Headers:\n%v\n", result.HeaderMap)
 	}
 
-	node, err := GetMapNode(path, result.HeaderMap)
+	node, err := result.HeaderMap.GetNode(path)
 	if err != nil {
 		return "", err
 	}
@@ -412,208 +376,6 @@ func GetValueFromHeaderHistory(index int, path string) (string, error) {
 	default:
 		return "", errors.New("Invalid data type found")
 	}
-}
-
-// GetNodeFromXml - given an xpath return the node or nodes returned with
-// the inner text
-func GetNodeFromXml(path string, doc *xmldom.Document) (result interface{}, rtnerror error) {
-
-	defer func() {
-		if r := recover(); r == nil {
-			return // Pass-thru existing error code
-		} else {
-			rtnerror = errors.New("Error with XPATH: " + path)
-		}
-	}()
-
-	root := doc.Root
-
-	nodeList := root.Query(path)
-	if len(nodeList) > 1 {
-		array := make([]string, 0)
-		for _, v := range nodeList {
-			array = append(array, v.Text)
-		}
-		return array, nil
-	} else if len(nodeList) == 1 {
-		return nodeList[0].Text, nil
-	} else {
-		return nil, ErrNotFound
-	}
-}
-
-// GetNode -- From the result look up the value node in the given
-// Result. The path is XPath if the result is Xml and "restshell jsonpath"
-// if the result is not Xml
-func GetNode(path string, result Result) (interface{}, error) {
-	if result.XMLDocument != nil {
-		return GetNodeFromXml(path, result.XMLDocument)
-	} else {
-		return GetJsonNode(path, result.Map)
-	}
-}
-
-func GetMapNode(key string, m map[string]string) (interface{}, error) {
-	if v, ok := m[key]; ok {
-		return v, nil
-	} else {
-		return nil, ErrNotFound
-	}
-}
-
-// GetJsonNode -- Get a JSON node from a map structure mapped from a json object or array
-func GetJsonNode(path string, i interface{}) (interface{}, error) {
-	parts := strings.SplitN(path, ".", 2)
-	m, ok := i.(map[string]interface{})
-	if !ok {
-		return nil, ErrUnexpectedType
-	}
-
-	if len(parts) <= 0 {
-		return nil, ErrInvalidPath
-	}
-
-	arrIndex := -1
-	arrParts := strings.SplitN(parts[0], "[", 2)
-	if len(arrParts) > 1 {
-		index, err := strconv.Atoi(strings.Trim(arrParts[1], "]"))
-		if err != nil {
-			return nil, ErrInvalidPath
-		}
-		arrIndex = index
-	}
-
-	if arrIndex >= 0 {
-		data := m[arrParts[0]]
-		if data == nil {
-			return nil, ErrNotFound
-		}
-
-		if len(parts) == 1 {
-			switch t := data.(type) {
-			case []string:
-				if arrIndex < len(t) {
-					return t[arrIndex], nil
-				}
-				return nil, ErrArrayOutOfBounds
-			case []float64:
-				if arrIndex < len(t) {
-					return t[arrIndex], nil
-				}
-				return nil, ErrArrayOutOfBounds
-			case []interface{}:
-				if arrIndex < len(t) {
-					dv := t[arrIndex]
-					return dv, nil
-				}
-				return nil, ErrArrayOutOfBounds
-			}
-			return nil, ErrUnexpectedType
-		} else {
-			switch t := data.(type) {
-			case []map[string]interface{}:
-				if arrIndex < len(t) {
-					return GetJsonNode(parts[1], t[arrIndex])
-				}
-				return nil, ErrArrayOutOfBounds
-			case []interface{}:
-				if arrIndex < len(t) {
-					return GetJsonNode(parts[1], t[arrIndex])
-				}
-				return nil, ErrArrayOutOfBounds
-			}
-			return nil, ErrUnexpectedType
-		}
-	} else {
-		if len(parts) > 1 {
-			data := m[parts[0]]
-			if data == nil {
-				return nil, ErrNotFound
-			}
-			switch t := m[parts[0]].(type) {
-			case map[string]interface{}:
-				return GetJsonNode(parts[1], t)
-			}
-			return nil, ErrUnexpectedType
-		} else {
-			data, ok := m[parts[0]]
-			if !ok && parts[0] == "/" {
-				data = m
-			}
-			if data == nil {
-				if !ok {
-					return nil, ErrNotFound
-				} else {
-					return nil, nil
-				}
-			}
-			switch t := data.(type) {
-			case string:
-				return t, nil
-			case int:
-				return t, nil
-			case float64:
-				return t, nil
-			default:
-				return data, nil
-			}
-		}
-	}
-}
-
-func GetJsonNodeAsString(path string, i interface{}) (string, error) {
-	n, err := GetJsonNode(path, i)
-	if err == nil {
-		switch t := n.(type) {
-		case string:
-			return t, nil
-		default:
-			err = errors.New("Invalid type for string value")
-		}
-	}
-	return "", err
-}
-
-func GetJsonNodeAsTime(path string, i interface{}) (time.Time, error) {
-	n, err := GetJsonNode(path, i)
-	if err == nil {
-		return GetValueAsDate(n)
-	}
-	return time.Time{}, err
-}
-
-func GetJsonNodeAsInt64(path string, i interface{}) (int64, error) {
-	n, err := GetJsonNode(path, i)
-	if err == nil {
-		switch t := n.(type) {
-		case float64:
-			return int64(t), nil
-		case int64:
-			return t, nil
-		case int:
-			return int64(t), nil
-		default:
-			err = errors.New("Invalid type for date/time value")
-		}
-	}
-	return 0, err
-}
-
-func GetJsonNodeAsFloat64(path string, i interface{}) (float64, error) {
-	n, err := GetJsonNode(path, i)
-	if err == nil {
-		switch t := n.(type) {
-		case float64:
-			return t, nil
-		case int64:
-			return float64(t), nil
-		case int:
-			return float64(t), nil
-		default:
-			err = errors.New("Invalid type for date/time value")
-		}
-	}
-	return 0.0, err
 }
 
 // GetValueAsDate -- given a scaler value in an interface convert it
@@ -642,18 +404,18 @@ func GetValueAsDate(i interface{}) (time.Time, error) {
 	}
 }
 
-func decodeJwtClaims(authToken string) (map[string]interface{}, error) {
+func decodeJwtClaims(authToken string) (HistoryMap, error) {
 	parts := strings.Split(authToken, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("ERROR: Failed to parse auth token: " + authToken)
 	}
 
 	data := decodeString(parts[1])
-	var resp = make(map[string]interface{}, 0)
-	if err := json.Unmarshal([]byte(data), &resp); err != nil {
+	h, err := NewJsonHistoryMap(data)
+	if err != nil {
 		return nil, errors.New("ERROR DECODING CLAIMS: " + err.Error())
 	}
-	return resp, nil
+	return h, nil
 }
 
 func decodeString(val string) string {
@@ -663,12 +425,3 @@ func decodeString(val string) string {
 	}
 	return string(s)
 }
-
-// func convertToJSONMap(m map[string]string) map[string]interface{} {
-// 	result := make(map[string]interface{})
-// 	for n, v := range m {
-// 		fmt.Println("node:", n, v)
-// 		result[n] = v
-// 	}
-// 	return result
-// }

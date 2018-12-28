@@ -14,50 +14,35 @@ import (
 // and used by assertion handlers
 type Result struct {
 	Text             string
-	Map              interface{}
-	XMLDocument      *xmldom.Document
 	Error            error
 	HttpStatus       int
 	HttpStatusString string
 	ContentType      string
-	HeaderMap        map[string]string
-	CookieMap        map[string]string
-	AuthMap          interface{}
+	BodyMap          HistoryMap
+	HeaderMap        HistoryMap
+	CookieMap        HistoryMap
+	AuthMap          HistoryMap
 	cookies          []*http.Cookie
-}
-
-// GetObjectMap -- short cut to get an object if the result was a json object
-// returns false if it is not a json(-like) object
-func (r *Result) GetObjectMap() (map[string]interface{}, bool) {
-	if m, ok := r.Map.(map[string]interface{}); ok {
-		return m, true
-	}
-	return nil, false
-}
-
-// GetArrayMap -- short cut to get an array if the result was a json array
-// returns false if it is not a json(-like) object
-func (r *Result) GetArrayMap() ([]interface{}, bool) {
-	if m, ok := r.Map.([]interface{}); ok {
-		return m, true
-	}
-	return nil, false
+	headers          map[string]string
 }
 
 func (r *Result) addCookieMap(resp *RestResponse) error {
-	cookies := make(map[string]string, 0)
 	r.cookies = resp.GetCookies()
+
+	m := make(map[string]string, 0)
 	for _, cookie := range r.cookies {
-		cookies[cookie.Name] = cookie.Value
+		m[cookie.Name] = cookie.Value
 	}
-	r.CookieMap = cookies
-	return nil // TODO: Are there any error conditions
+
+	var err error
+	r.CookieMap, err = NewSimpleHistoryMap(m)
+	return err
 }
 
 func (r *Result) addHeaderMap(resp *RestResponse) error {
-	headers := make(map[string]string, 0)
+	m := make(map[string]string, 0)
 	for n, values := range resp.GetHeader() {
-		headers[n] = values[0]
+		m[n] = values[0]
 
 		// Special code that evalutes authorization header as a JWT
 		// This may need revisiting to be more acceptable of possibiltiies
@@ -75,7 +60,9 @@ func (r *Result) addHeaderMap(resp *RestResponse) error {
 			}
 		}
 	}
-	r.HeaderMap = headers
+
+	r.headers = m
+	r.HeaderMap, _ = NewSimpleHistoryMap(m)
 	return nil // TODO: Are there any error conditions
 }
 
@@ -85,33 +72,32 @@ func (r *Result) addParsedContentToResult(contentType string, data string) {
 	switch getResultTypeFromContentType(r.ContentType) {
 	case "xml":
 		{
-			doc, err := makeXMLDOM(data)
+			resultMap, err := NewXmlHistoryMap(data)
 			if err != nil {
 				fmt.Fprintln(ErrorWriter(), "WARNING: XML ERROR: ", err)
-				r.Map = makeRootMap(data)
-			} else {
-				r.XMLDocument = doc
+				resultMap, _ = NewTextHistoryMap(data)
 			}
+			r.BodyMap = resultMap
 		}
 	case "json":
 		{
-			resultMap, err := makeResultMapFromJson(data)
+			resultMap, err := NewJsonHistoryMap(data)
 			if err != nil {
 				fmt.Fprintln(ErrorWriter(), "WARNING: JSON ERROR: ", err)
-				resultMap = makeRootMap(data)
+				resultMap, _ = NewTextHistoryMap(data)
 			}
-			r.Map = resultMap
+			r.BodyMap = resultMap
 		}
 	case "text":
-		r.Map = makeRootMap(data)
+		r.BodyMap, _ = NewTextHistoryMap(data)
 	case "html":
-		r.Map = makeRootMap(data)
+		r.BodyMap, _ = NewTextHistoryMap(data)
 	case "csv":
-		r.Map = makeRootMap(data)
+		r.BodyMap, _ = NewTextHistoryMap(data)
 	case ResultContentBinary:
-		r.Map = makeRootMap("")
+		r.BodyMap, _ = NewTextHistoryMap("")
 	default:
-		r.Map = makeRootMap("Unsupported content type returned: " + r.ContentType)
+		r.BodyMap, _ = NewTextHistoryMap("Unsupported content type returned: " + r.ContentType)
 	}
 }
 
@@ -124,7 +110,7 @@ func (r *Result) DumpCookies(w io.Writer) {
 
 func (r *Result) DumpHeader(w io.Writer) {
 	fmt.Fprintln(w, "Headers:")
-	for k, v := range r.HeaderMap {
+	for k, v := range r.headers {
 		fmt.Fprintf(w, "%s: %s\n", k, v)
 	}
 }
