@@ -13,6 +13,7 @@ base http://api.ipify.org
 @get -s /?format=json
 assert noerr
 assert hstatus 200
+assert hstatus ok
 assert eq --regex "^\\d+(\\.)\\d+(\\.)\\d+(\\.)\\d+$" ip ...
 assert --new --report
 REM ####################################################################
@@ -43,6 +44,7 @@ REM ##
 @post -s --json "{}" /posts
 assert noerr
 assert hstatus 201
+assert hstatus OK
 assert EQ id 101
 assert --report
 REM ####################################################################

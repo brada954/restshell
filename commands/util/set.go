@@ -14,18 +14,15 @@ import (
 var osLookupEnv = os.LookupEnv
 
 type SetCommand struct {
-	listOption        *bool
-	initOnly          *bool
-	valueIsPath       *bool
-	valueIsAuthPath   *bool
-	valueIsCookiePath *bool
-	valueIsHeaderPath *bool
-	valueIsVar        *bool
-	valueIsFile       *bool
-	valueIsEnvVar     *bool
-	allowEmpty        *bool
-	deleteTempOption  *bool
-	modifierOptions   modifiers.ModifierOptions
+	listOption       *bool
+	initOnly         *bool
+	valueIsVar       *bool
+	valueIsFile      *bool
+	valueIsEnvVar    *bool
+	allowEmpty       *bool
+	deleteTempOption *bool
+	modifierOptions  modifiers.ModifierOptions
+	historyOptions   shell.HistoryOptions
 }
 
 func NewSetCommand() *SetCommand {
@@ -40,16 +37,13 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	})
 	cmd.listOption = set.BoolLong("list", 'l', "List the globals")
 	cmd.initOnly = set.BoolLong("init", 'i', "Inialize if not set already")
-	cmd.valueIsPath = set.BoolLong("path", 'p', "Use value as a path into history buffer")
-	cmd.valueIsAuthPath = set.BoolLong("path-auth", 0, "Use value as a path into history buffer AuthToken")
-	cmd.valueIsCookiePath = set.BoolLong("path-cookie", 0, "Use value as a path into history buffer cookies")
-	cmd.valueIsHeaderPath = set.BoolLong("path-header", 0, "Use value as a path into history buffer headers")
 	cmd.valueIsVar = set.BoolLong("var", 0, "Use the value as variable name to lookup if exists")
 	cmd.valueIsEnvVar = set.BoolLong("env", 0, "Use the value to reference an environment variable if exists")
 	cmd.valueIsFile = set.BoolLong("file", 0, "Use the value as a file name to read for value")
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
+	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AllPaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
@@ -137,22 +131,13 @@ func processArg(cmd *SetCommand, arg string) {
 			}
 		}
 
-		if *cmd.valueIsPath || *cmd.valueIsAuthPath || *cmd.valueIsCookiePath || *cmd.valueIsHeaderPath {
+		if cmd.historyOptions.IsHistoryPathOptionEnabled() {
 			if len(value) == 0 {
 				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for path name")
 				return
 			}
 			var err error
-			if *cmd.valueIsAuthPath {
-				value, err = shell.GetValueFromAuthHistory(0, value)
-			} else if *cmd.valueIsCookiePath {
-				value, err = shell.GetValueFromCookieHistory(0, value)
-			} else if *cmd.valueIsHeaderPath {
-				value, err = shell.GetValueFromHeaderHistory(0, value)
-			} else {
-				value, err = shell.GetValueFromHistory(0, value)
-			}
-
+			value, err = cmd.historyOptions.GetValueFromHistory(0, value)
 			if err != nil {
 				fmt.Fprintf(shell.ErrorWriter(), "Warning: value not found, skipping argument: %s\n", arg)
 				return
@@ -164,7 +149,7 @@ func processArg(cmd *SetCommand, arg string) {
 		}
 
 		if len(value) > 0 || *cmd.allowEmpty {
-			var err error = nil
+			var err error
 
 			valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
 			if v, err := valueModifierFunc(value); err != nil {
