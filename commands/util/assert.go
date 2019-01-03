@@ -20,7 +20,7 @@ type AssertCommand struct {
 	reportOption    *bool
 	reportAllOption *bool
 	summaryOption   *bool
-	allowNil        *bool
+	nonNilValues    *bool
 	messageOption   *string
 	testOption      *bool
 	skipOnErrOption *bool
@@ -59,7 +59,7 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.reportAllOption = set.BoolLong("report-all", 'a', "Report current set and summary of all sets")
 	cmd.messageOption = set.StringLong("message", 'm', "", "Display message on assert failure", "message")
 	cmd.testOption = set.BoolLong("test", 0, "Use first argument as the value for testing")
-	cmd.allowNil = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
+	cmd.nonNilValues = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
 	cmd.useAuthTokenMap = set.BoolLong("auth-claims", 0, "Assert against auth claims")
 	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success")
@@ -272,11 +272,22 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		return onSuccessVerbose(nil, "Path %s exists as expected", path)
 	}
 
+	// Ensure non-nil if a required condition for assert
+	if node == nil && *cmd.nonNilValues {
+		return nil
+	}
+
 	newnode, err := valueModifierFunc(node)
 	if err != nil {
 		return err
 	}
 	node = newnode
+	
+	// If modifiers created a nil and non-nil value required, just return success
+	if node == nil && *cmd.nonNilValues {
+		return nil
+	}
+
 
 	if len(args) == 2 {
 		switch args[0] {
@@ -312,11 +323,6 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 	if len(args) == 3 {
 		var value = args[2]
-
-		// If nil is allowed, just return success
-		if node == nil && *cmd.allowNil {
-			return nil
-		}
 
 		switch args[0] {
 		case "EQ":
