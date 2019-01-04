@@ -52,12 +52,11 @@ func makeHistoryMapFromJSON(data string) (interface{}, error) {
 
 // getNodeImpl -- Recursive parser of json node
 func getNodeImpl(path string, i interface{}) (interface{}, error) {
-	parts := strings.SplitN(path, ".", 2)
-	m, ok := i.(map[string]interface{})
-	if !ok {
-		return nil, ErrUnexpectedType
+	if path == "/" {
+		return i, nil
 	}
 
+	parts := strings.SplitN(path, ".", 2)
 	if len(parts) <= 0 {
 		return nil, ErrInvalidPath
 	}
@@ -73,7 +72,22 @@ func getNodeImpl(path string, i interface{}) (interface{}, error) {
 	}
 
 	if arrIndex >= 0 {
-		data := m[arrParts[0]]
+		var data interface{}
+
+		if len(arrParts[0]) > 0 {
+			m, ok := i.(map[string]interface{})
+			if !ok {
+				return nil, ErrUnexpectedType
+			}
+			data = m[arrParts[0]]
+		} else {
+			if a, ok := i.([]interface{}); !ok {
+				return nil, ErrUnexpectedType
+			} else {
+				data = a
+			}
+		}
+
 		if data == nil {
 			return nil, ErrNotFound
 		}
@@ -114,6 +128,11 @@ func getNodeImpl(path string, i interface{}) (interface{}, error) {
 			return nil, ErrUnexpectedType
 		}
 	} else {
+		m, ok := i.(map[string]interface{})
+		if !ok {
+			return nil, ErrUnexpectedType
+		}
+
 		if len(parts) > 1 {
 			data := m[parts[0]]
 			if data == nil {

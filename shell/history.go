@@ -54,6 +54,7 @@ type HistoryOptions struct {
 	valueIsAuthPath   *bool
 	valueIsCookiePath *bool
 	valueIsHeaderPath *bool
+	valueIsHttpStatus *bool
 }
 
 // AddModifierOptions -- Add options for modifiers
@@ -98,14 +99,20 @@ func (ho HistoryOptions) IsHeaderPath() bool {
 	return ho.valueIsHeaderPath != nil && *ho.valueIsHeaderPath
 }
 
+// IsHeaderPath -- Is the history path option selected
+func (ho HistoryOptions) IsHttpStatusPath() bool {
+	return ho.valueIsHttpStatus != nil && *ho.valueIsHttpStatus
+}
+
 // IsPathOptionEnabled -- True if any history path option is enabled
 func (ho HistoryOptions) IsHistoryPathOptionEnabled() bool {
-	if ho.IsResultPathOption() || ho.IsAuthPath() || ho.IsCookiePath() || ho.IsHeaderPath() {
+	if ho.IsResultPathOption() || ho.IsAuthPath() || ho.IsCookiePath() || ho.IsHeaderPath() || ho.IsHttpStatusPath() {
 		return true
 	}
 	return false
 }
 
+// Get the value from History and return as string
 func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, error) {
 
 	if ho.IsAuthPath() {
@@ -118,6 +125,10 @@ func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, er
 
 	if ho.IsHeaderPath() {
 		return GetValueFromHeaderHistory(index, path)
+	}
+
+	if ho.IsHttpStatusPath() {
+		return GetValueFromHttpStatusHistory(index)
 	}
 	return GetValueFromResultHistory(index, path)
 }
@@ -333,6 +344,15 @@ func GetValueFromHeaderHistory(index int, path string) (string, error) {
 	default:
 		return "", errors.New("Invalid data type found")
 	}
+}
+
+func GetValueFromHttpStatusHistory(index int) (string, error) {
+	result, err := PeekResult(index)
+	if err != nil {
+		return "", err
+	}
+
+	return strconv.Itoa(result.HttpStatus), nil
 }
 
 // GetValueAsDate -- given a scaler value in an interface convert it
