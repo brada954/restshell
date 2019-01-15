@@ -75,10 +75,11 @@ func (cmd *LoadCommand) Execute(args []string) error {
 	} else {
 		// Very rudimentary tests for json and xml (TODO: Expand on)
 		d := strings.TrimSpace(data)
-		if d[0] == '<' && d[len(d)-1] == '>' {
+		if len(d) >= 3 && d[0] == '<' && d[len(d)-1] == '>' {
 			contentType = "application/xml"
-		} else if (d[0] == '{' && d[len(d)-1] == '}') ||
-			(d[0] == '[' && d[len(d)-1] == ']') {
+		} else if len(d) >= 2 &&
+			((d[0] == '{' && d[len(d)-1] == '}') ||
+				(d[0] == '[' && d[len(d)-1] == ']')) {
 			contentType = "application/json"
 		}
 	}

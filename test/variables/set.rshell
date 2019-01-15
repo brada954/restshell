@@ -1,0 +1,26 @@
+REM ####################################################################
+REM ## SET command tests
+REM ##
+REM ####################################################################
+assert --new
+REM ##
+REM ## Basic variable
+REM ##
+set x=y
+load --var x
+assert EQ / y
+REM ##
+REM ## Variable from variable
+REM ##
+set y=abc
+set --var x=y
+load --var x
+assert EQ / abc
+REM ##
+REM ## Variable from invalid variable
+REM ##
+set --var x=y_is_not_set
+load --var x
+assert EQ / ""
+REM ####################################################################
+assert --report-all

@@ -78,99 +78,110 @@ func (cmd *SetCommand) Execute(args []string) error {
 
 func processArg(cmd *SetCommand, arg string) {
 	parts := parseArg(arg)
-	if len(parts) == 0 {
+	if len(parts) == 0 || len(parts[1]) == 0 {
 		fmt.Fprintln(shell.ErrorWriter(), "Warning: skipping invalid argument: "+arg)
 		return
 	} else if len(parts) == 1 && !*cmd.allowEmpty {
 		shell.RemoveGlobal(parts[0])
-	} else {
-		var value = ""
+		return
+	}
 
-		if len(parts) > 1 {
-			value = parts[1]
-		}
-
-		if *cmd.valueIsFile {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for file name")
+	// Setup exit function to perform final common tasks
+	var exitError error
+	var variable = parts[0]
+	var value = parts[1]
+	defer func() {
+		if exitError != nil {
+			fmt.Fprintf(shell.ErrorWriter(), "Warning: %s; clearing variable: %s\n", exitError, variable)
+			if len(variable) > 0 && !*cmd.allowEmpty {
+				shell.RemoveGlobal(variable)
 				return
 			}
-			v, err := shell.GetFileContents(value)
-			if err != nil {
-				fmt.Fprintln(shell.ErrorWriter(), err.Error())
-				return
-			}
-			value = v
-		}
-
-		if *cmd.valueIsVar {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for variable name")
-				return
-			}
-			value = shell.GetGlobalString(value)
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to variable: %s\n", parts[0], value)
-			}
-		}
-
-		if *cmd.valueIsEnvVar {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for environment variable")
-				return
-			}
-
-			if v, ok := osLookupEnv(value); ok {
-				value = v
-			} else {
-				value = ""
-			}
-
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to environment variable: %s\n", parts[0], value)
-			}
-		}
-
-		if cmd.historyOptions.IsHistoryPathOptionEnabled() {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for path name")
-				return
-			}
-			var err error
-			value, err = cmd.historyOptions.GetValueFromHistory(0, value)
-			if err != nil {
-				fmt.Fprintf(shell.ErrorWriter(), "Warning: value not found, skipping argument: %s\n", arg)
-				return
-			}
-
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to history value: %s\n", parts[0], value)
-			}
+			value = ""
 		}
 
 		if len(value) > 0 || *cmd.allowEmpty {
 			var err error
 
-			valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
-			if v, err := valueModifierFunc(value); err != nil {
-				fmt.Fprintln(shell.ErrorWriter(), "Modifier Failure:", err.Error())
-				return
-			} else {
-				value = fmt.Sprintf("%v", v)
-			}
-
 			if *cmd.initOnly {
-				err = shell.InitializeGlobal(parts[0], value)
+				err = shell.InitializeGlobal(variable, value)
 			} else {
-				err = shell.SetGlobal(parts[0], value)
+				err = shell.SetGlobal(variable, value)
 			}
 			if err != nil {
-				fmt.Fprintf(shell.ErrorWriter(), "%s: %s\n", err.Error(), parts[0])
+				fmt.Fprintf(shell.ErrorWriter(), "%s: %s\n", err.Error(), variable)
 			} else if shell.IsCmdVerboseEnabled() {
-				fmt.Fprintf(shell.OutputWriter(), "%s=%s\n", parts[0], shell.GetGlobal(parts[0]))
+				fmt.Fprintf(shell.OutputWriter(), "%s=%s\n", variable, shell.GetGlobal(variable))
 			}
 		}
+		return
+	}()
+
+	if *cmd.valueIsFile {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for file name")
+			return
+		}
+		v, err := shell.GetFileContents(value)
+		if err != nil {
+			exitError = err
+			return
+		}
+		value = v
 	}
+
+	if *cmd.valueIsVar {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for variable name")
+			return
+		}
+		v, ok := shell.TryGetGlobalString(value)
+		if !ok {
+			exitError = fmt.Errorf("Variable does not contain a string value")
+			return
+		}
+		value = v
+	}
+
+	if *cmd.valueIsEnvVar {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for environment variable")
+			return
+		}
+
+		if v, ok := osLookupEnv(value); ok {
+			value = v
+		} else {
+			exitError = fmt.Errorf("Environment variable not found")
+			return
+		}
+	}
+
+	if cmd.historyOptions.IsHistoryPathOptionEnabled() {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for path name")
+			return
+		}
+
+		v, err := cmd.historyOptions.GetValueFromHistory(0, value)
+		if err != nil {
+			exitError = fmt.Errorf("Path Error: %s", err.Error())
+			return
+		}
+		value = v
+	}
+
+	if len(value) > 0 || *cmd.allowEmpty {
+		valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
+		if v, err := valueModifierFunc(value); err != nil {
+			exitError = fmt.Errorf("Modifier Failure: %s", err.Error())
+			return
+		} else {
+			value = fmt.Sprintf("%v", v)
+		}
+	}
+
+	return
 }
 
 func parseArg(arg string) []string {

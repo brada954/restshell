@@ -2,6 +2,7 @@ REM ####################################################################
 REM ##  ALL TESTS
 REM ##
 assert --clear
+run variables\set.rshell
 run assert\assert.rshell
 run assert\failures.rshell
 run rest\json
