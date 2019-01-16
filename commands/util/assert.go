@@ -15,6 +15,7 @@ import (
 )
 
 type AssertCommand struct {
+	exitOption      *bool
 	clearOption     *bool
 	newOption       *bool
 	reportOption    *bool
@@ -53,6 +54,7 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 		cmd.ExtendedUsage(shell.ConsoleWriter())
 	})
 	cmd.newOption = set.BoolLong("new", 'n', "Start a new set of asserts")
+	cmd.exitOption = set.BoolLong("exit-onfail", 0, "Exit the command processor on failure")
 	cmd.clearOption = set.BoolLong("clear", 'c', "Clear tracking of failures")
 	cmd.reportOption = set.BoolLong("report", 'r', "Report failure stats for current set")
 	cmd.summaryOption = set.BoolLong("report-sum", 0, "Report summary of all sets")
@@ -118,8 +120,10 @@ func (cmd *AssertCommand) Execute(args []string) error {
 		}
 	}
 
+	var errorOccurred bool
 	err = cmd.executeAssertions(valueModifierFunc, result, args)
 	if (*cmd.expectError && err == nil) || (!*cmd.expectError && err != nil) {
+		errorOccurred = true
 		cmd.failedAsserts = cmd.failedAsserts + 1
 		cmd.totalFailures = cmd.totalFailures + 1
 	}
@@ -127,10 +131,15 @@ func (cmd *AssertCommand) Execute(args []string) error {
 	cmd.totalExecuted = cmd.totalExecuted + 1
 
 	err = cmd.buildErrorWithMessage(err)
+	if errorOccurred && *cmd.exitOption {
+		return shell.NewFlowError(err.Error(), shell.FlowAbort)
+	}
 	return err
 }
 
 func (cmd *AssertCommand) executeReporting() error {
+	var reterr error
+
 	if *cmd.reportOption {
 		// Batch statistics
 		if cmd.executedAsserts > 0 {
@@ -152,13 +161,15 @@ func (cmd *AssertCommand) executeReporting() error {
 		}
 	}
 
-	var reterr error = nil
-	if *cmd.summaryOption || (*cmd.reportOption && cmd.totalFailures > 0) {
+	if *cmd.summaryOption {
 		// Summary causes an error to be returned and lets
 		// the command processor print the error (for proper exit codes)
 		if cmd.totalFailures > 0 || cmd.totalSkipped > 0 {
 			reterr = errors.New(cmd.buildFailedSummaryMessage())
 			reterr = cmd.buildErrorWithMessage(reterr)
+			if cmd.totalFailures > 0 && *cmd.exitOption {
+				reterr = shell.NewFlowError(reterr.Error(), shell.FlowAbort)
+			}
 		} else if cmd.totalFailures == 0 && cmd.totalExecuted > 0 {
 			fmt.Fprintf(shell.OutputWriter(), "ALL ASSERTIONS PASSED (%d)\n", cmd.totalExecuted)
 		}
@@ -276,12 +287,11 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		return err
 	}
 	node = newnode
-	
+
 	// If modifiers created a nil and non-nil value required, just return success
 	if node == nil && *cmd.nonNilValues {
 		return nil
 	}
-
 
 	if len(args) == 2 {
 		switch args[0] {

@@ -32,14 +32,15 @@ func ReadLine() {
 	scanner.Scan()
 }
 
-func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, stopOnInterrupt bool) (int, bool) {
+// CommandProcessor -- Initiate the command interpretter using the given reader and options
+func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, allowAbort bool) (int, bool) {
 	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
 		defaultPrompt = ""
 		singleStep = false
 	}
 
-	var quit bool = false
-	var count int = 0
+	var quit bool
+	var count int
 	var shell = ""
 	var prompt = defaultPrompt
 
@@ -86,11 +87,12 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 				cmd, err, contStepping := processCommand(line, singleStep)
 				singleStep = contStepping
 				if IsFlowControl(err, FlowQuit) {
+					// Flow quit is considered success; but last error remains
 					quit = true
 				} else if err != nil {
 					LastError = 1
 					fmt.Fprintf(ErrorWriter(), "%s: %s\n", line.Command, err.Error())
-					if IsFlowControl(err, FlowAbort) && stopOnInterrupt {
+					if IsFlowControl(err, FlowAbort) && allowAbort {
 						quit = true
 					}
 				} else if track, trackable := cmd.(Trackable); cmd != nil && trackable {
