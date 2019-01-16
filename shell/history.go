@@ -112,6 +112,45 @@ func (ho HistoryOptions) IsHistoryPathOptionEnabled() bool {
 	return false
 }
 
+func (ho *HistoryOptions) SetPathOption(payloadType ResultPayloadType) {
+
+	ho.ClearPathOptions()
+	
+	switch payloadType {
+	case ResultPath:
+		if ho.valueIsResultPath != nil {
+			*ho.valueIsResultPath = true
+		}
+	case AuthPath:
+		if ho.valueIsAuthPath != nil {
+			*ho.valueIsAuthPath = true
+		}
+	case CookiePath:
+		if ho.valueIsCookiePath != nil {
+			*ho.valueIsCookiePath = true
+		}
+	case HeaderPath:
+		if ho.valueIsHeaderPath != nil {
+			*ho.valueIsHeaderPath = true
+		}
+	}
+}
+
+func (ho *HistoryOptions) ClearPathOptions() {
+	if ho.valueIsResultPath != nil {
+		*ho.valueIsResultPath = false
+	}
+	if ho.valueIsAuthPath != nil {
+		*ho.valueIsAuthPath = false
+	}
+	if ho.valueIsCookiePath != nil {
+		*ho.valueIsCookiePath = false
+	}
+	if ho.valueIsHeaderPath != nil {
+		*ho.valueIsHeaderPath = false
+	}
+}
+
 // Get the value from History and return as string
 func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, error) {
 

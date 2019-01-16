@@ -42,6 +42,7 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	cmd.valueIsFile = set.BoolLong("file", 0, "Use the value as a file name to read for value")
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
+	_ = set.BoolLong("direct", 0, "Use direct value instead of redirecting to variable or file or history")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AllPaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
@@ -70,6 +71,32 @@ func (cmd *SetCommand) Execute(args []string) error {
 
 	if len(args) > 0 {
 		for _, v := range args {
+			if len(v) > 2 && strings.HasPrefix(v, "--") {
+				*cmd.valueIsVar = false
+				*cmd.valueIsFile = false
+				*cmd.valueIsEnvVar = false
+				cmd.historyOptions.ClearPathOptions()
+				switch strings.ToLower(v) {
+				case "--var":
+					*cmd.valueIsVar = true
+				case "--file":
+					*cmd.valueIsFile = true
+				case "--env":
+					*cmd.valueIsEnvVar = true
+				case "--path":
+					cmd.historyOptions.SetPathOption(shell.ResultPath)
+				case "--path-header":
+					cmd.historyOptions.SetPathOption(shell.HeaderPath)
+				case "--path-auth":
+					cmd.historyOptions.SetPathOption(shell.AuthPath)
+				case "--path-cookie":
+					cmd.historyOptions.SetPathOption(shell.CookiePath)
+				case "--direct":
+				default:
+					return fmt.Errorf("Invalid option in arguments: %s", v)
+				}
+				continue
+			}
 			processArg(cmd, v)
 		}
 	}
@@ -78,7 +105,7 @@ func (cmd *SetCommand) Execute(args []string) error {
 
 func processArg(cmd *SetCommand, arg string) {
 	parts := parseArg(arg)
-	if len(parts) == 0 || len(parts[1]) == 0 {
+	if len(parts) == 0 || len(parts[0]) == 0 {
 		fmt.Fprintln(shell.ErrorWriter(), "Warning: skipping invalid argument: "+arg)
 		return
 	} else if len(parts) == 1 && !*cmd.allowEmpty {
