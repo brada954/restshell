@@ -48,7 +48,7 @@ func (cmd *PostCommand) Execute(args []string) error {
 	method := cmd.postOptions.GetPostMethod()
 	postBody, err := cmd.postOptions.GetPostBody()
 	if err != nil {
-		return err
+		return shell.PushError(err)
 	}
 
 	body := postBody.Content()
