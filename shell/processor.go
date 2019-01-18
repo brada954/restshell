@@ -72,7 +72,7 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 				shell = ""
 			}
 		case "SHELL":
-			if !quit && len(line.ArgString) > 0 {
+			if len(line.ArgString) > 0 {
 				shell = line.ArgString
 				if !(shell[len(shell)-1] == '\\' || shell[len(shell)-1] == '/') {
 					shell = shell + " "
