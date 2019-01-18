@@ -35,6 +35,70 @@ type AssertCommand struct {
 	historyOptions  shell.HistoryOptions
 }
 
+// Assert -- Interface to an assertion result
+type Assert interface {
+	Success() bool
+	Failed() bool
+	Message() string
+}
+
+type assert struct {
+	Passed  bool
+	Text    string
+	Context string
+}
+
+func (a *assert) Success() bool {
+	if a == nil {
+		return true
+	}
+	return a.Passed
+}
+
+func (a *assert) Failed() bool {
+	if a == nil {
+		return false
+	}
+	return !a.Passed
+}
+
+func (a *assert) SetContext(c string) {
+	a.Context = c
+}
+
+func (a *assert) Message() string {
+	if a == nil {
+		return "Success inferred" // This should probably panic
+	}
+	if len(a.Context) > 0 {
+		return a.Context + ": " + a.Text
+	}
+	return a.Text
+}
+
+// NewAssertFailure -- Build a failed assert
+func NewAssertFailure(context string, message string, a ...interface{}) Assert {
+	return &assert{false, fmt.Sprintf(message, a...), context}
+}
+
+// NewAssertSuccess -- Build a successful assert
+func NewAssertSuccess(context string, message string, a ...interface{}) Assert {
+	return &assert{true, fmt.Sprintf(message, a...), context}
+}
+
+// NewAssert -- builds a failed assert using non-nil error or success assert with message
+func NewAssert(err error, context string, message string, a ...interface{}) Assert {
+	if err == nil {
+		return NewAssertSuccess(context, message, a...)
+	}
+	return NewAssertFailure(context, err.Error())
+}
+
+// NewAssertError -- builds a failed assert using the error
+func NewAssertError(err error, context string) Assert {
+	return NewAssert(err, context, "Oops, valid description missing")
+}
+
 func NewAssertCommand() *AssertCommand {
 	return &AssertCommand{}
 }
@@ -121,8 +185,8 @@ func (cmd *AssertCommand) Execute(args []string) error {
 	}
 
 	var errorOccurred bool
-	err = cmd.executeAssertions(valueModifierFunc, result, args)
-	if (*cmd.expectError && err == nil) || (!*cmd.expectError && err != nil) {
+	theAssert := cmd.executeAssertions(valueModifierFunc, result, args)
+	if (*cmd.expectError && theAssert.Success()) || (!*cmd.expectError && theAssert.Failed()) {
 		errorOccurred = true
 		cmd.failedAsserts = cmd.failedAsserts + 1
 		cmd.totalFailures = cmd.totalFailures + 1
@@ -130,11 +194,15 @@ func (cmd *AssertCommand) Execute(args []string) error {
 	cmd.executedAsserts = cmd.executedAsserts + 1
 	cmd.totalExecuted = cmd.totalExecuted + 1
 
-	err = cmd.buildErrorWithMessage(err)
-	if errorOccurred && *cmd.exitOption {
-		return shell.NewFlowError(err.Error(), shell.FlowAbort)
+	if errorOccurred {
+		err = cmd.buildErrorWithMessage(errors.New(theAssert.Message()))
+		if *cmd.exitOption {
+			return shell.NewFlowError(err.Error(), shell.FlowAbort)
+		}
+		return err
 	}
-	return err
+	shell.OnVerbose(theAssert.Message() + "\n")
+	return nil
 }
 
 func (cmd *AssertCommand) executeReporting() error {
@@ -189,12 +257,12 @@ func (cmd *AssertCommand) executeReporting() error {
 	return reterr
 }
 
-func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueModifier, result shell.Result, args []string) (reterr error) {
-	defer func() {
-		if reterr != nil && len(args) > 1 {
-			reterr = errors.New(args[1] + ": " + reterr.Error())
-		}
-	}()
+func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueModifier, result shell.Result, args []string) Assert {
+	// defer func() {
+	// 	if retval != nil && len(args) > 1 {
+	// 		retval = retval.SetContext(args[1])
+	// 	}
+	// }()
 
 	if shell.IsCmdDebugEnabled() {
 		errStr := "NoErr"
@@ -213,16 +281,16 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		switch args[0] {
 		case "ISERR":
 			if result.Error != nil {
-				return onSuccessVerbose(nil, "Result was an error as expected")
+				return NewAssertSuccess("Last Command", "Result was an error as expected")
 			}
-			return errors.New("Unexpected success; error did not happen")
+			return NewAssertFailure("Last Command", "Unexpectedly returned success when error expected")
 		case "NOERR":
 			if result.Error == nil {
-				return onSuccessVerbose(nil, "Result was a success as expected")
+				return NewAssertSuccess("Last Command", "Result was a success as expected")
 			}
-			return errors.New("Unexpected error: " + result.Error.Error())
+			return NewAssertFailure("Last Command", "Unexpectedly returned an error: "+result.Error.Error())
 		default:
-			return shell.ErrArguments
+			return NewAssertError(shell.ErrArguments, "")
 		}
 	}
 
@@ -231,18 +299,18 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		case "HSTATUS":
 			if strings.ToUpper(args[1]) == "OK" || strings.ToUpper(args[1]) == "SUCCESS" {
 				if result.HttpStatus == 200 || result.HttpStatus == 201 {
-					return onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
+					return NewAssertSuccess("Last Request", "HTTP Status was %s as expected", result.HttpStatusString)
 				}
 			}
 
 			status, err := strconv.Atoi(args[1])
 			if err != nil {
-				return errors.New("Invalid status argument: " + args[1])
+				return NewAssertFailure("Last Request", "Invalid status argument: %s", args[1])
 			}
 			if result.HttpStatus != status {
-				return fmt.Errorf("Expected status %d; got %d", status, result.HttpStatus)
+				return NewAssertFailure("Last Request", "Expected status %d; got %d", status, result.HttpStatus)
 			}
-			return onSuccessVerbose(nil, "HTTP Status was %s as expected", result.HttpStatusString)
+			return NewAssertSuccess("Last Request", "HTTP Status was %s as expected", result.HttpStatusString)
 		}
 	}
 
@@ -261,20 +329,20 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 			if err != nil {
 				switch args[0] {
 				case "NEX":
-					return onSuccessVerbose(nil, "Path %s does not exist as expected", path)
+					return NewAssertSuccess(path, "Path does not exist as expected")
 				case "EX":
-					return errors.New("Expected path does not exist: " + path)
+					return NewAssertFailure(path, "Expected path does not exist")
 				default:
-					return errors.New("GetNode: " + path + " " + err.Error())
+					return NewAssertError(err, path)
 				}
 			}
 		}
 	}
 
 	if args[0] == "NEX" {
-		return errors.New("Path unexpectedly exists: " + path)
+		return NewAssertFailure(path, "Path unexpectedly exists")
 	} else if args[0] == "EX" {
-		return onSuccessVerbose(nil, "Path %s exists as expected", path)
+		return NewAssertSuccess(path, "Path exists as expected")
 	}
 
 	// Ensure non-nil if a required condition for assert
@@ -284,7 +352,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 	newnode, err := valueModifierFunc(node)
 	if err != nil {
-		return err
+		return NewAssertError(err, "Modifiers")
 	}
 	node = newnode
 
@@ -296,32 +364,32 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 	if len(args) == 2 {
 		switch args[0] {
 		case "NIL":
-			return onSuccessVerbose(isNil(node), "Node at %s was nil as expected", path)
+			return NewAssert(isNil(node), path, "Node was nil as expected")
 		case "NNIL":
-			return onSuccessVerbose(isNotNil(node), "Node at %s was not nil as expected", path)
+			return NewAssert(isNotNil(node), path, "Node was not nil as expected")
 		case "ISOBJ":
-			return onSuccessVerbose(isObject(node), "Node at %s was an object as expected", path)
+			return NewAssert(isObject(node), path, "Node was an object as expected")
 		case "ISARRAY":
-			return onSuccessVerbose(isArray(node), "Node at %s was an array as expected", path)
+			return NewAssert(isArray(node), path, "Node was an array as expected")
 		case "ISDATE":
-			return onSuccessVerbose(isDate(node), "Node at %s was a date as expected", path)
+			return NewAssert(isDate(node), path, "Node was a date as expected")
 		case "NODATE":
-			return onSuccessVerbose(isNotDate(node), "Node at %s was not a date as expected", path)
+			return NewAssert(isNotDate(node), path, "Node was not a date as expected")
 		case "ISSTR":
-			return onSuccessVerbose(isString(node), "Node at %s was a string as expected", path)
+			return NewAssert(isString(node), path, "Node was a string as expected")
 		case "NOSTR":
-			return onSuccessVerbose(isNotString(node), "Node at %s was not a string as expected", path)
+			return NewAssert(isNotString(node), path, "Node was not a string as expected")
 		case "ISINT":
-			return onSuccessVerbose(isInt(node), "Node at %s was an integer as expected", path)
+			return NewAssert(isInt(node), path, "Node was an integer as expected")
 		case "ISFLOAT":
-			return onSuccessVerbose(isFloat(node), "Node at %s was a float as expected", path)
+			return NewAssert(isFloat(node), path, "Node  was a float as expected")
 		case "ISNUM":
 			if isFloat(node) == nil || isInt(node) == nil {
-				return onSuccessVerbose(nil, "Node at %s was a number as expected", path)
+				return NewAssertSuccess(path, "Node was a number as expected")
 			}
-			return fmt.Errorf("Type was not a number: %v", reflect.TypeOf(node))
+			return NewAssertFailure(path, "Type was not a number: %v", reflect.TypeOf(node))
 		default:
-			return shell.ErrArguments
+			return NewAssertError(shell.ErrArguments, args[0])
 		}
 	}
 
@@ -330,27 +398,27 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 		switch args[0] {
 		case "EQ":
-			return onSuccessVerbose(isEqual(node, value), "Value at %s equaled %s as expected", path, value)
+			return NewAssert(isEqual(node, value), path, "Value equaled %s as expected", value)
 		case "NEQ":
-			return onSuccessVerbose(isNotEqual(node, value), "Value at %s did not equal %s as expected", path, value)
+			return NewAssert(isNotEqual(node, value), path, "Value did not equal %s as expected", value)
 		case "GT":
-			return onSuccessVerbose(isGt(node, value), "Value at %s was greater than %s as expected", path, value)
+			return NewAssert(isGt(node, value), path, "Value was greater than %s as expected", value)
 		case "GTE":
-			return onSuccessVerbose(isGte(node, value), "Value at %s was equal or greater than %s as expected", path, value)
+			return NewAssert(isGte(node, value), path, "Value was equal or greater than %s as expected", value)
 		case "LT":
-			return onSuccessVerbose(isLt(node, value), "Value at %s was lessor than %s as expected", path, value)
+			return NewAssert(isLt(node, value), path, "Value was lessor than %s as expected", value)
 		case "LTE":
-			return onSuccessVerbose(isLte(node, value), "Value at %s was equal or lessor than %s as expected", path, value)
+			return NewAssert(isLte(node, value), path, "Value was equal or lessor than %s as expected", value)
 		case "EQDATE":
-			return onSuccessVerbose(isDateEqual(node, value), "Date at %s was equal to %s as expected", path, value)
+			return NewAssert(isDateEqual(node, value), path, "Date was equal to %s as expected", value)
 		case "REGMATCH":
-			return onSuccessVerbose(isRegexMatch(node, value), "Value at %s matched pattern %s as expected", path, value)
+			return NewAssert(isRegexMatch(node, value), path, "Value matched pattern %s as expected", value)
 		default:
-			return shell.ErrArguments
+			return NewAssertError(shell.ErrArguments, args[0])
 		}
 	}
 
-	return shell.ErrArguments
+	return NewAssertError(shell.ErrArguments, args[0])
 }
 
 func (cmd *AssertCommand) buildErrorWithMessage(err error) error {
@@ -670,12 +738,16 @@ func isDateEqual(i interface{}, value string) error {
 	return fmt.Errorf("Date values not equal: %v!=%v", expectedDate, date)
 }
 
-func onSuccessVerbose(err error, format string, a ...interface{}) error {
-	if err == nil {
-		if format[len(format)-1:] != "\n" {
-			format = format + "\n"
-		}
-		shell.OnVerbose(format, a...)
-	}
-	return err
-}
+// func onSuccessVerbose(err error, context string, format string, a ...interface{}) Assert {
+// 	var assert Assert
+// 	if err == nil {
+// 		assert = NewAssertSuccess(context, fmt.Srintf(format, a...))
+// 		if format[len(format)-1:] != "\n" {
+// 			format = format + "\n"
+// 		}
+// 		shell.OnVerbose(format, a...)
+// 	} else {
+// 		assert = NewAssertFailure(context, err.Error())
+// 	}
+// 	return assert
+// }
