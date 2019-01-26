@@ -25,6 +25,7 @@ type AssertCommand struct {
 	messageOption   *string
 	testOption      *bool
 	skipOnErrOption *bool
+	expectFail      *bool
 	expectError     *bool
 	executedAsserts int
 	failedAsserts   int
@@ -127,7 +128,8 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.testOption = set.BoolLong("test", 0, "Use first argument as the value for testing")
 	cmd.nonNilValues = set.BoolLong("non-nil", 0, "Only assert for non-nil values")
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
-	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success")
+	cmd.expectFail = set.BoolLong("expect-fail", 0, "Count failures as success")
+	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success (to be deprectated)")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AlternatePaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
@@ -152,6 +154,7 @@ func (cmd *AssertCommand) ExtendedUsage(w io.Writer) {
 func (cmd *AssertCommand) Execute(args []string) error {
 	*cmd.reportOption = *cmd.reportOption || *cmd.reportAllOption
 	*cmd.summaryOption = *cmd.summaryOption || *cmd.reportAllOption
+	*cmd.expectFail = *cmd.expectFail || *cmd.expectError
 
 	if len(args) < 1 {
 		if !(*cmd.clearOption || *cmd.reportOption || *cmd.summaryOption || *cmd.newOption || len(*cmd.messageOption) >= 0) {
@@ -184,25 +187,64 @@ func (cmd *AssertCommand) Execute(args []string) error {
 		}
 	}
 
-	var errorOccurred bool
 	theAssert := cmd.executeAssertions(valueModifierFunc, result, args)
-	if (*cmd.expectError && theAssert.Success()) || (!*cmd.expectError && theAssert.Failed()) {
-		errorOccurred = true
-		cmd.failedAsserts = cmd.failedAsserts + 1
-		cmd.totalFailures = cmd.totalFailures + 1
-	}
+
 	cmd.executedAsserts = cmd.executedAsserts + 1
 	cmd.totalExecuted = cmd.totalExecuted + 1
-
-	if errorOccurred {
-		err = cmd.buildErrorWithMessage(errors.New(theAssert.Message()))
-		if *cmd.exitOption {
-			return shell.NewFlowError(err.Error(), shell.FlowAbort)
+	if *cmd.expectFail {
+		if theAssert.Success() {
+			// RETURN ERROR: Message is verbose statement on message
+			// Include optional message
+			cmd.failedAsserts = cmd.failedAsserts + 1
+			cmd.totalFailures = cmd.totalFailures + 1
+			cmd.returnError(shell.OutputWriter(), theAssert)
+		} else {
+			// WARNING: Warning message of the assert fail plus the optional message
+			// return no error
+			cmd.returnWarning(shell.OutputWriter(), theAssert)
 		}
-		return err
+	} else {
+		if theAssert.Failed() {
+			// RETURN ERROR: Message is the assert failure message
+			// Include optional message text
+			cmd.failedAsserts = cmd.failedAsserts + 1
+			cmd.totalFailures = cmd.totalFailures + 1
+			cmd.returnError(shell.OutputWriter(), theAssert)
+
+		} else {
+			shell.OnVerbose(theAssert.Message() + "\n")
+		}
 	}
-	shell.OnVerbose(theAssert.Message() + "\n")
+
 	return nil
+}
+
+func (cmd *AssertCommand) returnWarning(io io.Writer, a Assert) error {
+	fmt.Fprintln(io, "WARNING: ", a.Message())
+	if len(*cmd.messageOption) > 0 {
+		fmt.Fprintln(io, *cmd.messageOption)
+	}
+	return nil
+}
+
+func (cmd *AssertCommand) returnError(io io.Writer, a Assert) error {
+	var sb strings.Builder
+
+	if a.Success() {
+		sb.WriteString("UNEXPECTED: ")
+	}
+
+	sb.WriteString(a.Message())
+
+	if len(*cmd.messageOption) > 0 {
+		sb.WriteRune('\n')
+		sb.WriteString(*cmd.messageOption)
+	}
+
+	if *cmd.exitOption {
+		return shell.NewFlowError(sb.String(), shell.FlowAbort)
+	}
+	return errors.New(sb.String())
 }
 
 func (cmd *AssertCommand) executeReporting() error {
@@ -347,7 +389,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 	// Ensure non-nil if a required condition for assert
 	if node == nil && *cmd.nonNilValues {
-		return nil
+		return NewAssertSuccess(path, "Result was nil, assert not executed")
 	}
 
 	newnode, err := valueModifierFunc(node)
@@ -358,7 +400,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 	// If modifiers created a nil and non-nil value required, just return success
 	if node == nil && *cmd.nonNilValues {
-		return nil
+		return NewAssertSuccess(path, "Modified result was nil, assert not executed")
 	}
 
 	if len(args) == 2 {
