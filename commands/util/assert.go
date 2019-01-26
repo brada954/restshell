@@ -197,11 +197,11 @@ func (cmd *AssertCommand) Execute(args []string) error {
 			// Include optional message
 			cmd.failedAsserts = cmd.failedAsserts + 1
 			cmd.totalFailures = cmd.totalFailures + 1
-			cmd.returnError(shell.OutputWriter(), theAssert)
+			return cmd.returnError(shell.OutputWriter(), theAssert)
 		} else {
 			// WARNING: Warning message of the assert fail plus the optional message
 			// return no error
-			cmd.returnWarning(shell.OutputWriter(), theAssert)
+			return cmd.returnWarning(shell.OutputWriter(), theAssert)
 		}
 	} else {
 		if theAssert.Failed() {
@@ -209,14 +209,13 @@ func (cmd *AssertCommand) Execute(args []string) error {
 			// Include optional message text
 			cmd.failedAsserts = cmd.failedAsserts + 1
 			cmd.totalFailures = cmd.totalFailures + 1
-			cmd.returnError(shell.OutputWriter(), theAssert)
+			return cmd.returnError(shell.OutputWriter(), theAssert)
 
 		} else {
 			shell.OnVerbose(theAssert.Message() + "\n")
+			return nil
 		}
 	}
-
-	return nil
 }
 
 func (cmd *AssertCommand) returnWarning(io io.Writer, a Assert) error {
@@ -323,12 +322,12 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		switch args[0] {
 		case "ISERR":
 			if result.Error != nil {
-				return NewAssertSuccess("Last Command", "Result was an error as expected")
+				return NewAssertSuccess("Last Command", "Result was an error as asserted")
 			}
 			return NewAssertFailure("Last Command", "Unexpectedly returned success when error expected")
 		case "NOERR":
 			if result.Error == nil {
-				return NewAssertSuccess("Last Command", "Result was a success as expected")
+				return NewAssertSuccess("Last Command", "Result was a success as asserted")
 			}
 			return NewAssertFailure("Last Command", "Unexpectedly returned an error: "+result.Error.Error())
 		default:
@@ -341,7 +340,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		case "HSTATUS":
 			if strings.ToUpper(args[1]) == "OK" || strings.ToUpper(args[1]) == "SUCCESS" {
 				if result.HttpStatus == 200 || result.HttpStatus == 201 {
-					return NewAssertSuccess("Last Request", "HTTP Status was %s as expected", result.HttpStatusString)
+					return NewAssertSuccess("Last Request", "HTTP Status was %s as asserted", result.HttpStatusString)
 				}
 			}
 
@@ -352,7 +351,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 			if result.HttpStatus != status {
 				return NewAssertFailure("Last Request", "Expected status %d; got %d", status, result.HttpStatus)
 			}
-			return NewAssertSuccess("Last Request", "HTTP Status was %s as expected", result.HttpStatusString)
+			return NewAssertSuccess("Last Request", "HTTP Status was %s as asserted", result.HttpStatusString)
 		}
 	}
 
@@ -371,7 +370,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 			if err != nil {
 				switch args[0] {
 				case "NEX":
-					return NewAssertSuccess(path, "Path does not exist as expected")
+					return NewAssertSuccess(path, "Path does not exist as asserted")
 				case "EX":
 					return NewAssertFailure(path, "Expected path does not exist")
 				default:
@@ -384,7 +383,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 	if args[0] == "NEX" {
 		return NewAssertFailure(path, "Path unexpectedly exists")
 	} else if args[0] == "EX" {
-		return NewAssertSuccess(path, "Path exists as expected")
+		return NewAssertSuccess(path, "Path exists as asserted")
 	}
 
 	// Ensure non-nil if a required condition for assert
@@ -406,28 +405,28 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 	if len(args) == 2 {
 		switch args[0] {
 		case "NIL":
-			return NewAssert(isNil(node), path, "Node was nil as expected")
+			return NewAssert(isNil(node), path, "Node was nil as asserted")
 		case "NNIL":
-			return NewAssert(isNotNil(node), path, "Node was not nil as expected")
+			return NewAssert(isNotNil(node), path, "Node was not nil as asserted")
 		case "ISOBJ":
-			return NewAssert(isObject(node), path, "Node was an object as expected")
+			return NewAssert(isObject(node), path, "Node was an object as asserted")
 		case "ISARRAY":
-			return NewAssert(isArray(node), path, "Node was an array as expected")
+			return NewAssert(isArray(node), path, "Node was an array as asserted")
 		case "ISDATE":
-			return NewAssert(isDate(node), path, "Node was a date as expected")
+			return NewAssert(isDate(node), path, "Node was a date as asserted")
 		case "NODATE":
-			return NewAssert(isNotDate(node), path, "Node was not a date as expected")
+			return NewAssert(isNotDate(node), path, "Node was not a date as asserted")
 		case "ISSTR":
-			return NewAssert(isString(node), path, "Node was a string as expected")
+			return NewAssert(isString(node), path, "Node was a string as asserted")
 		case "NOSTR":
-			return NewAssert(isNotString(node), path, "Node was not a string as expected")
+			return NewAssert(isNotString(node), path, "Node was not a string as asserted")
 		case "ISINT":
-			return NewAssert(isInt(node), path, "Node was an integer as expected")
+			return NewAssert(isInt(node), path, "Node was an integer as asserted")
 		case "ISFLOAT":
-			return NewAssert(isFloat(node), path, "Node  was a float as expected")
+			return NewAssert(isFloat(node), path, "Node  was a float as asserted")
 		case "ISNUM":
 			if isFloat(node) == nil || isInt(node) == nil {
-				return NewAssertSuccess(path, "Node was a number as expected")
+				return NewAssertSuccess(path, "Node was a number as asserted")
 			}
 			return NewAssertFailure(path, "Type was not a number: %v", reflect.TypeOf(node))
 		default:
@@ -440,21 +439,21 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 		switch args[0] {
 		case "EQ":
-			return NewAssert(isEqual(node, value), path, "Value equaled %s as expected", value)
+			return NewAssert(isEqual(node, value), path, "Value equaled %s as asserted", value)
 		case "NEQ":
-			return NewAssert(isNotEqual(node, value), path, "Value did not equal %s as expected", value)
+			return NewAssert(isNotEqual(node, value), path, "Value did not equal %s as asserted", value)
 		case "GT":
-			return NewAssert(isGt(node, value), path, "Value was greater than %s as expected", value)
+			return NewAssert(isGt(node, value), path, "Value was greater than %s as asserted", value)
 		case "GTE":
-			return NewAssert(isGte(node, value), path, "Value was equal or greater than %s as expected", value)
+			return NewAssert(isGte(node, value), path, "Value was equal or greater than %s as asserted", value)
 		case "LT":
-			return NewAssert(isLt(node, value), path, "Value was lessor than %s as expected", value)
+			return NewAssert(isLt(node, value), path, "Value was lessor than %s as asserted", value)
 		case "LTE":
-			return NewAssert(isLte(node, value), path, "Value was equal or lessor than %s as expected", value)
+			return NewAssert(isLte(node, value), path, "Value was equal or lessor than %s as asserted", value)
 		case "EQDATE":
-			return NewAssert(isDateEqual(node, value), path, "Date was equal to %s as expected", value)
+			return NewAssert(isDateEqual(node, value), path, "Date was equal to %s as asserted", value)
 		case "REGMATCH":
-			return NewAssert(isRegexMatch(node, value), path, "Value matched pattern %s as expected", value)
+			return NewAssert(isRegexMatch(node, value), path, "Value matched pattern %s as asserted", value)
 		default:
 			return NewAssertError(shell.ErrArguments, args[0])
 		}
