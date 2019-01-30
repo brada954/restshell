@@ -81,6 +81,11 @@ func (cmd *LoginCommand) setCookieAuth(args []string) error {
 	authContext := NewCookieAuth()
 	errCnt := 0
 
+	if len(args) == 0 {
+		line := shell.GetLine("Input Cookie Data [x=y;a=b]:\n")
+		args = shell.LineParse(line)
+	}
+
 	// Execute commands
 	for _, arg := range args {
 		cookies := strings.Split(arg, ";")
@@ -105,6 +110,11 @@ func (cmd *LoginCommand) setCookieAuth(args []string) error {
 func (cmd *LoginCommand) setHeaderAuth(args []string) error {
 	authContext := NewHeaderAuth()
 	errCnt := 0
+
+	if len(args) == 0 {
+		line := shell.GetLine("Input Header Data [x=y;a=b,c]:\n")
+		args = shell.LineParse(line)
+	}
 
 	// Execute commands
 	for _, arg := range args {

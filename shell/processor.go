@@ -366,7 +366,7 @@ func ContainsCommand(cmd string, tokens []string) bool {
 	return false
 }
 
-func getPassword(prompt string) string {
+func GetPassword(prompt string) string {
 	if len(prompt) > 0 {
 		fmt.Fprintf(os.Stdout, prompt)
 	}
@@ -380,7 +380,7 @@ func getPassword(prompt string) string {
 	return strings.TrimSpace(password)
 }
 
-func getLine(prompt string) string {
+func GetLine(prompt string) string {
 	if len(prompt) > 0 {
 		fmt.Fprintf(os.Stdout, prompt)
 	}
