@@ -47,7 +47,7 @@ func (cmd *BaseCommand) Execute(args []string) error {
 		shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
 	}
 
-	if len(args) == 0 {
+	if len(args) == 0 && !(*cmd.clearOption || *cmd.clearAuthOption) {
 		fmt.Fprintf(shell.OutputWriter(), "Current Base Url: %s\n", shell.GetGlobalStringWithFallback(RESTBASEURLKEY, "{not set}"))
 		if auth, err := shell.GetAuthContext(RESTBASEAUTHKEY); err == nil {
 			fmt.Fprintf(shell.OutputWriter(), "Current Auth Type: %v:%s\n", reflect.TypeOf(auth), auth.ToString())
