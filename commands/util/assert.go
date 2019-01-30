@@ -132,7 +132,7 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success (to be deprectated)")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AlternatePaths)
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent)
 }
 
 func (cmd *AssertCommand) HeaderUsage(w io.Writer) {
@@ -219,9 +219,11 @@ func (cmd *AssertCommand) Execute(args []string) error {
 }
 
 func (cmd *AssertCommand) returnWarning(io io.Writer, a Assert) error {
-	fmt.Fprintln(io, "WARNING: ", a.Message())
-	if len(*cmd.messageOption) > 0 {
-		fmt.Fprintln(io, *cmd.messageOption)
+	if !shell.IsCmdSilentEnabled() || shell.IsCmdVerboseEnabled() {
+		fmt.Fprintln(io, "WARNING: ", a.Message())
+		if len(*cmd.messageOption) > 0 {
+			fmt.Fprintln(io, *cmd.messageOption)
+		}
 	}
 	return nil
 }
