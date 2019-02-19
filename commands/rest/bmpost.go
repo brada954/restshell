@@ -61,7 +61,7 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	// Build the job processor that can perform substitution
 	// on each iteration if required
 	var client = shell.NewRestClientFromOptions()
-	jobMaker := func() shell.JobProcessor {
+	jobMaker := func() shell.JobFunction {
 		rc := &client
 		if shell.IsCmdReconnectEnabled() {
 			tmprc := shell.NewRestClientFromOptions()
@@ -86,7 +86,13 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 
 	// Execute command using the job processor which supports
 	// iterations and concurrency
-	bm := shell.ProcessJob(jobMaker, shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus), &cmd.aborted)
+	o := shell.GetJobOptionsFromParams()
+	o.CancelPtr = &cmd.aborted
+	o.JobMaker = jobMaker
+	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
+
+	bm := shell.NewBenchmark(o.Iterations)
+	shell.ProcessJob(o, &bm)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"
