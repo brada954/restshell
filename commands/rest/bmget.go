@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
@@ -50,11 +51,11 @@ func (cmd *BmGetCommand) Execute(args []string) error {
 	// Get an auth context
 	var authContext = shell.GetCmdBasicAuthContext(shell.GetCmdQueryParamAuthContext(GetBaseAuthContext()))
 
-	// Execute command using the job processor which supports
+	// Execute command using the job which supports
 	// iterations and concurrency
 	var client = shell.NewRestClientFromOptions()
 
-	jobMaker := func() shell.JobProcessor {
+	jobMaker := func() shell.JobFunction {
 		rc := &client
 		if shell.IsCmdReconnectEnabled() {
 			tmprc := shell.NewRestClientFromOptions()
@@ -65,7 +66,13 @@ func (cmd *BmGetCommand) Execute(args []string) error {
 		}
 	}
 
-	bm := shell.ProcessJob(jobMaker, nil, &cmd.aborted)
+	o := shell.GetJobOptionsFromParams()
+	o.CancelPtr = &cmd.aborted
+	o.JobMaker = jobMaker
+
+	fmt.Println("Options:", o)
+	bm := shell.NewBenchmark(o.Iterations)
+	shell.ProcessJob(o, &bm)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"
