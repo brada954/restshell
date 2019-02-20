@@ -1,5 +1,18 @@
 /////////////////////////////////////////////////////////
 //  Package for running jobs that make REST requests
+//
+// Note: RestClient will open new connections for each worker because
+// most likely all connections will be in use until a worker completes
+// a request and frees a connection.
+//
+// Warming jobs was introduced to help get all workers started with extra
+// iterations upfront to effectively handle handshakes for first connection.
+// (TBD) Are there better mechanisms as warming jobs can still be
+// oustanding when jobs are started (affects benchmark wall time, but iteration
+// time should not be affected as long as MaxIdleConsPerHost isn't
+// exceeded or some other anomallys of Go or the OS)
+//
+
 package shell
 
 import (
@@ -39,19 +52,6 @@ type JobOptions struct {
 	CompletionHandler JobCompletion
 	CancelPtr         *bool
 }
-
-// Process jobs concurrently
-// Note: RestClient will open new connections for each worker because
-// most likely all connections will be in use until a worker completes
-// a request and frees a connection.
-//
-// Warming jobs was introduced to help get all workers started with a
-// extra iterations upfront that effectively start all workers.
-// (TBD) Are there better mechanisms as warming jobs can still be
-// oustanding when jobs are started (affects jm wall time, but iteration
-// time should not be affected as long as MaxIdleConsPerHost isn't
-// exceeded or some other anomallys of Go or the OS)
-//
 
 // GetJobOptionsFromParams -- initializes options from common command line options
 func GetJobOptionsFromParams() JobOptions {
