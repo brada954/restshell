@@ -23,13 +23,21 @@ import (
 	"time"
 )
 
+// Mockable interfaces for concurrent testing and benchmarks
+var mockableTimeSince = time.Since
+var mockableTimeNow = time.Now
+
 // JobMonitor -- interface to support benchmark capabilities
 type JobMonitor interface {
 	Start()
 	End()
 	StartIteration(int)
 	EndIteration(int)
+	EndIterationWithError(int, error)
+
+	// Update error from nil to a new value; do not update ealier errors -- rename to UpdateIterationError
 	SetIterationStatus(int, error)
+	UpdateIterationError(int, error)
 }
 
 // JobFunction -- Function prototype for a function that will perform an instance of the job
@@ -106,7 +114,9 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 
 			for job := range jobs {
 				if options.Duration > 0 && time.Now().After(endTime) {
-					continue // Keep pulling jobs in case producer is blocked
+					// Keep pulling jobs in case producer is blocked
+					// Overall, we are done starting new requests
+					continue
 				}
 
 				if options.CancelPtr != nil && *options.CancelPtr {
@@ -117,16 +127,13 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 					processor, err := makeJobWithThrottle(options.JobMaker, options.ThrottleInMs)
 					if err != nil {
 						jm.StartIteration(job)
-						jm.EndIteration(job)
-						jm.SetIterationStatus(job, err)
+						jm.EndIterationWithError(job, err)
 						continue
 					}
 					jm.StartIteration(job)
 					resp, err := callJobWithPanicHandler(processor)
-					jm.EndIteration(job)
-					if err != nil {
-						jm.SetIterationStatus(job, err)
-					} else {
+					jm.EndIterationWithError(job, err)
+					if err == nil {
 						if options.CompletionHandler != nil {
 							// Handle command specific completion
 							options.CompletionHandler(job, jm, resp)

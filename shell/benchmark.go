@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// Functions isolated for mock testing
-var CalcTimeSince = time.Since
-
 type Benchmark struct {
 	Iterations        []BenchmarkIteration
 	StartTime         time.Time
@@ -128,11 +125,20 @@ func (bm *Benchmark) StartIteration(i int) {
 }
 
 func (bm *Benchmark) EndIteration(i int) {
-	bm.Iterations[i].WallTime = int64(CalcTimeSince(bm.Iterations[i].start))
+	bm.EndIterationWithError(i, nil)
+}
+
+func (bm *Benchmark) EndIterationWithError(i int, err error) {
+	bm.Iterations[i].WallTime = int64(mockableTimeSince(bm.Iterations[i].start))
 	bm.Iterations[i].end = bm.Iterations[i].start.Add(time.Duration(bm.Iterations[i].WallTime))
+	bm.Iterations[i].Err = err
 }
 
 func (bm *Benchmark) SetIterationStatus(i int, err error) {
+	bm.UpdateIterationError(i, err)
+}
+
+func (bm *Benchmark) UpdateIterationError(i int, err error) {
 	bm.Iterations[i].Err = err
 }
 

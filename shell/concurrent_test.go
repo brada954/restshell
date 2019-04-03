@@ -3,14 +3,17 @@ package shell
 import (
 	"errors"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 )
 
+// JobCounter -- A test monitor for counting iterations during tests
 type JobCounter struct {
 	Iterations  int
 	Initiations int
 	Errors      int
+	mutex       sync.Mutex
 }
 
 func (jc *JobCounter) Start() {
@@ -20,17 +23,34 @@ func (jc *JobCounter) End() {
 }
 
 func (jc *JobCounter) StartIteration(i int) {
+	jc.mutex.Lock()
 	jc.Initiations++
+	jc.mutex.Unlock()
 }
 
 func (jc *JobCounter) EndIteration(i int) {
+	jc.mutex.Lock()
 	jc.Iterations++
+	jc.mutex.Unlock()
+}
+
+func (jc *JobCounter) EndIterationWithError(i int, err error) {
+	jc.mutex.Lock()
+	jc.Iterations++
+	jc.mutex.Unlock()
+	jc.SetIterationStatus(i, err)
 }
 
 func (jc *JobCounter) SetIterationStatus(i int, err error) {
 	if err != nil {
+		jc.mutex.Lock()
 		jc.Errors++
+		jc.mutex.Unlock()
 	}
+}
+
+func (jc *JobCounter) UpdateIterationError(i int, err error) {
+	jc.SetIterationStatus(i, err)
 }
 
 var SuccessResponse = RestResponse{httpResp: &http.Response{Status: "StatusOk", StatusCode: 200}}
@@ -48,7 +68,6 @@ func TestBasicIteration(t *testing.T) {
 	}
 
 	jc := &JobCounter{}
-
 	ProcessJob(options, jc)
 
 	if jc.Iterations != 5 {
@@ -77,7 +96,6 @@ func TestTimeIteration(t *testing.T) {
 	}
 
 	jc := &JobCounter{}
-
 	ProcessJob(options, jc)
 
 	if jc.Iterations != 3 {
@@ -102,11 +120,10 @@ func TestConcurrentIterationsWithTime(t *testing.T) {
 	}
 
 	jc := &JobCounter{}
-
 	ProcessJob(options, jc)
 
 	if jc.Iterations != 6 {
-		t.Errorf("Unexpected iteration count: 3<>%d", jc.Iterations)
+		t.Errorf("Unexpected iteration count: 6<>%d", jc.Iterations)
 	}
 }
 
@@ -130,7 +147,6 @@ func TestBasicIterationWithError(t *testing.T) {
 	}
 
 	jc := &JobCounter{}
-
 	ProcessJob(options, jc)
 
 	if jc.Iterations != 5 {
@@ -163,7 +179,6 @@ func TestBasicIterationWithAlternateResponse(t *testing.T) {
 	}
 
 	jc := &JobCounter{}
-
 	ProcessJob(options, jc)
 
 	if jc.Iterations != 5 {
