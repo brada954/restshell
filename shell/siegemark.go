@@ -32,6 +32,7 @@ type Siegemark struct {
 	completedPerSecond  float64
 	successfulPerSecond float64
 	failedPerSecond     float64
+	mux                 sync.Mutex // Protects counters like LateStarts
 	Buckets             []SiegeBucket
 	custom              interface{}
 }
@@ -59,7 +60,7 @@ func (sm *Siegemark) Start() {
 	sm.StartTime = mockableTimeNow()
 
 	for i := 0; i < len(sm.Buckets); i++ {
-		sm.Buckets[i].End = sm.StartTime.Add(sm.BucketDuration * time.Duration(i))
+		sm.Buckets[i].End = sm.StartTime.Add(sm.BucketDuration * time.Duration(i+1))
 	}
 }
 
@@ -79,13 +80,17 @@ func (sm *Siegemark) StartIteration(i int) {
 	}
 
 	if bucket == nil {
+		// We do not count jobs starting late
+		sm.mux.Lock()
 		sm.LateStarts++
-		return // We do not count jobs starting late
+		sm.mux.Unlock()
+		fmt.Println("Started Late: ", sm.StartTime, "-", now)
+	} else {
+		bucket.mux.Lock()
+		bucket.StartedJobs++
+		bucket.mux.Unlock()
+		fmt.Println("Bucket: ", now, "-", bucket.End)
 	}
-
-	bucket.mux.Lock()
-	bucket.StartedJobs++
-	bucket.mux.Unlock()
 }
 
 func (sm *Siegemark) EndIteration(i int) {
@@ -182,7 +187,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 				headingFmt,
 				"Label", "Total", "Success", "Error", "Avg Total", "Avg Success", "Avg Error", "Late", "Message", note)
 		} else {
-			var headingFmt = "%-14[1]s  %6[2]s  %8[3]s  %8[4]s  %8[5]s %8[6]s  %8[7]s  %8[8]s %[9]s %[10]s\n"
+			var headingFmt = "%-14[1]s  %6[2]s  %8[3]s  %12[4]s  %12[5]s %12[6]s  %8[7]s  %8[8]s %[9]s %[10]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
 				"Label", "Count", "Success", "Error", "Avg Total", "Avg Success", "Avg Error", "Late", "Message", note)
@@ -218,7 +223,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			sm.message,
 		)
 	} else {
-		var displayFmt = "%-14s  %6d  %8d  %8d  %8f %8f %8f %8d %s\n"
+		var displayFmt = "%-14s  %6d  %8d  %12d  %12f %12f  %8f  %8d %s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
