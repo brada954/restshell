@@ -66,7 +66,7 @@ func GetJobOptionsFromParams() JobOptions {
 	return JobOptions{
 		Concurrency:   GetCmdConcurrencyValue(),
 		Iterations:    GetCmdIterationValue(),
-		Duration:      time.Duration(0),
+		Duration:      GetCmdDurationValueWithFallback(0),
 		ThrottleInMs:  GetCmdIterationThrottleMs(),
 		EnableWarming: IsCmdWarmingEnabled(),
 	}

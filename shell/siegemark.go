@@ -84,12 +84,10 @@ func (sm *Siegemark) StartIteration(i int) {
 		sm.mux.Lock()
 		sm.LateStarts++
 		sm.mux.Unlock()
-		fmt.Println("Started Late: ", sm.StartTime, "-", now)
 	} else {
 		bucket.mux.Lock()
 		bucket.StartedJobs++
 		bucket.mux.Unlock()
-		fmt.Println("Bucket: ", now, "-", bucket.End)
 	}
 }
 

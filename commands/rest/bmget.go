@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/brada954/restshell/shell"
@@ -69,15 +68,16 @@ func (cmd *BmGetCommand) Execute(args []string) error {
 	o := shell.GetJobOptionsFromParams()
 	o.CancelPtr = &cmd.aborted
 	o.JobMaker = jobMaker
+	if o.Iterations == 0 {
+		o.Iterations = 10
+	}
 
-	fmt.Println("Options:", o)
 	bm := shell.NewBenchmark(o.Iterations)
-	shell.ProcessJob(o, &bm)
-
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"
 	}
 
+	shell.ProcessJob(o, &bm)
 	bm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
 	return nil
 }
