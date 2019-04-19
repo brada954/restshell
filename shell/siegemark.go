@@ -18,23 +18,22 @@ type SiegeBucket struct {
 }
 
 type Siegemark struct {
-	StartTime           time.Time
-	Duration            time.Duration
-	BucketDuration      time.Duration
-	LateStarts          int
-	Note                string
-	message             string
-	summarized          bool
-	successful          int
-	started             int
-	failed              int
-	startedPerSecond    float64
-	completedPerSecond  float64
-	successfulPerSecond float64
-	failedPerSecond     float64
-	mux                 sync.Mutex // Protects counters like LateStarts
-	Buckets             []SiegeBucket
-	custom              interface{}
+	StartTime         time.Time
+	Duration          time.Duration
+	BucketDuration    time.Duration
+	LateStarts        int
+	Note              string
+	message           string
+	summarized        bool
+	completed         int
+	started           int
+	failed            int
+	requestsPerSecond float64
+	avgRequest        float64
+	failuresPerSecond float64
+	mux               sync.Mutex // Protects counters like LateStarts
+	Buckets           []SiegeBucket
+	custom            interface{}
 }
 
 func NewSiegemark(duration time.Duration, buckets int) Siegemark {
@@ -145,7 +144,7 @@ func (sm *Siegemark) summarize() {
 	// Totals calculations
 	for _, v := range sm.Buckets {
 		sm.started = sm.started + v.StartedJobs
-		sm.successful = sm.successful + v.CompletedJobs
+		sm.completed = sm.completed + v.CompletedJobs
 		sm.failed = sm.failed + v.Errors
 	}
 
@@ -157,10 +156,9 @@ func (sm *Siegemark) summarize() {
 		sm.Duration = time.Nanosecond
 	}
 
-	sm.startedPerSecond = float64(sm.started) / sm.Duration.Seconds()
-	sm.completedPerSecond = float64(sm.successful+sm.failed) / sm.Duration.Seconds()
-	sm.successfulPerSecond = float64(sm.successful) / sm.Duration.Seconds()
-	sm.failedPerSecond = float64(sm.failed) / sm.Duration.Seconds()
+	sm.requestsPerSecond = float64(sm.started) / sm.Duration.Seconds()
+	sm.avgRequest = sm.Duration.Seconds() / float64(sm.started)
+	sm.failuresPerSecond = float64(sm.failed) / sm.Duration.Seconds()
 	sm.summarized = true
 }
 
@@ -185,10 +183,10 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 				headingFmt,
 				"Label", "Total", "Success", "Error", "Avg Total", "Avg Success", "Avg Error", "Late", "Message", note)
 		} else {
-			var headingFmt = "%-14[1]s  %6[2]s  %8[3]s  %12[4]s  %12[5]s %12[6]s  %8[7]s  %8[8]s %[9]s %[10]s\n"
+			var headingFmt = "%-14[1]s  %8[2]s  %8[3]s  %8[4]s  %12[5]s %12[6]s  %8[7]s  %12[8]s %[9]s %[10]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
-				"Label", "Count", "Success", "Error", "Avg Total", "Avg Success", "Avg Error", "Late", "Message", note)
+				"Label", "Count", "Success", "Error", "Avg Req", "Req/Sec", "Err/Sec", "Duration(S)", "Message", note)
 		}
 	}
 
@@ -198,40 +196,39 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			displayFmt,
 			label,
 			sm.started,
-			sm.successful,
+			sm.started-sm.failed,
 			sm.failed,
-			sm.completedPerSecond,
-			sm.successfulPerSecond,
-			sm.failedPerSecond,
+			sm.avgRequest,
+			sm.requestsPerSecond,
+			sm.failuresPerSecond,
 			sm.LateStarts,
-			sm.message,
-		)
+			sm.message)
 	} else if opts.IsCsvOutputEnabled() {
 		var displayFmt = "%s,%d,%d,%d,%f,%f,%f,%d,%s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
 			sm.started,
-			sm.successful,
+			sm.started-sm.failed,
 			sm.failed,
-			sm.completedPerSecond,
-			sm.successfulPerSecond,
-			sm.failedPerSecond,
+			sm.avgRequest,
+			sm.requestsPerSecond,
+			sm.failuresPerSecond,
 			sm.LateStarts,
 			sm.message,
 		)
 	} else {
-		var displayFmt = "%-14s  %6d  %8d  %12d  %12f %12f  %8f  %8d %s\n"
+		var displayFmt = "%-14s  %8d  %8d  %8d  %12f %12f  %8f  %12f %s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
 			sm.started,
-			sm.successful,
+			sm.started-sm.failed,
 			sm.failed,
-			sm.completedPerSecond,
-			sm.successfulPerSecond,
-			sm.failedPerSecond,
-			sm.LateStarts,
+			sm.avgRequest,
+			sm.requestsPerSecond,
+			sm.failuresPerSecond,
+			sm.Duration.Seconds(),
 			sm.message,
 		)
 	}
@@ -249,11 +246,11 @@ func (sm *Siegemark) DumpIterations(opts StandardOptions) {
 	} else if opts.IsCsvOutputEnabled() {
 		// CSV which is default
 	} else {
-		headingFmt = "  %9s  %8s  %10s  %10s  %3s  %s\n"
-		displayFmt = "  %9d %9s  %10d  %10d  %3s  %s\n"
+		headingFmt = "  %9s  %10s  %10s  %10s  %s\n"
+		displayFmt = "  %9s  %10d  %10d  %10d  %s\n"
 	}
 	if len(headingFmt) > 0 && !opts.IsHeaderDisabled() {
-		fmt.Fprintf(OutputWriter(), headingFmt, "Iteration", "WallTime", "Start", "End", "Err", "Message")
+		fmt.Fprintf(OutputWriter(), headingFmt, "Bucket", "Start", "End", "Err", "Message")
 	}
 
 	for _, v := range sm.Buckets {
@@ -262,7 +259,7 @@ func (sm *Siegemark) DumpIterations(opts StandardOptions) {
 }
 
 func (sb *SiegeBucket) DumpLine(opts StandardOptions, format string) {
-	fmt.Println("Bucket", sb.Label, sb.StartedJobs, sb.CompletedJobs, sb.Errors)
+	fmt.Printf(format, sb.Label, sb.StartedJobs, sb.CompletedJobs, sb.Errors, "")
 }
 
 // func (sm *Siegemark) WallAverageFmt() string {
