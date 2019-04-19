@@ -15,7 +15,7 @@ assert gt -v --test 12345 12045
 assert gte -v --test 12345 12345
 assert lte -v --test 12345 12345
 assert lte -v --test 12300 12345
-assert le -v --test 12300 12345
+assert lt -v --test 12300 12345
 
 # An oddity is that --int modifier does not handle float strings
 # convert to float type first
