@@ -11,6 +11,7 @@ type SmGetCommand struct {
 	// Place getopt option value pointers here
 	optionUseHead   *bool
 	optionUseDelete *bool
+	optionBuckets   *int
 	// Processing variables
 	aborted bool
 }
@@ -23,6 +24,7 @@ func (cmd *SmGetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")
+	cmd.optionBuckets = set.IntLong("buckets", 'b', 10, "Time slice buckets for metric collection")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
 }
 
@@ -46,6 +48,10 @@ func (cmd *SmGetCommand) Execute(args []string) error {
 		method = http.MethodHead
 	} else if *cmd.optionUseDelete {
 		method = http.MethodDelete
+	}
+
+	if *cmd.optionBuckets <= 0 || *cmd.optionBuckets >= 1000000 {
+		*cmd.optionBuckets = 10
 	}
 
 	// Get an auth context
@@ -73,7 +79,7 @@ func (cmd *SmGetCommand) Execute(args []string) error {
 		o.Duration = 10 * time.Second
 	}
 
-	sm := shell.NewSiegemark(o.Duration, 10)
+	sm := shell.NewSiegemark(o.Duration, *cmd.optionBuckets)
 	if authContext == nil || !authContext.IsAuthed() {
 		sm.Note = "Not an authenticated run"
 	}

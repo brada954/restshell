@@ -106,7 +106,7 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 	}()
 
 	// Setup workers for consuming jobs
-	endTime := time.Now().Add(options.Duration)
+	endTime := time.Now() // Reset end time after warming
 	for t := 0; t < concurrency; t++ {
 		waitGroup.Add(1) // Add a waiter
 		go func() {
@@ -167,6 +167,7 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 
 	// Run the jobs ; stop after all iterations or end of time whichever comes first
 	jm.Start()
+	endTime = time.Now().Add(options.Duration)
 	for i := 0; (options.Iterations == 0 || i < options.Iterations) && (options.Duration == 0 || time.Now().Before(endTime)); i++ {
 		if options.CancelPtr != nil && *options.CancelPtr {
 			break
