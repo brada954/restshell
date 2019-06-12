@@ -1,12 +1,14 @@
-/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 //  Package for running jobs that make REST requests
 //
-// Note: RestClient will open new connections for each worker because
-// most likely all connections will be in use until a worker completes
-// a request and frees a connection.
+// Note: With concurrecy the RestClient will open new TCP/IP connections for
+// each worker in a concurrecy set. This leads to many requests having
+// inflated time under concurrency.
 //
-// Warming jobs was introduced to help get all workers started with extra
-// iterations upfront to effectively handle handshakes for first connection.
+// Warming jobs are used to ensure a TCP/IP connection is opened by each
+// thread in a concurrency set. The warming job makes a connection that
+// is not counted within the requested iterations or time.started with extra.
+//
 // (TBD) Are there better mechanisms as warming jobs can still be
 // oustanding when jobs are started (affects benchmark wall time, but iteration
 // time should not be affected as long as MaxIdleConsPerHost isn't
@@ -23,20 +25,30 @@ import (
 	"time"
 )
 
+// Mockable interfaces for concurrent testing and benchmarks
+var mockableTimeSince = time.Since
+var mockableTimeNow = time.Now
+
 // JobMonitor -- interface to support benchmark capabilities
 type JobMonitor interface {
 	Start()
+	StartIteration(int) JobContext
+	FinalizeIteration(JobContext)
 	End()
-	StartIteration(int)
-	EndIteration(int)
-	SetIterationStatus(int, error)
+}
+
+// JobContext is returned by the start of an iteration to collect
+// iteration information for the completed iteration
+type JobContext interface {
+	EndIteration(error)
+	UpdateError(error)
 }
 
 // JobFunction -- Function prototype for a function that will perform an instance of the job
 type JobFunction func() (*RestResponse, error)
 
 // JobCompletion -- Function prototype for a function that can parse the response
-type JobCompletion func(job int, jm JobMonitor, resp *RestResponse)
+type JobCompletion func(job int, jc JobContext, resp *RestResponse)
 
 // JobMaker -- Function prototype for a function that can create an instance of the job function
 type JobMaker func() JobFunction
@@ -58,7 +70,7 @@ func GetJobOptionsFromParams() JobOptions {
 	return JobOptions{
 		Concurrency:   GetCmdConcurrencyValue(),
 		Iterations:    GetCmdIterationValue(),
-		Duration:      time.Duration(0),
+		Duration:      GetCmdDurationValueWithFallback(0),
 		ThrottleInMs:  GetCmdIterationThrottleMs(),
 		EnableWarming: IsCmdWarmingEnabled(),
 	}
@@ -98,7 +110,7 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 	}()
 
 	// Setup workers for consuming jobs
-	endTime := time.Now().Add(options.Duration)
+	endTime := time.Now() // Reset end time after warming
 	for t := 0; t < concurrency; t++ {
 		waitGroup.Add(1) // Add a waiter
 		go func() {
@@ -106,7 +118,9 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 
 			for job := range jobs {
 				if options.Duration > 0 && time.Now().After(endTime) {
-					continue // Keep pulling jobs in case producer is blocked
+					// Keep pulling jobs in case producer is blocked
+					// Overall, we are done starting new requests
+					continue
 				}
 
 				if options.CancelPtr != nil && *options.CancelPtr {
@@ -116,27 +130,27 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 				if job >= 0 {
 					processor, err := makeJobWithThrottle(options.JobMaker, options.ThrottleInMs)
 					if err != nil {
-						jm.StartIteration(job)
-						jm.EndIteration(job)
-						jm.SetIterationStatus(job, err)
+						context := jm.StartIteration(job)
+						context.EndIteration(err)
+						jm.FinalizeIteration(context)
 						continue
 					}
-					jm.StartIteration(job)
+					context := jm.StartIteration(job)
+
 					resp, err := callJobWithPanicHandler(processor)
-					jm.EndIteration(job)
-					if err != nil {
-						jm.SetIterationStatus(job, err)
-					} else {
+					context.EndIteration(err)
+					if err == nil {
 						if options.CompletionHandler != nil {
 							// Handle command specific completion
-							options.CompletionHandler(job, jm, resp)
+							options.CompletionHandler(job, context, resp)
 						} else if resp.GetStatus() != http.StatusOK {
 							// Handle default completion; expects 200 status
 							// Use a custom completion handler for different statuses
 							msg := resp.GetStatusString()
-							jm.SetIterationStatus(job, errors.New(msg))
+							context.UpdateError(errors.New(msg))
 						}
 					}
+					jm.FinalizeIteration(context)
 				} else {
 					// Performing warming; do not care about throttling or results
 					processor, err := makeJobWithThrottle(options.JobMaker, 0)
@@ -160,6 +174,7 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 
 	// Run the jobs ; stop after all iterations or end of time whichever comes first
 	jm.Start()
+	endTime = time.Now().Add(options.Duration)
 	for i := 0; (options.Iterations == 0 || i < options.Iterations) && (options.Duration == 0 || time.Now().Before(endTime)); i++ {
 		if options.CancelPtr != nil && *options.CancelPtr {
 			break
@@ -181,10 +196,10 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 // MakeJobCompletionForExpectedStatus -- Create a completion handler
 // to accept a different status than StatusOK
 func MakeJobCompletionForExpectedStatus(status int) JobCompletion {
-	return func(job int, jm JobMonitor, resp *RestResponse) {
+	return func(job int, jc JobContext, resp *RestResponse) {
 		if resp.GetStatus() != status {
 			msg := resp.GetStatusString()
-			jm.SetIterationStatus(job, errors.New(msg))
+			jc.UpdateError(errors.New(msg))
 		}
 	}
 }

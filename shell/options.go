@@ -34,7 +34,8 @@ const (
 const (
 	OptionDefaultTimeout              = 30000 // In milliseconds
 	OptionDefaultUrl                  = ""
-	OptionDefaultIterations           = 10
+	OptionDefaultIterations           = 0
+	OptionDefaultDuration             = ""
 	OptionDefaultConcurrency          = 1
 	OptionDefaultIterationsThrottleMs = 0
 	OptionDefaultBasicAuth            = "[user][,pwd]"
@@ -53,6 +54,7 @@ type StandardOptions struct {
 	urlOption            *string
 	noAuthOption         *bool
 	iterationOption      *int
+	durationOption       *string
 	concurrencyOption    *int
 	throttleOption       *int
 	csvOutputOption      *bool
@@ -129,6 +131,7 @@ func (o StandardOptions) Clear(options ...int) StandardOptions {
 			*o.urlOption = OptionDefaultUrl
 		case CmdBenchmarks:
 			*o.iterationOption = OptionDefaultIterations
+			*o.durationOption = OptionDefaultDuration
 			*o.throttleOption = OptionDefaultIterationsThrottleMs
 			*o.concurrencyOption = OptionDefaultConcurrency
 			*o.reconnectOption = false
@@ -206,7 +209,10 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			}
 		case CmdBenchmarks:
 			if globalOptions.iterationOption == nil {
-				globalOptions.iterationOption = set.IntLong("iterations", 'i', OptionDefaultIterations, "Number of iterations for a benchmark")
+				globalOptions.iterationOption = set.IntLong("iterations", 'i', OptionDefaultIterations, "Maximum iterations for a benchmark")
+			}
+			if globalOptions.durationOption == nil {
+				globalOptions.durationOption = set.StringLong("duration", 0, OptionDefaultDuration, "Maximum duration of a benchmark")
 			}
 			if globalOptions.concurrencyOption == nil {
 				globalOptions.concurrencyOption = set.IntLong("concurrency", 'c', OptionDefaultConcurrency, "Max concurrency")
@@ -334,6 +340,10 @@ func GetCmdHeaderValues(fallback string) string {
 
 func GetCmdIterationValue() int {
 	return globalOptions.GetCmdIterationValue()
+}
+
+func GetCmdDurationValueWithFallback(d time.Duration) time.Duration {
+	return globalOptions.GetCmdDurationValueWithFallback(0)
 }
 
 func GetCmdIterationThrottleMs() int {
@@ -506,12 +516,30 @@ func (o *StandardOptions) GetQueryParamAuthContext(fallback Auth) Auth {
 	}
 }
 
+// GetCmdIterationValue -- Get the iteration value and use the default if not set
 func (o *StandardOptions) GetCmdIterationValue() int {
 	if o.iterationOption != nil {
 		return *o.iterationOption
-	} else {
-		return OptionDefaultIterations
 	}
+	return OptionDefaultIterations
+}
+
+// GetCmdIterationValueWithFallback -- Get the iteration value and use the default if not set
+func (o *StandardOptions) GetCmdIterationValueWithFallback(d int) int {
+	if o.iterationOption != nil && *o.iterationOption != OptionDefaultIterations {
+		return *o.iterationOption
+	}
+	return d
+}
+
+// GetCmdDurationValueWithFallback -- Get the duration parameter use default if not set
+func (o *StandardOptions) GetCmdDurationValueWithFallback(d time.Duration) time.Duration {
+	if o.durationOption != nil {
+		if dur, err := ParseDuration(*o.durationOption); err != nil {
+			return dur
+		}
+	}
+	return d
 }
 
 func (o *StandardOptions) GetCmdConcurrencyValue() int {
