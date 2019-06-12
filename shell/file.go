@@ -32,6 +32,14 @@ func GetFileContents(filename string) (string, error) {
 	return string(b), nil
 }
 
+func GetBinaryFileContents(filename string) ([]byte, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+	return b, nil
+}
+
 // Validate a file exists in full format or with expected extension added.
 // Return the file that was verified that exists or an error.
 // Note: extension must be all lower case

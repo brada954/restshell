@@ -2,11 +2,12 @@ package rest
 
 import (
 	"strings"
+	"time"
 
 	"github.com/brada954/restshell/shell"
 )
 
-type BmPostCommand struct {
+type SmPostCommand struct {
 	// Place getopt option value pointers here
 	useSubstitution             *bool
 	useSubstitutionPerIteration *bool
@@ -16,11 +17,11 @@ type BmPostCommand struct {
 	aborted bool
 }
 
-func NewBmPostCommand() *BmPostCommand {
-	return &BmPostCommand{}
+func NewSmPostCommand() *SmPostCommand {
+	return &SmPostCommand{}
 }
 
-func (cmd *BmPostCommand) AddOptions(set shell.CmdSet) {
+func (cmd *SmPostCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.useSubstitution = set.BoolLong("subst", 0, "Run variable substitution on initial post data")
 	cmd.useSubstitutionPerIteration = set.BoolLong("subst-per-call", 0, "Run variable substitution on post data for each post")
@@ -29,7 +30,7 @@ func (cmd *BmPostCommand) AddOptions(set shell.CmdSet) {
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
 }
 
-func (cmd *BmPostCommand) Execute(args []string) error {
+func (cmd *SmPostCommand) Execute(args []string) error {
 	cmd.aborted = false
 
 	// Determine route
@@ -87,24 +88,25 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	// Execute command using the job processor which supports
 	// iterations and concurrency
 	o := shell.GetJobOptionsFromParams()
-	if o.Iterations == 0 {
-		o.Iterations = 10
+	if o.Duration == 0 {
+		o.Duration = 10 * time.Second
 	}
 	o.CancelPtr = &cmd.aborted
 	o.JobMaker = jobMaker
 	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
 
-	bm := shell.NewBenchmark(o.Iterations)
-	shell.ProcessJob(o, bm)
+	sm := shell.NewSiegemark(o.Duration, 10)
+	shell.ProcessJob(o, sm)
 
 	if authContext == nil || !authContext.IsAuthed() {
-		bm.Note = "Not an authenticated run"
+		sm.Note = "Not an authenticated run"
 	}
 
-	bm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
+	sm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
 	return nil
 }
 
-func (cmd *BmPostCommand) Abort() {
+// Abort -- Request the command to abort the current operation
+func (cmd *SmPostCommand) Abort() {
 	cmd.aborted = true
 }
