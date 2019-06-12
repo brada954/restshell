@@ -77,7 +77,7 @@ func (cmd *BmGetCommand) Execute(args []string) error {
 		bm.Note = "Not an authenticated run"
 	}
 
-	shell.ProcessJob(o, &bm)
+	shell.ProcessJob(o, bm)
 	bm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
 	return nil
 }

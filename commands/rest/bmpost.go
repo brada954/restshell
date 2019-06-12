@@ -95,7 +95,7 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
 
 	bm := shell.NewBenchmark(o.Iterations)
-	shell.ProcessJob(o, &bm)
+	shell.ProcessJob(o, bm)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"

@@ -1,11 +1,13 @@
 package shell
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
 )
 
+// Benchmark -- Structure implementing JobMontor
 type Benchmark struct {
 	Iterations        []BenchmarkIteration
 	StartTime         time.Time
@@ -25,6 +27,7 @@ type Benchmark struct {
 	custom            interface{}
 }
 
+// BenchmarkIteration -- Iteration structure implementing JobContext
 type BenchmarkIteration struct {
 	Iteration int
 	WallTime  int64 // Nano-seconds
@@ -35,7 +38,7 @@ type BenchmarkIteration struct {
 	end       time.Time
 }
 
-func NewBenchmark(iterations int) Benchmark {
+func NewBenchmark(iterations int) *Benchmark {
 	result := Benchmark{
 		summarized: false,
 		Iterations: make([]BenchmarkIteration, iterations, iterations),
@@ -45,7 +48,7 @@ func NewBenchmark(iterations int) Benchmark {
 		result.Iterations[i].Iteration = i
 		result.Iterations[i].Messages = make([]string, 0)
 	}
-	return result
+	return &result
 }
 
 func (bm *Benchmark) summarize() {
@@ -120,26 +123,27 @@ func (bm *Benchmark) WallTimeInMs() float64 {
 	return float64(bm.Duration) / float64(time.Millisecond)
 }
 
-func (bm *Benchmark) StartIteration(i int) {
+func (bm *Benchmark) StartIteration(i int) JobContext {
 	bm.Iterations[i].start = time.Now()
+	return &bm.Iterations[i]
 }
 
-func (bm *Benchmark) EndIteration(i int) {
-	bm.EndIterationWithError(i, nil)
+func (bm *Benchmark) FinalizeIteration(jc JobContext) {
+	if iteration, ok := jc.(*BenchmarkIteration); ok {
+		if iteration.WallTime == 0 {
+			iteration.EndIteration(errors.New("Iteration was not ended before finalize"))
+		}
+	}
 }
 
-func (bm *Benchmark) EndIterationWithError(i int, err error) {
-	bm.Iterations[i].WallTime = int64(mockableTimeSince(bm.Iterations[i].start))
-	bm.Iterations[i].end = bm.Iterations[i].start.Add(time.Duration(bm.Iterations[i].WallTime))
-	bm.Iterations[i].Err = err
+func (jc *BenchmarkIteration) EndIteration(err error) {
+	jc.WallTime = int64(mockableTimeSince(jc.start))
+	jc.end = jc.start.Add(time.Duration(jc.WallTime))
+	jc.Err = err
 }
 
-func (bm *Benchmark) SetIterationStatus(i int, err error) {
-	bm.UpdateIterationError(i, err)
-}
-
-func (bm *Benchmark) UpdateIterationError(i int, err error) {
-	bm.Iterations[i].Err = err
+func (jc *BenchmarkIteration) UpdateError(err error) {
+	jc.Err = err
 }
 
 func (bm *Benchmark) AddIterationMessage(i int, msg string) {

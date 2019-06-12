@@ -96,7 +96,7 @@ func (cmd *SmPostCommand) Execute(args []string) error {
 	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
 
 	sm := shell.NewSiegemark(o.Duration, 10)
-	shell.ProcessJob(o, &sm)
+	shell.ProcessJob(o, sm)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		sm.Note = "Not an authenticated run"
@@ -106,6 +106,7 @@ func (cmd *SmPostCommand) Execute(args []string) error {
 	return nil
 }
 
+// Abort -- Request the command to abort the current operation
 func (cmd *SmPostCommand) Abort() {
 	cmd.aborted = true
 }

@@ -7,16 +7,25 @@ import (
 	"time"
 )
 
+// SiegeBucket -- structure for histogram of siege benchmark
 type SiegeBucket struct {
-	Label         string
-	Period        int
-	End           time.Time
-	StartedJobs   int
-	CompletedJobs int
-	Errors        int
-	mux           sync.Mutex // Protects the counters in slice
+	// Initialized data
+	Label  string
+	Period int
+	End    time.Time
+
+	// Updated data protected by mutex
+	StartedJobs      int
+	SuccessfulJobs   int
+	SuccessDurations time.Duration
+	FailedJobs       int
+	FailedDurations  time.Duration
+	TotalDuration    time.Duration
+
+	mux sync.Mutex // Protects the updated data in bucket
 }
 
+// Siegemark -- JobMonitor for siege benchmarking
 type Siegemark struct {
 	StartTime         time.Time
 	Duration          time.Duration
@@ -25,9 +34,12 @@ type Siegemark struct {
 	Note              string
 	message           string
 	summarized        bool
-	completed         int
-	started           int
-	failed            int
+	totalJobs         int // Total jobs initiated
+	totalDuration     time.Duration
+	successfulJobs    int // Total jobs completed without API call
+	successDuration   time.Duration
+	failedJobs        int // Total jobs failed the API call
+	failedDuration    time.Duration
 	requestsPerSecond float64
 	avgRequest        float64
 	failuresPerSecond float64
@@ -36,129 +48,137 @@ type Siegemark struct {
 	custom            interface{}
 }
 
-func NewSiegemark(duration time.Duration, buckets int) Siegemark {
+// SiegemarkIteration -- track a single rest call
+type SiegemarkIteration struct {
+	Iteration int
+	StartTime time.Time
+	EndTime   time.Time
+	Error     error
+}
+
+// NewSiegemark -- Create siege benchmarking job monitor
+func NewSiegemark(duration time.Duration, buckets int) *Siegemark {
+
+	// Calculate bucket durations and initialize benchmark parameters
 	bd := duration / time.Duration(buckets)
 	result := Siegemark{
 		summarized:     false,
-		StartTime:      mockableTimeNow(),
 		BucketDuration: bd,
 		Buckets:        make([]SiegeBucket, buckets),
 	}
 
-	endTime := result.StartTime
+	// Initialize period data in buckets
 	for i := 0; i < len(result.Buckets); i++ {
-		endTime = endTime.Add(bd)
 		result.Buckets[i].Period = i
 		result.Buckets[i].Label = strconv.Itoa(i)
-		result.Buckets[i].End = endTime
 	}
-	return result
+	return &result
 }
 
+// Start -- Start a benchmark
 func (sm *Siegemark) Start() {
 	sm.StartTime = mockableTimeNow()
-
 	for i := 0; i < len(sm.Buckets); i++ {
+		// Because of calculation below, use time in next bucket as start >= End
 		sm.Buckets[i].End = sm.StartTime.Add(sm.BucketDuration * time.Duration(i+1))
 	}
 }
 
+// StartIteration -- Start an iteration
+func (sm *Siegemark) StartIteration(i int) JobContext {
+	now := mockableTimeNow()
+
+	return &SiegemarkIteration{
+		Iteration: i,
+		StartTime: now,
+	}
+}
+
+// End -- Record the End a benchmark
 func (sm *Siegemark) End() {
 	sm.Duration = mockableTimeSince(sm.StartTime)
 }
 
-func (sm *Siegemark) StartIteration(i int) {
-	var bucket *SiegeBucket
-	now := mockableTimeNow()
-	for i = 0; i < len(sm.Buckets); i++ {
-		if sm.Buckets[i].End.Before(now) {
-			continue
+// FinalizeIteration -- Fold iteration data into aggregated bucket data
+func (sm *Siegemark) FinalizeIteration(jc JobContext) {
+	if si, ok := jc.(*SiegemarkIteration); ok {
+		bucket := sm.getBucket(si.EndTime)
+		if bucket == nil {
+			// We do not count jobs starting late
+			sm.mux.Lock()
+			sm.LateStarts++
+			sm.mux.Unlock()
+		} else {
+			dur := si.EndTime.Sub(si.StartTime)
+			bucket.mux.Lock()
+			bucket.StartedJobs++
+			bucket.TotalDuration += dur
+			if si.Error != nil {
+				bucket.FailedJobs++
+				bucket.FailedDurations += dur
+			} else {
+				bucket.SuccessfulJobs++
+				bucket.SuccessDurations += dur
+			}
+			bucket.mux.Unlock()
 		}
-		bucket = &sm.Buckets[i]
-		break
-	}
-
-	if bucket == nil {
-		// We do not count jobs starting late
-		sm.mux.Lock()
-		sm.LateStarts++
-		sm.mux.Unlock()
-	} else {
-		bucket.mux.Lock()
-		bucket.StartedJobs++
-		bucket.mux.Unlock()
 	}
 }
 
-func (sm *Siegemark) EndIteration(i int) {
-	sm.EndIterationWithError(i, nil)
-}
-
-func (sm *Siegemark) EndIterationWithError(i int, err error) {
+// EndIteration -- Collect completion data on iteration
+func (si *SiegemarkIteration) EndIteration(err error) {
 	now := mockableTimeNow()
-	var bucket = &sm.Buckets[len(sm.Buckets)-1] // Default to last bucket
-	for i = 0; i < len(sm.Buckets); i++ {
-		if sm.Buckets[i].End.Before(now) {
-			continue
-		}
-		bucket = &sm.Buckets[i]
-		break
-	}
-
-	// Use last bucket even if job finished late as we are counting those.
-	bucket.mux.Lock()
-	bucket.CompletedJobs++
-	if err != nil {
-		bucket.Errors++
-	}
-	bucket.mux.Unlock()
+	si.EndTime = now
+	si.Error = err
 }
 
-func (sm *Siegemark) SetIterationStatus(i int, err error) {
-	sm.UpdateIterationError(i, err)
+// UpdateError -- Update the error on an iteration
+func (si *SiegemarkIteration) UpdateError(err error) {
+	si.Error = err
 }
 
-func (sm *Siegemark) UpdateIterationError(i int, err error) {
-	if err == nil {
-		return
-	}
-
-	now := mockableTimeNow()
-	var bucket = &sm.Buckets[len(sm.Buckets)-1] // Default to last bucket
-	for i = 0; i < len(sm.Buckets); i++ {
-		if sm.Buckets[i].End.Before(now) {
-			continue
+func (sm *Siegemark) getBucket(now time.Time) *SiegeBucket {
+	for i := 0; i < len(sm.Buckets); i++ {
+		var bucket = &sm.Buckets[i]
+		if now.Before(bucket.End) {
+			return bucket
 		}
-		bucket = &sm.Buckets[i]
-		break
 	}
-
-	// Use last bucket even if job finished late as we are counting those.
-	bucket.mux.Lock()
-	bucket.Errors++
-	bucket.mux.Unlock()
+	return &sm.Buckets[len(sm.Buckets)-1]
 }
 
 func (sm *Siegemark) summarize() {
 
+	if sm.summarized {
+		return
+	}
+
 	// Totals calculations
-	for _, v := range sm.Buckets {
-		sm.started = sm.started + v.StartedJobs
-		sm.completed = sm.completed + v.CompletedJobs
-		sm.failed = sm.failed + v.Errors
+	for idx := range sm.Buckets {
+		v := &sm.Buckets[idx]
+		sm.totalJobs = sm.totalJobs + v.StartedJobs
+		sm.totalDuration = sm.totalDuration + v.TotalDuration
+
+		sm.successfulJobs = sm.successfulJobs + v.SuccessfulJobs
+		sm.successDuration = sm.successDuration + v.SuccessDurations
+
+		sm.failedJobs = sm.failedJobs + v.FailedJobs
+		sm.failedDuration = sm.failedDuration + v.FailedDurations
 	}
 
 	// Avoid potential for divide by zero
-	if sm.Duration == 0 {
-		sm.Duration = mockableTimeSince(sm.StartTime)
-	}
 	if sm.Duration < time.Nanosecond {
 		sm.Duration = time.Nanosecond
 	}
 
-	sm.requestsPerSecond = float64(sm.started) / sm.Duration.Seconds()
-	sm.avgRequest = sm.Duration.Seconds() / float64(sm.started)
-	sm.failuresPerSecond = float64(sm.failed) / sm.Duration.Seconds()
+	// requestsPerSecond are total requests within the wall time of benchmark
+	sm.requestsPerSecond = float64(sm.totalJobs) / sm.Duration.Seconds()
+
+	// Note: avgRequest uses the duration total of each request
+	sm.avgRequest = sm.totalDuration.Seconds() / float64(sm.totalJobs)
+
+	// Note failures per second is based on wall time of benchmark
+	sm.failuresPerSecond = float64(sm.failedJobs) / sm.Duration.Seconds()
 	sm.summarized = true
 }
 
@@ -166,6 +186,7 @@ func (sm *Siegemark) AddIterationMessage(i int, msg string) {
 	//sm.Bucket[i].Messages = append(bm.Iterations[i].Messages, msg)
 }
 
+// Dump -- Dump to output stream the information formated as options requested
 func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations bool) {
 	if !sm.summarized {
 		sm.summarize()
@@ -195,9 +216,9 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
-			sm.started,
-			sm.started-sm.failed,
-			sm.failed,
+			sm.totalJobs,
+			sm.successfulJobs,
+			sm.failedJobs,
 			sm.avgRequest,
 			sm.requestsPerSecond,
 			sm.failuresPerSecond,
@@ -208,9 +229,9 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
-			sm.started,
-			sm.started-sm.failed,
-			sm.failed,
+			sm.totalJobs,
+			sm.successfulJobs,
+			sm.failedJobs,
 			sm.avgRequest,
 			sm.requestsPerSecond,
 			sm.failuresPerSecond,
@@ -222,9 +243,9 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
-			sm.started,
-			sm.started-sm.failed,
-			sm.failed,
+			sm.totalJobs,
+			sm.successfulJobs,
+			sm.failedJobs,
 			sm.avgRequest,
 			sm.requestsPerSecond,
 			sm.failuresPerSecond,
@@ -238,74 +259,32 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 	}
 }
 
+// DumpIterations -- Dumps the iterations or with Siegemark the buckets
 func (sm *Siegemark) DumpIterations(opts StandardOptions) {
-	var headingFmt = "-,%s,%s,%s,%s,%s,%s\n"
-	var displayFmt = "-,%d,%f,%d,%d,%s,%s\n"
+	var headingFmt = "%s,%s,%s,%s,%s,%s\n"
+	var displayFmt = "%s,%d,%d,%d,%f,%s\n"
 	if opts.IsFormattedCsvEnabled() {
-		displayFmt = "-,%d,%s,%d,%d,%s,%s\n"
+		displayFmt = "%s,%d,%d,%d,%f,%s\n"
 	} else if opts.IsCsvOutputEnabled() {
 		// CSV which is default
 	} else {
-		headingFmt = "  %9s  %10s  %10s  %10s  %s\n"
-		displayFmt = "  %9s  %10d  %10d  %10d  %s\n"
+		headingFmt = "  %9s  %10s  %10s  %10s  %10s %s\n"
+		displayFmt = "  %9s  %10d  %10d  %10d  %10f %s\n"
 	}
 	if len(headingFmt) > 0 && !opts.IsHeaderDisabled() {
-		fmt.Fprintf(OutputWriter(), headingFmt, "Bucket", "Start", "End", "Err", "Message")
+		fmt.Fprintf(OutputWriter(), headingFmt, "Bucket", "Start", "End", "Err", "AvgReq", "Message")
 	}
 
-	for _, v := range sm.Buckets {
-		v.DumpLine(opts, displayFmt /*, bm.StartTime*/)
+	for idx := range sm.Buckets {
+		v := &sm.Buckets[idx]
+		v.dumpLine(opts, displayFmt /*, bm.StartTime*/)
 	}
 }
 
-func (sb *SiegeBucket) DumpLine(opts StandardOptions, format string) {
-	fmt.Printf(format, sb.Label, sb.StartedJobs, sb.CompletedJobs, sb.Errors, "")
+func (sb *SiegeBucket) dumpLine(opts StandardOptions, format string) {
+	avgReq := 0.0
+	if sb.StartedJobs > 0 {
+		avgReq = sb.TotalDuration.Seconds() / float64(sb.StartedJobs)
+	}
+	fmt.Fprintf(OutputWriter(), format, sb.Label, sb.StartedJobs, sb.SuccessfulJobs, sb.FailedJobs, avgReq, "")
 }
-
-// func (sm *Siegemark) WallAverageFmt() string {
-// 	return FormatMsTime(bm.WallAverageInMs())
-// }
-
-// func (sm *Siegemark) HighTimeFmt() string {
-// 	return FormatMsTime(bm.HighTimeInMs())
-// }
-
-// func (sm *Siegemark) LowTimeFmt() string {
-// 	return FormatMsTime(bm.LowTimeInMs())
-// }
-
-// func (sm *Siegemark) WallTimeFmt() string {
-// 	return FormatMsTime(bm.WallTimeInMs())
-// }
-
-// func (sm *Siegemark) HlAverageFmt() string {
-// 	return FormatMsTime(bm.HlAverageInMs())
-// }
-
-// func (sm *Siegemark) WallAverageInMs() float64 {
-// 	if !bm.summarized {
-// 		bm.summarize()
-// 	}
-// 	return bm.avgWallTimeMs
-// }
-
-// func (sm *Siegemark) HighTimeInMs() float64 {
-// 	if !bm.summarized {
-// 		bm.summarize()
-// 	}
-// 	return bm.highTimeMs
-// }
-
-// func (sm *Siegemark) LowTimeInMs() float64 {
-// 	if !bm.summarized {
-// 		bm.summarize()
-// 	}
-// 	return bm.lowTimeMs
-// }
-
-// func (sm *Siegemark) HlAverageInMs() float64 {
-// 	if !bm.summarized {
-// 		bm.summarize()
-// 	}
-// 	return bm.hlAvgWallTimeMs
-// }

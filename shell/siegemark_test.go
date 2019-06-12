@@ -31,10 +31,13 @@ func TestSiegeMarkIterations3(t *testing.T) {
 	// var expectedVal float64
 
 	sm := NewSiegemark(time.Second*time.Duration(10), 10) // Consumes one time now value
+	sm.Start()
 	for i := 0; i < 6; i++ {
-		sm.StartIteration(i)
-		sm.EndIteration(i)
+		jc := sm.StartIteration(i)
+		jc.EndIteration(nil)
+		sm.FinalizeIteration(jc)
 	}
+	sm.End()
 
 	opts := GetStdOptions()
 	disabled := false
@@ -47,6 +50,8 @@ func TestSiegeMarkIterations3(t *testing.T) {
 func TestSiegemarkDump(t *testing.T) {
 	tm := time.Now()
 	defer mockNowCleanup(mockNow([]time.Time{
+		tm,
+		tm.Add(time.Second * 1),
 		tm.Add(time.Second * 2),
 		tm.Add(time.Second * 4),
 		tm.Add(time.Second * 6),
@@ -56,21 +61,27 @@ func TestSiegemarkDump(t *testing.T) {
 		tm.Add(time.Second * 11),
 		tm.Add(time.Second * 12),
 		tm.Add(time.Second * 13),
+		tm.Add(time.Second * 14),
+		tm.Add(time.Second * 15),
+		tm.Add(time.Second * 16),
 	}))
+
+	defer mockSinceCleanup(mockSince([]time.Duration{20 * time.Second, 21 * time.Second, 22 * time.Second}))
 
 	// var expectedFmt string
 	// var expectedVal float64
 
-	sm := NewSiegemark(time.Second*time.Duration(12), 10)
+	sm := NewSiegemark(time.Second*time.Duration(10), 10)
+	sm.Start()
 	for i := 0; i < 6; i++ {
-		sm.StartIteration(i)
-		sm.EndIteration(i)
+		jc := sm.StartIteration(i)
+		jc.EndIteration(nil)
 		if i == 2 {
-			sm.SetIterationStatus(i, errors.New("Fake failure!"))
-		} else {
-			sm.SetIterationStatus(i, nil)
+			jc.UpdateError(errors.New("Fake failure"))
 		}
+		sm.FinalizeIteration(jc)
 	}
+	sm.End()
 
 	// This test just dumps output to get visual representation
 	opts := GetStdOptions()

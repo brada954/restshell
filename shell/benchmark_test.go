@@ -14,9 +14,9 @@ func TestBenchMarkIterations3(t *testing.T) {
 
 	bm := NewBenchmark(3)
 	for k, _ := range bm.Iterations {
-		bm.StartIteration(k)
-		bm.EndIteration(k)
-		bm.SetIterationStatus(k, nil)
+		jc := bm.StartIteration(k)
+		jc.EndIteration(nil)
+		bm.FinalizeIteration(jc)
 	}
 
 	avg := bm.WallAverageInMs()
@@ -50,13 +50,12 @@ func TestBenchMarkDump(t *testing.T) {
 
 	bm := NewBenchmark(len(testdata))
 	for k, _ := range bm.Iterations {
-		bm.StartIteration(k)
-		bm.EndIteration(k)
+		jc := bm.StartIteration(k)
+		jc.EndIteration(nil)
 		if k == 2 {
-			bm.SetIterationStatus(k, errors.New("Fake failure!"))
-		} else {
-			bm.SetIterationStatus(k, nil)
+			jc.UpdateError(errors.New("Fake failure!"))
 		}
+		bm.FinalizeIteration(jc)
 	}
 
 	// This test just dumps output to get visual representation

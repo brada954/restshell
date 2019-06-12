@@ -84,11 +84,12 @@ func (cmd *SmGetCommand) Execute(args []string) error {
 		sm.Note = "Not an authenticated run"
 	}
 
-	shell.ProcessJob(o, &sm)
+	shell.ProcessJob(o, sm)
 	sm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
 	return nil
 }
 
+// Abort - Requests the current command to abort
 func (cmd *SmGetCommand) Abort() {
 	cmd.aborted = true
 }

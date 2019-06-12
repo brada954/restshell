@@ -16,41 +16,40 @@ type JobCounter struct {
 	mutex       sync.Mutex
 }
 
-func (jc *JobCounter) Start() {
+type JobIteration struct {
+	Error error
 }
 
-func (jc *JobCounter) End() {
+func (job *JobCounter) Start() {
 }
 
-func (jc *JobCounter) StartIteration(i int) {
-	jc.mutex.Lock()
-	jc.Initiations++
-	jc.mutex.Unlock()
+func (job *JobCounter) End() {
 }
 
-func (jc *JobCounter) EndIteration(i int) {
-	jc.mutex.Lock()
-	jc.Iterations++
-	jc.mutex.Unlock()
+func (job *JobCounter) StartIteration(i int) JobContext {
+	job.mutex.Lock()
+	job.Initiations++
+	job.mutex.Unlock()
+	return &JobIteration{}
 }
 
-func (jc *JobCounter) EndIterationWithError(i int, err error) {
-	jc.mutex.Lock()
-	jc.Iterations++
-	jc.mutex.Unlock()
-	jc.SetIterationStatus(i, err)
-}
-
-func (jc *JobCounter) SetIterationStatus(i int, err error) {
-	if err != nil {
-		jc.mutex.Lock()
-		jc.Errors++
-		jc.mutex.Unlock()
+func (job *JobCounter) FinalizeIteration(jc JobContext) {
+	job.mutex.Lock()
+	job.Iterations++
+	if ji, ok := jc.(*JobIteration); ok {
+		if ji.Error != nil {
+			job.Errors++
+		}
 	}
+	job.mutex.Unlock()
 }
 
-func (jc *JobCounter) UpdateIterationError(i int, err error) {
-	jc.SetIterationStatus(i, err)
+func (jc *JobIteration) EndIteration(err error) {
+	jc.Error = err
+}
+
+func (jc *JobIteration) UpdateError(err error) {
+	jc.Error = err
 }
 
 var SuccessResponse = RestResponse{httpResp: &http.Response{Status: "StatusOk", StatusCode: 200}}
@@ -67,15 +66,16 @@ func TestBasicIteration(t *testing.T) {
 		JobMaker:   jm,
 	}
 
-	jc := &JobCounter{}
-	ProcessJob(options, jc)
+	jobData := JobCounter{}
+	job := &jobData
+	ProcessJob(options, job)
 
-	if jc.Iterations != 5 {
-		t.Errorf("Unexpected iteration count: 5<>%d", jc.Iterations)
+	if job.Iterations != 5 {
+		t.Errorf("Unexpected iteration count: 5<>%d", job.Iterations)
 	}
 
-	if jc.Errors != 0 {
-		t.Errorf("Unexpected error count: 1<>%d", jc.Errors)
+	if job.Errors != 0 {
+		t.Errorf("Unexpected error count: 0<>%d", job.Errors)
 	}
 }
 
@@ -95,11 +95,11 @@ func TestTimeIteration(t *testing.T) {
 		JobMaker:   jm,
 	}
 
-	jc := &JobCounter{}
-	ProcessJob(options, jc)
+	job := &JobCounter{}
+	ProcessJob(options, job)
 
-	if jc.Iterations != 3 {
-		t.Errorf("Unexpected iteration count: 3<>%d", jc.Iterations)
+	if job.Iterations != 3 {
+		t.Errorf("Unexpected iteration count: 3<>%d", job.Iterations)
 	}
 }
 
@@ -119,11 +119,11 @@ func TestConcurrentIterationsWithTime(t *testing.T) {
 		Concurrency: 3,
 	}
 
-	jc := &JobCounter{}
-	ProcessJob(options, jc)
+	job := &JobCounter{}
+	ProcessJob(options, job)
 
-	if jc.Iterations != 6 {
-		t.Errorf("Unexpected iteration count: 6<>%d", jc.Iterations)
+	if job.Iterations != 6 {
+		t.Errorf("Unexpected iteration count: 6<>%d", job.Iterations)
 	}
 }
 
@@ -146,15 +146,15 @@ func TestBasicIterationWithError(t *testing.T) {
 		JobMaker:   jm,
 	}
 
-	jc := &JobCounter{}
-	ProcessJob(options, jc)
+	job := &JobCounter{}
+	ProcessJob(options, job)
 
-	if jc.Iterations != 5 {
-		t.Errorf("Unexpected iteration count: 5<>%d", jc.Iterations)
+	if job.Iterations != 5 {
+		t.Errorf("Unexpected iteration count: 5<>%d", job.Iterations)
 	}
 
-	if jc.Errors != 1 {
-		t.Errorf("Unexpected error count: 1<>%d", jc.Errors)
+	if job.Errors != 1 {
+		t.Errorf("Unexpected error count: 1<>%d", job.Errors)
 	}
 }
 
@@ -178,14 +178,14 @@ func TestBasicIterationWithAlternateResponse(t *testing.T) {
 		CompletionHandler: MakeJobCompletionForExpectedStatus(404),
 	}
 
-	jc := &JobCounter{}
-	ProcessJob(options, jc)
+	job := &JobCounter{}
+	ProcessJob(options, job)
 
-	if jc.Iterations != 5 {
-		t.Errorf("Unexpected iteration count: 5<>%d", jc.Iterations)
+	if job.Iterations != 5 {
+		t.Errorf("Unexpected iteration count: 5<>%d", job.Iterations)
 	}
 
-	if jc.Errors != 4 {
-		t.Errorf("Unexpected error count: 4<>%d", jc.Errors)
+	if job.Errors != 4 {
+		t.Errorf("Unexpected error count: 4<>%d", job.Errors)
 	}
 }
