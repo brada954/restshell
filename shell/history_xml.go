@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/subchen/go-xmldom"
+	xmldom "github.com/subchen/go-xmldom"
 )
 
 // XML map

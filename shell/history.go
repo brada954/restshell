@@ -115,7 +115,7 @@ func (ho HistoryOptions) IsHistoryPathOptionEnabled() bool {
 func (ho *HistoryOptions) SetPathOption(payloadType ResultPayloadType) {
 
 	ho.ClearPathOptions()
-	
+
 	switch payloadType {
 	case ResultPath:
 		if ho.valueIsResultPath != nil {

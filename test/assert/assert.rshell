@@ -26,6 +26,20 @@ assert eq -v --test --regex "tth" testthis tth
 assert eq -v --test --regex "tt+" testthis tt
 
 assert --report
+REM =========================================================
+REM ==  TEST json objects
+REM =========================================================
+assert --new
+load ..\rest\complex.json
+dump -v
+assert eq $.string "this is a \"string\""
+assert neq $.string "this is"
+assert isobj $.object
+assert isarray $.object.array
+assert isarray $.object.array[?(@.obj==1)].val
+assert eq --first $.object.array[?(@.obj==2)].val 222
+assert eq --first --expect-fail $.object.array[?(@.obj==3)].val 111
+assert --report
 assert --report-sum --new 
 REM =========================================================
 
