@@ -2,8 +2,12 @@ package shell
 
 import (
 	"encoding/json"
+	"errors"
+	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/paesslerag/jsonpath"
 )
 
 // Json map
@@ -11,7 +15,7 @@ type jsonMap struct {
 	data interface{}
 }
 
-// MakeJsonHistoryMap -- Create a HistoryMap for json content
+// NewJsonHistoryMap -- Create a HistoryMap for json content
 func NewJsonHistoryMap(data string) (HistoryMap, error) {
 
 	resultMap, err := makeHistoryMapFromJSON(data)
@@ -26,7 +30,26 @@ func NewJsonHistoryMap(data string) (HistoryMap, error) {
 
 // GetNode -- Get a JSON node from a map structure mapped from a json object or array
 func (jm *jsonMap) GetNode(path string) (interface{}, error) {
-	return getNodeImpl(path, jm.data)
+
+	var i interface{}
+	i = jm.data
+
+	// Special case a root case for just text
+	if path == "/" || path == "$" {
+		switch t := i.(type) {
+		case map[string]interface{}:
+			return i, nil
+		default:
+			return nil, errors.New("Invalid type for / path: " + reflect.TypeOf(t).String())
+		}
+	}
+
+	// New paths start with $ (only supporting those for now)
+	if strings.HasPrefix(path, "$") {
+		return jsonpath.Get(path, jm.data)
+	} else {
+		return getNodeImpl(path, jm.data)
+	}
 }
 
 func makeHistoryMapFromJSON(data string) (interface{}, error) {
@@ -52,10 +75,6 @@ func makeHistoryMapFromJSON(data string) (interface{}, error) {
 
 // getNodeImpl -- Recursive parser of json node
 func getNodeImpl(path string, i interface{}) (interface{}, error) {
-	if path == "/" {
-		return i, nil
-	}
-
 	parts := strings.SplitN(path, ".", 2)
 	if len(parts) <= 0 {
 		return nil, ErrInvalidPath
