@@ -45,12 +45,6 @@
 			"revisionTime": "2018-03-01T14:19:29Z"
 		},
 		{
-			"checksumSHA1": "vNIcGIbbvMJSq79Tnv8SNRNjcTI=",
-			"path": "github.com/yalp/jsonpath",
-			"revision": "5cc68e5049a040829faef3a44c00ec4332f6dec7",
-			"revisionTime": "2018-08-02T00:17:16Z"
-		},
-		{
 			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
 			"path": "golang.org/x/crypto/ssh/terminal",
 			"revision": "7d9177d70076375b9a59c8fde23d52d9c4a7ecd5",
