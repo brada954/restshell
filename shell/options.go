@@ -75,6 +75,7 @@ type StandardOptions struct {
 	fullOutputOption     *bool
 	fileOutputOption     *string
 	prettyPrintOption    *bool
+	requestOutputOption  *bool
 }
 
 // Global options populated by a command being run
@@ -270,6 +271,9 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			if globalOptions.prettyPrintOption == nil {
 				globalOptions.prettyPrintOption = set.BoolLong("pretty", 0, "Pretty print output")
 			}
+			if globalOptions.requestOutputOption == nil {
+				globalOptions.requestOutputOption = set.BoolLong("out-request", 0, "Output the request body")
+			}
 		}
 	}
 }
@@ -392,6 +396,10 @@ func IsCmdOutputShortEnabled() bool {
 
 func IsCmdOutputBodyEnabled() bool {
 	return (globalOptions.bodyOutputOption != nil && *globalOptions.bodyOutputOption) || (IsCmdVerboseEnabled() && !IsCmdOutputShortEnabled())
+}
+
+func IsCmdOutputRequestEnabled() bool {
+	return (globalOptions.requestOutputOption != nil && *globalOptions.requestOutputOption)
 }
 
 func GetCmdOutputFileName() string {
@@ -596,6 +604,10 @@ func (o *StandardOptions) IsOutputShortEnabled() bool {
 
 func (o *StandardOptions) IsOutputBodyEnabled() bool {
 	return o.bodyOutputOption != nil && *o.bodyOutputOption
+}
+
+func (o *StandardOptions) IsOutputRequestEnabled() bool {
+	return o.requestOutputOption != nil && *o.requestOutputOption
 }
 
 func (o *StandardOptions) GetCmdOutputFileName() string {
