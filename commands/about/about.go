@@ -29,6 +29,7 @@ type SubTopicInterface interface {
 var topicList []TopicInterface = []TopicInterface{
 	NewAuthTopic(),
 	NewBenchmarkTopic(),
+	NewJsonPathTopic(),
 	NewSubstitutionTopic(),
 }
 

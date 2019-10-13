@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "cGEh0gPaHIrFuiWh7Y3En6Zz2ek=",
+			"path": "github.com/PaesslerAG/gval",
+			"revision": "6fceb06ca1629ade2cb3ec5669d8d629adb5d324",
+			"revisionTime": "2019-08-03T06:25:29Z"
+		},
+		{
 			"checksumSHA1": "JE5PVZpL6lOPLSyfSVBdUVtJbb8=",
 			"path": "github.com/antchfx/xpath",
 			"revision": "077bca4d2caaf391ee780136adae00f59153dcd2",
@@ -13,6 +19,12 @@
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "06020f85339e21b2478f756a78e295255ffa4d6a",
 			"revisionTime": "2017-10-17T17:18:08Z"
+		},
+		{
+			"checksumSHA1": "hITsIvjhoGu7gu3kZTV9kfs9ioc=",
+			"path": "github.com/paesslerag/jsonpath",
+			"revision": "c18d0f043db32b5d4295e14c6518fa9160e45d15",
+			"revisionTime": "2019-05-16T14:20:47Z"
 		},
 		{
 			"checksumSHA1": "9g3poI1bigwIsRtU+ReaYVrews8=",
