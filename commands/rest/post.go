@@ -25,7 +25,7 @@ func (cmd *PostCommand) AddOptions(set shell.CmdSet) {
 	cmd.postOptions = AddPostOptions(set)
 	cmd.useSubstitution = set.BoolLong("subst", 0, "Perform variable substitution")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl,
-		shell.CmdBasicAuth, shell.CmdRestclient, shell.CmdFormatOutput)
+		shell.CmdBasicAuth, shell.CmdRestclient, shell.CmdFormatOutput, shell.CmdTimeout)
 }
 
 // Execute -- Execute the post command
