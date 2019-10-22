@@ -3,12 +3,12 @@ package shell
 import (
 	"encoding/base64"
 	"reflect"
+	"strconv"
 	"time"
 
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -151,25 +151,14 @@ func (ho *HistoryOptions) ClearPathOptions() {
 	}
 }
 
-// Get the value from History and return as string
-func (ho HistoryOptions) GetValueFromHistory(index int, path string) (string, error) {
-
-	if ho.IsAuthPath() {
-		return GetValueFromAuthHistory(index, path)
+func (ho HistoryOptions) GetNodeFromHistory(index int, path string) (interface{}, error) {
+	result, err := PeekResult(index)
+	if err != nil {
+		return nil, err
 	}
 
-	if ho.IsCookiePath() {
-		return GetValueFromCookieHistory(index, path)
-	}
+	return ho.GetNode(path, result)
 
-	if ho.IsHeaderPath() {
-		return GetValueFromHeaderHistory(index, path)
-	}
-
-	if ho.IsHttpStatusPath() {
-		return GetValueFromHttpStatusHistory(index)
-	}
-	return GetValueFromResultHistory(index, path)
 }
 
 func (ho HistoryOptions) GetNode(path string, result Result) (interface{}, error) {
@@ -297,101 +286,24 @@ func PeekResult(index int) (Result, error) {
 	return history[len(history)-(1+index)], nil
 }
 
-func GetValueFromResultHistory(index int, path string) (string, error) {
-	result, err := PeekResult(index)
-	if err != nil {
-		return "", err
-	}
-
-	node, err := result.BodyMap.GetNode(path)
-	if err != nil {
-		return "", err
-	}
-
+// ConvertNodeValueTostring -- convert a node result to a string value
+func ConvertNodeValueToString(node interface{}) (string, error) {
 	switch t := node.(type) {
 	case string:
 		return t, nil
 	case float64:
 		return strconv.FormatFloat(t, 'f', -1, 64), nil
+	case float32:
+		return strconv.FormatFloat(float64(t), 'f', -1, 64), nil
+	case int:
+		return strconv.FormatInt(int64(t), 10), nil
+	case int32:
+		return strconv.FormatInt(int64(t), 10), nil
+	case int64:
+		return strconv.FormatInt(t, 10), nil
 	default:
 		return "", errors.New("Invalid data type found")
 	}
-}
-
-func GetValueFromAuthHistory(index int, path string) (string, error) {
-	result, err := PeekResult(index)
-	if err != nil {
-		return "", err
-	}
-
-	node, err := result.AuthMap.GetNode(path)
-	if err != nil {
-		return "", err
-	}
-
-	switch t := node.(type) {
-	case string:
-		return t, nil
-	case float64:
-		return strconv.FormatFloat(t, 'f', -1, 64), nil
-	default:
-		return "", errors.New("Invalid data type found")
-	}
-}
-
-func GetValueFromCookieHistory(index int, path string) (string, error) {
-	result, err := PeekResult(index)
-	if err != nil {
-		return "", err
-	}
-
-	if IsCmdDebugEnabled() {
-		fmt.Fprintf(ConsoleWriter(), "Cookie:\n%v\n", result.CookieMap)
-	}
-
-	node, err := result.CookieMap.GetNode(path)
-	if err != nil {
-		return "", err
-	}
-
-	switch t := node.(type) {
-	case string:
-		return t, nil
-	default:
-		return "", errors.New("Invalid data type found")
-	}
-}
-
-func GetValueFromHeaderHistory(index int, path string) (string, error) {
-	result, err := PeekResult(index)
-	if err != nil {
-		return "", err
-	}
-
-	if IsCmdDebugEnabled() {
-		fmt.Fprintf(ConsoleWriter(), "Headers:\n%v\n", result.HeaderMap)
-	}
-
-	node, err := result.HeaderMap.GetNode(path)
-	if err != nil {
-		return "", err
-	}
-
-	switch t := node.(type) {
-	case string:
-		return t, nil
-	default:
-		return "", errors.New("Invalid data type found")
-	}
-}
-
-func GetValueFromHttpStatusHistory(index int) (string, error) {
-	result, err := PeekResult(index)
-	if err != nil {
-		return "", err
-	}
-
-	return strconv.Itoa(result.HttpStatus), nil
 }
 
 // GetValueAsDate -- given a scaler value in an interface convert it

@@ -22,7 +22,8 @@ func (cmd *BmGetCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[service route]")
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth,
+		shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks, shell.CmdTimeout)
 }
 
 func (cmd *BmGetCommand) Execute(args []string) error {
