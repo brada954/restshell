@@ -1,0 +1,20 @@
+<root>
+    <string x="first">this is a "string"</string>
+    <number>123.343</number>
+    <int>321</int>
+    <array>
+        <item>test_string</item>
+        <item>red</item>
+        <item>white</item>
+        <item>blue</item>
+    </array>
+    <object>
+        <string>my string</string>
+        <number>1.01</number>
+        <integer>2</integer>
+        <array>
+            <item x="1"><obj>1</obj><val>111</val></item>
+            <item x="2"><obj>2</obj><val>222</val></item>
+        </array>
+    </object>
+</root>

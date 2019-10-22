@@ -21,7 +21,7 @@ func (cmd *GetCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent, shell.CmdUrl, shell.CmdBasicAuth,
-		shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdFormatOutput)
+		shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdFormatOutput, shell.CmdTimeout)
 }
 
 // Execute -- GET the results from an API

@@ -184,27 +184,29 @@ func processArg(cmd *SetCommand, arg string) {
 		}
 	}
 
+	var ivalue interface{} = value
+
 	if cmd.historyOptions.IsHistoryPathOptionEnabled() {
 		if len(value) == 0 {
 			exitError = fmt.Errorf("Invalid value for path name")
 			return
 		}
 
-		v, err := cmd.historyOptions.GetValueFromHistory(0, value)
+		v, err := cmd.historyOptions.GetNodeFromHistory(0, value)
 		if err != nil {
 			exitError = fmt.Errorf("Path Error: %s", err.Error())
 			return
 		}
-		value = v
+		ivalue = v
 	}
 
-	if len(value) > 0 || *cmd.allowEmpty {
-		valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
-		if v, err := valueModifierFunc(value); err != nil {
+	valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
+	{
+		if v, err := valueModifierFunc(ivalue); err != nil {
 			exitError = fmt.Errorf("Modifier Failure: %s", err.Error())
 			return
 		} else {
-			value = fmt.Sprintf("%v", v)
+			value, exitError = shell.ConvertNodeValueToString(v)
 		}
 	}
 
