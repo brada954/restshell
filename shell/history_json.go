@@ -10,8 +10,8 @@ import (
 	"github.com/paesslerag/jsonpath"
 )
 
-// Json map
-type jsonMap struct {
+// JsonMap -- contains a deserialized json
+type JsonMap struct {
 	data interface{}
 }
 
@@ -23,13 +23,13 @@ func NewJsonHistoryMap(data string) (HistoryMap, error) {
 		return nil, err
 	}
 
-	return &jsonMap{
+	return &JsonMap{
 		data: resultMap,
 	}, nil
 }
 
 // GetNode -- Get a JSON node from a map structure mapped from a json object or array
-func (jm *jsonMap) GetNode(path string) (interface{}, error) {
+func (jm *JsonMap) GetNode(path string) (interface{}, error) {
 
 	var i interface{}
 	i = jm.data
@@ -49,6 +49,15 @@ func (jm *jsonMap) GetNode(path string) (interface{}, error) {
 		return jsonpath.Get(path, jm.data)
 	} else {
 		return getNodeImpl(path, jm.data)
+	}
+}
+
+func (jm *JsonMap) GetJsonObject() (map[string]interface{}, error) {
+	switch t := jm.data.(type) {
+	case map[string]interface{}:
+		return t, nil
+	default:
+		return nil, errors.New("Invalid type for Json object")
 	}
 }
 

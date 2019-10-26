@@ -48,7 +48,7 @@ type HistoryMap interface {
 	GetNode(string) (interface{}, error)
 }
 
-// HistoryOptions -- Common options for modifiers
+// HistoryOptions -- Common options for history results
 type HistoryOptions struct {
 	valueIsResultPath *bool // default path into the history result
 	valueIsAuthPath   *bool
@@ -57,7 +57,7 @@ type HistoryOptions struct {
 	valueIsHttpStatus *bool
 }
 
-// AddModifierOptions -- Add options for modifiers
+// AddHistoryOptions -- Add options for history payload types
 func AddHistoryOptions(set CmdSet, payloadType ...ResultPayloadType) HistoryOptions {
 	options := HistoryOptions{}
 
