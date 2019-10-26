@@ -13,6 +13,7 @@ type ModifierOptions struct {
 	strToFloatOption *bool
 	lenOption        *bool
 	quoteOption      *bool
+	firstOption      *bool
 }
 
 // AddModifierOptions -- Add options for modifiers
@@ -25,6 +26,7 @@ func AddModifierOptions(set shell.CmdSet) ModifierOptions {
 	options.strToFloatOption = set.BoolLong("float", 0, "Convert string value to float (3rd)")
 	options.lenOption = set.BoolLong("len", 0, "Use the length of the value (4th)")
 	options.quoteOption = set.BoolLong("quote", 0, "Quote a string and escape internal quotes")
+	options.firstOption = set.BoolLong("first", 0, "First value from an array of nodes")
 	return options
 }
 
@@ -39,6 +41,9 @@ func ConstructModifier(options ModifierOptions) ValueModifier {
 	// will fail to convert to int because of the period in the text string.
 
 	valueModifierFunc := NullModifier
+	if *options.firstOption {
+		valueModifierFunc = MakeFirstModifier(valueModifierFunc)
+	}
 	if *options.toLowerOption {
 		valueModifierFunc = MakeStringToLowerModifier(valueModifierFunc)
 	} else if *options.toUpperOption {

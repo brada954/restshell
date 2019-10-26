@@ -27,7 +27,6 @@ type AssertCommand struct {
 	skipOnErrOption *bool
 	expectFail      *bool
 	expectError     *bool
-	firstOption     *bool
 	executedAsserts int
 	failedAsserts   int
 	totalFailures   int
@@ -131,7 +130,6 @@ func (cmd *AssertCommand) AddOptions(set shell.CmdSet) {
 	cmd.skipOnErrOption = set.BoolLong("skip-onerr", 0, "Skip assert if tested operation failed")
 	cmd.expectFail = set.BoolLong("expect-fail", 0, "Count failures as success")
 	cmd.expectError = set.BoolLong("expect-error", 0, "Count failures as success (to be deprectated)")
-	cmd.firstOption = set.BoolLong("first", 'f', "Path may return an array, so use first element")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AlternatePaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent)
@@ -371,14 +369,6 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 		} else {
 			var err error
 			node, err = cmd.historyOptions.GetNode(path, result)
-			if *cmd.firstOption {
-				if values, ok := node.([]interface{}); ok {
-					if len(values) == 0 {
-						return NewAssertFailure(path, "Expected at least one node for first option")
-					}
-					node = values[0]
-				}
-			}
 			if err != nil {
 				switch args[0] {
 				case "NEX":
