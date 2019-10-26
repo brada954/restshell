@@ -25,6 +25,16 @@ func NilModifier(i interface{}) (interface{}, error) {
 	return i, nil
 }
 
+// FirstModifier -- get the first element from an array
+func FirstModifier(i interface{}) (interface{}, error) {
+	if s, ok := i.([]interface{}); !ok {
+		return i, nil
+	} else if len(s) > 0 {
+		return s[0], nil
+	}
+	return nil, errors.New("Empty array for first modifier")
+}
+
 // LengthModifier -- Convert the interface value to a length if valid or return error
 func LengthModifier(i interface{}) (interface{}, error) {
 	switch v := i.(type) {
@@ -101,6 +111,16 @@ func StringToUpperModifier(i interface{}) (interface{}, error) {
 		return strings.ToUpper(v), nil
 	}
 	return nil, fmt.Errorf("Invalid type make uppercase: %v", reflect.TypeOf(i))
+}
+
+func MakeFirstModifier(vmod ValueModifier) ValueModifier {
+	return func(i interface{}) (interface{}, error) {
+		v, err := vmod(i)
+		if err != nil {
+			return v, err
+		}
+		return FirstModifier(v)
+	}
 }
 
 func MakeLengthModifier(vmod ValueModifier) ValueModifier {
