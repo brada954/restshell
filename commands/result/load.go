@@ -33,7 +33,7 @@ func (cmd *LoadCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionSubstitute = set.BoolLong("subst", 0, "Perform string substitution on loaded content")
 
 	// Add command helpers for verbose, debug, restclient and output formatting
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdSilent)
 }
 
 // Execute -- Addresult command to load file data like a REST response
@@ -92,7 +92,7 @@ func (cmd *LoadCommand) Execute(args []string) error {
 		} else {
 			fmt.Fprintln(shell.OutputWriter(), data)
 		}
-	} else {
+	} else if shell.IsCmdSilentEnabled() == false {
 		fmt.Fprintf(shell.OutputWriter(), "Read %d bytes\n", len(data))
 		return nil
 	}

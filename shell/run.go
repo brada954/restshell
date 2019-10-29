@@ -277,16 +277,20 @@ func verifyCondition(variable string) bool {
 
 	value := GetGlobal(variable)
 	if str, ok := value.(string); ok {
-		if len(strings.TrimSpace(str)) > 0 {
-			if len(parts) > 1 {
-				if str == parts[1] {
-					return true
-				}
-			} else {
+		str = strings.TrimSpace(str)
+		if len(parts) > 1 {
+			if str == strings.TrimSpace(parts[1]) {
+				return true
+			}
+			return false
+		} else {
+			if len(str) > 0 {
 				return true
 			}
 		}
 	} else if value != nil {
+		return true
+	} else if len(parts) > 1 && len(strings.TrimSpace(parts[1])) == 0 {
 		return true
 	}
 	return false

@@ -7,20 +7,59 @@ REM ##
 REM ## Basic variable
 REM ##
 set x=y
-load --var x
+load -s --var x
 assert EQ / y
 REM ##
 REM ## Variable from variable
 REM ##
 set y=abc
 set --var x=y
-load --var x
+load -s --var x
 assert EQ / abc
 REM ##
 REM ## Variable from invalid variable
 REM ##
 set --var x=y_is_not_set
-load --var x
+load -s --var x
 assert EQ / ""
+REM #################################################
+REM ## Variables in run conditions
+REM ##
+set yes="{ \"status\":\"yes\"}" no="{\"status\":\"no\"}"
+REM ## Run condition skipped due to unset variable
+set x=
+load -s --json --var no
+RUN --cond x --exec "load -s --json --var yes"
+assert EQ $.status no
+REM ##
+REM ## Run condition executed due to variable being set to value
+set x=set
+load -s --json --var no
+RUN --cond x --exec "load -s --json --var yes"
+assert EQ $.status yes
+REM ##
+REM ## Run condition executed due to variable being compared to empty string
+set x=
+load -s --json --var no
+RUN --cond x= --exec "load -s --json --var yes"
+assert EQ $.status yes
+REM ##
+REM ## Run condition skipped due to variable set to empty string
+set --empty x=
+load -s --json --var no
+RUN --cond x --exec "load -s --json --var yes"
+assert EQ $.status no
+set --empty x=
+load -s --json --var no
+REM ##
+REM ## Run condition executed due to variable set to empty string compared to empty
+RUN --cond x= --exec "load -s --json --var yes"
+assert EQ $.status yes
+REM ##
+REM ## Run condition skpped due to variable set to unexpected value
+set --empty x=notset
+load -s --json --var no
+RUN --cond x=set --exec "load -s --json --var yes"
+assert EQ $.status no
 REM ####################################################################
 assert --report-all

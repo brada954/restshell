@@ -104,6 +104,9 @@ func (cmd *SetCommand) Execute(args []string) error {
 }
 
 func processArg(cmd *SetCommand, arg string) {
+	var variable string
+	var value = ""
+
 	parts := parseArg(arg)
 	if len(parts) == 0 || len(parts[0]) == 0 {
 		fmt.Fprintln(shell.ErrorWriter(), "Warning: skipping invalid argument: "+arg)
@@ -113,10 +116,13 @@ func processArg(cmd *SetCommand, arg string) {
 		return
 	}
 
+	variable = parts[0]
+	if len(parts) > 1 {
+		value = parts[1]
+	}
+
 	// Setup exit function to perform final common tasks
 	var exitError error
-	var variable = parts[0]
-	var value = parts[1]
 	defer func() {
 		if exitError != nil {
 			fmt.Fprintf(shell.ErrorWriter(), "Warning: %s; clearing variable: %s\n", exitError, variable)
