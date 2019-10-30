@@ -196,9 +196,10 @@ func (cmd *RunCommand) Execute(args []string) error {
 	var result error
 	var commands int
 	var duration time.Duration
+	var execLocal = *cmd.execOption
 	resultMsg := "Success"
 	for ; i > 0; i-- {
-		if *cmd.execOption {
+		if execLocal {
 			str := strings.Join(args, "\n")
 			r := strings.NewReader(str)
 			count, elapsed, err := cmd.executeStream(r, runSilent)
