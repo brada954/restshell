@@ -11,29 +11,25 @@ import (
 func init() {
 	shell.RegisterSubstitutionHandler(GetDateDefinition)
 	shell.RegisterSubstitutionHandler(SetDateDefinition)
-	shell.RegisterSubstitutionHandler(CreateDateDefinition)
+	shell.RegisterSubstitutionHandler(ModifyDateDefinition)
 }
 
 // GetDateDefinition --
 var GetDateDefinition = shell.SubstitutionFunction{
 	Name:              "getdate",
 	Group:             "date",
-	FunctionHelp:      "Generate a date",
+	FunctionHelp:      "Return formatted data value (default is now)",
 	FormatDescription: "Format Parameter selects type of time:",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Local time value"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Utc time value"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Unix timestamp value"},
+		shell.SubstitutionItemHelp{Item: "local", Description: "Display Local time value"},
+		shell.SubstitutionItemHelp{Item: "utc", Description: "Display UTC time value"},
+		shell.SubstitutionItemHelp{Item: "unix", Description: "Display Unix timestamp"},
 	},
-	OptionDescription: "Option controls format of date string",
+	OptionDescription: "Option is the Golang format for a date string",
 	Options: []shell.SubstitutionItemHelp{
 		shell.SubstitutionItemHelp{
-			Item:        "{specification}",
-			Description: "Golang format string",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "2006-01-02 15:04:05.000",
-			Description: "Example Golang format for date and time",
+			Item:        "2006-01-02 15:04:05",
+			Description: "Default Golang format for date and time",
 		},
 		shell.SubstitutionItemHelp{
 			Item:        "Mon",
@@ -51,40 +47,36 @@ var GetDateDefinition = shell.SubstitutionFunction{
 var SetDateDefinition = shell.SubstitutionFunction{
 	Name:         "setdate",
 	Group:        "date",
-	FunctionHelp: "Set a date value equal to the option string",
+	FunctionHelp: "Set a date value equal to the option string (default to min date)",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Local time value"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Utc time value"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Unix timestamp value"},
+		shell.SubstitutionItemHelp{Item: "local", Description: "Parse date as Local"},
+		shell.SubstitutionItemHelp{Item: "utc", Description: "Parse date as UTC"},
+		shell.SubstitutionItemHelp{Item: "unix", Description: "Parse date as Unix timestamp"},
 	},
-	OptionDescription: "",
+	OptionDescription: "The desired date formatted to format string",
 	Options: []shell.SubstitutionItemHelp{
 		shell.SubstitutionItemHelp{
 			Item:        "2006-01-02T15:04:05",
-			Description: "Formatted date string",
+			Description: "Default date format string",
 		},
 	},
 	Function: SetDateSubstitute,
 }
 
-// CreateDateDefinition --
-var CreateDateDefinition = shell.SubstitutionFunction{
-	Name:         "createdate",
+// ModifyDateDefinition --
+var ModifyDateDefinition = shell.SubstitutionFunction{
+	Name:         "moddate",
 	Group:        "date",
-	FunctionHelp: "Create a date value relative to current time (or unix 0)",
+	FunctionHelp: "Modify current time by component (default to UTC)",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Local time value"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Utc time value"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Unix timestamp value; value 0"},
+		shell.SubstitutionItemHelp{Item: "local", Description: "Default to Local time value"},
+		shell.SubstitutionItemHelp{Item: "utc", Description: "Default to UTC time value"},
+		shell.SubstitutionItemHelp{Item: "unix", Description: "Default to Unix time value 0"},
 	},
-	OptionDescription: "",
+	OptionDescription: "Modifications options (d=-2;s=+30;t=hns)",
 	Options: []shell.SubstitutionItemHelp{
 		shell.SubstitutionItemHelp{
-			Item:        "{modifier=[-]value;modifer=[-]value}",
-			Description: "Add or subtract a given value from the date",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "S",
+			Item:        "s",
 			Description: "Add the specified seconds to time",
 		},
 		shell.SubstitutionItemHelp{
@@ -109,10 +101,10 @@ var CreateDateDefinition = shell.SubstitutionFunction{
 		},
 		shell.SubstitutionItemHelp{
 			Item:        "t",
-			Description: "Truncate the given date/time component to zero (y,m,d,h,n,s)",
+			Description: "Truncate date/time component(s) to minimum (t=ymdhns)",
 		},
 	},
-	Function: CreateDateSubstitute,
+	Function: ModifyDateSubstitute,
 }
 
 // GetDateSubstitute --
@@ -172,19 +164,22 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 			}
 		default:
 		}
+	} else {
+		return "", cache
 	}
 	return "", inputTime
 }
 
-// CreateDateSubstitute -- A function that creates a date from a offset from now
-// TODO: started function; need to finish
-func CreateDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
+// ModifyDateSubstitute -- A function that modifies a date from from current value
+// Defaults to Now()
+func ModifyDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
 
 	if cache == nil {
 		switch format {
 		case "unix":
-			inputTime = time.Unix(0, 0)
+			inputTime = time.Now().UTC()
+			inputTime = inputTime.Truncate(time.Second)
 		case "utc":
 			inputTime = time.Now().UTC()
 		case "local":
@@ -192,6 +187,8 @@ func CreateDateSubstitute(cache interface{}, subname, format string, option stri
 		default:
 			inputTime = time.Now()
 		}
+	} else {
+		return "", cache
 	}
 
 	years := 0
@@ -205,29 +202,69 @@ func CreateDateSubstitute(cache interface{}, subname, format string, option stri
 		if len(parts) != 2 {
 			continue
 		}
+
+		component := strings.ToLower(parts[0])
 		value, err := strconv.ParseInt(parts[1], 10, 0)
 		if err != nil {
 			value = 0
 		}
-
 		ivalue := int(value)
-		switch parts[0] {
+
+		switch component {
 		case "s":
 			duration = duration + (time.Duration(value) * time.Second)
 		case "n":
 			duration = duration + (time.Duration(value) * time.Minute)
 		case "h":
 			duration = duration + (time.Duration(value) * time.Hour)
+		case "m":
+			months = months + ivalue
 		case "d":
 			days = days + ivalue
 		case "y":
 			years = years + ivalue
+		case "t":
+			// Apply current modifications prior to truncating and
+			inputTime = inputTime.AddDate(years, months, days)
+			inputTime = inputTime.Add(duration)
+
+			// reset the modifiers to zero for continued manipulation
+			years = 0
+			months = 0
+			days = 0
+			duration = time.Duration(0)
+
+			// Perform truncating; modify the component to min value
+			for _, c := range parts[1] {
+				switch c {
+				case 'p': // truncate decimal places of second
+					inputTime = inputTime.Truncate(time.Second)
+				case 's':
+					seconds := time.Duration(-inputTime.Second())
+					inputTime = inputTime.Add(seconds * time.Second)
+				case 'n':
+					minutes := time.Duration(-inputTime.Minute())
+					inputTime = inputTime.Add(minutes * time.Minute)
+				case 'h':
+					hours := time.Duration(-inputTime.Hour())
+					inputTime = inputTime.Add(hours * time.Hour)
+				case 'd':
+					inputTime = inputTime.AddDate(0, 0, 1-inputTime.Day())
+				case 'm':
+					inputTime = inputTime.AddDate(0, 1-int(inputTime.Month()), 0)
+				case 'y':
+					inputTime = inputTime.AddDate(1-int(inputTime.Year()), 0, 0)
+				default:
+				}
+			}
+
 		default:
 		}
 	}
 
 	inputTime = inputTime.AddDate(years, months, days)
 	inputTime = inputTime.Add(duration)
+
 	return "", inputTime
 }
 
