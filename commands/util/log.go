@@ -38,7 +38,7 @@ func performStop(cmd *LogCommand, args []string) error {
 	if len(args) > 0 {
 		fmt.Fprintf(shell.ErrorWriter(), "Arguments not allowed with stop option")
 	} else if *cmd.cmdTruncate {
-		fmt.Fprintf(shell.ErrorWriter(), "Truncate option ignored with -stop option")
+		fmt.Fprintf(shell.ErrorWriter(), "Truncate option ignored with --stop option")
 	}
 
 	if cmd.logFile == nil {
@@ -53,6 +53,9 @@ func performStop(cmd *LogCommand, args []string) error {
 }
 
 func performStart(cmd *LogCommand, args []string) error {
+	if len(args) == 0 {
+		return errors.New("File name is required argument")
+	}
 	var name = args[0]
 	var file *os.File
 	if _, err := os.Stat(name); err == nil {

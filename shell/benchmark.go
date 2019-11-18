@@ -170,7 +170,7 @@ func (bm *Benchmark) Dump(label string, opts StandardOptions, showIterations boo
 				headingFmt,
 				"Label", "Count", "Err", "Avg", "High", "HI", "Low", "LI", "Avg-(HL)", "Tot", "Message", note)
 		} else {
-			var headingFmt = "%-14[1]s  %5[2]s  %5[3]s  %8[4]s  %8[5]s%[13]*[6]s  %8[7]s%[14]*[8]s  %8[9]s  %8[10]s %8[11]s %[12]s\n"
+			var headingFmt = "%-16[1]s  %5[2]s  %5[3]s  %8[4]s  %8[5]s%[13]*[6]s  %8[7]s%[14]*[8]s  %8[9]s  %8[10]s %8[11]s %[12]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
 				"Label", "Count", "Err", "Avg", "High", "", "Low", "", "Avg-(HL)", "Tot", "Message",
@@ -213,7 +213,7 @@ func (bm *Benchmark) Dump(label string, opts StandardOptions, showIterations boo
 			bm.message,
 		)
 	} else {
-		var displayFmt = "%-14s  %5d  %5d %9s %9s(%*d) %9s(%*d) %9s %9s  %s\n"
+		var displayFmt = "%-16.16s  %5d  %5d %9s %9s(%*d) %9s(%*d) %9s %9s  %s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
