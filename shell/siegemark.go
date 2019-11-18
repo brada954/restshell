@@ -204,7 +204,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 				headingFmt,
 				"Label", "Total", "Success", "Error", "Avg Total", "Avg Success", "Avg Error", "Late", "Message", note)
 		} else {
-			var headingFmt = "%-14[1]s  %8[2]s  %8[3]s  %8[4]s  %12[5]s %12[6]s  %8[7]s  %12[8]s %[9]s %[10]s\n"
+			var headingFmt = "%-16[1]s  %8[2]s  %8[3]s  %8[4]s  %12[5]s %12[6]s  %8[7]s  %12[8]s %[9]s %[10]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
 				"Label", "Count", "Success", "Error", "Avg Req", "Req/Sec", "Err/Sec", "Duration(S)", "Message", note)
@@ -239,7 +239,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			sm.message,
 		)
 	} else {
-		var displayFmt = "%-14s  %8d  %8d  %8d  %12f %12f  %8f  %12f %s\n"
+		var displayFmt = "%-16.16s  %8d  %8d  %8d  %12f %12f  %8f  %12f %s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,
