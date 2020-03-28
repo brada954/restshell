@@ -9,6 +9,8 @@ if /I "%ERRORLEVEL%" EQU "0" set BUILDRESULT=BUILD SUCCEEDED
 echo %BUILDRESULT%
 
 cd test
+if "%BUILDRESULT%" EQU "BUILD FAILED" EXIT /B 1
+
 echo Running tests...
 ..\restshell run all
 if /I "%ERRORLEVEL%" NEQ "0" set TESTRESULT=TESTS FAILED

@@ -8,7 +8,6 @@ package shell
 import (
 	"errors"
 	"io"
-	"strings"
 
 	"github.com/pborman/getopt/v2"
 )
@@ -79,15 +78,17 @@ func (sl *StringList) Count() int {
 }
 
 func (sl *StringList) Set(value string, opt getopt.Option) error {
-	sl.Values = append(sl.Values, value)
+	if len(value) > 0 {
+		sl.Values = append(sl.Values, value)
+	}
 	return nil
 }
 
 func (sl *StringList) String() string {
-	if len(sl.Values) == 0 {
+	length := len(sl.Values)
+	if length == 0 {
 		return ""
+	} else {
+		return sl.Values[length-1]
 	}
-
-	values := strings.Join(sl.Values, "),(")
-	return "(" + values + ")"
 }
