@@ -43,6 +43,7 @@ func (cmd *LoginCommand) HeaderUsage(w io.Writer) {
 	fmt.Fprintln(w)
 }
 
+// ExtendedUsage -- write the extended useage
 func (cmd *LoginCommand) ExtendedUsage(w io.Writer) {
 	fmt.Fprintf(w, "\nSub Commands\n")
 	lines := shell.ColumnizeTokens(cmd.GetSubCommands(), 4, 15)
@@ -51,6 +52,7 @@ func (cmd *LoginCommand) ExtendedUsage(w io.Writer) {
 	}
 }
 
+// Execute - execute the given command
 func (cmd *LoginCommand) Execute(args []string) error {
 	// Validate arguments
 	if *cmd.optionClear {
@@ -67,17 +69,22 @@ func (cmd *LoginCommand) Execute(args []string) error {
 
 	switch args[0] {
 	case "COOKIE":
-		return cmd.SetCookieAuth(args[1:])
+		return cmd.setCookieAuth(args[1:])
 	case "HEADER":
-		return cmd.SetHeaderAuth(args[1:])
+		return cmd.setHeaderAuth(args[1:])
 	default:
 		return shell.ErrInvalidSubCommand
 	}
 }
 
-func (cmd *LoginCommand) SetCookieAuth(args []string) error {
+func (cmd *LoginCommand) setCookieAuth(args []string) error {
 	authContext := NewCookieAuth()
 	errCnt := 0
+
+	if len(args) == 0 {
+		line := shell.GetLine("Input Cookie Data [x=y;a=b]:\n")
+		args = shell.LineParse(line)
+	}
 
 	// Execute commands
 	for _, arg := range args {
@@ -100,9 +107,14 @@ func (cmd *LoginCommand) SetCookieAuth(args []string) error {
 	return errors.New("Invalid parameters, no authentication saved")
 }
 
-func (cmd *LoginCommand) SetHeaderAuth(args []string) error {
+func (cmd *LoginCommand) setHeaderAuth(args []string) error {
 	authContext := NewHeaderAuth()
 	errCnt := 0
+
+	if len(args) == 0 {
+		line := shell.GetLine("Input Header Data [x=y;a=b,c]:\n")
+		args = shell.LineParse(line)
+	}
 
 	// Execute commands
 	for _, arg := range args {

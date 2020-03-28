@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/subchen/go-xmldom"
 )
@@ -14,106 +15,29 @@ import (
 // and used by assertion handlers
 type Result struct {
 	Text             string
-	Map              interface{}
-	XMLDocument      *xmldom.Document
 	Error            error
 	HttpStatus       int
 	HttpStatusString string
 	ContentType      string
-	HeaderMap        map[string]string
-	CookieMap        map[string]string
-	AuthMap          interface{}
+	BodyMap          HistoryMap
+	HeaderMap        HistoryMap
+	CookieMap        HistoryMap
+	AuthMap          HistoryMap
 	cookies          []*http.Cookie
+	headers          map[string]string
 }
 
-// GetObjectMap -- short cut to get an object if the result was a json object
-// returns false if it is not a json(-like) object
-func (r *Result) GetObjectMap() (map[string]interface{}, bool) {
-	if m, ok := r.Map.(map[string]interface{}); ok {
-		return m, true
-	}
-	return nil, false
-}
+type ResultPayloadType int
 
-// GetArrayMap -- short cut to get an array if the result was a json array
-// returns false if it is not a json(-like) object
-func (r *Result) GetArrayMap() ([]interface{}, bool) {
-	if m, ok := r.Map.([]interface{}); ok {
-		return m, true
-	}
-	return nil, false
-}
-
-func (r *Result) addCookieMap(resp *RestResponse) error {
-	cookies := make(map[string]string, 0)
-	r.cookies = resp.GetCookies()
-	for _, cookie := range r.cookies {
-		cookies[cookie.Name] = cookie.Value
-	}
-	r.HeaderMap = cookies
-	return nil // TODO: Are there any error conditions
-}
-
-func (r *Result) addHeaderMap(resp *RestResponse) error {
-	headers := make(map[string]string, 0)
-	for n, values := range resp.GetHeader() {
-		headers[n] = values[0]
-
-		// Special code that evalutes authorization header as a JWT
-		// This may need revisiting to be more acceptable of possibiltiies
-		if n == "Authorization" {
-			authmap, err := decodeJwtClaims(values[0])
-			if err == nil {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintf(ConsoleWriter(), "Pushing AuthMap:\n%v\n", authmap)
-				}
-				r.AuthMap = authmap
-			} else {
-				if IsCmdDebugEnabled() {
-					fmt.Fprintln(ConsoleWriter(), "Unable to decode JWT")
-				}
-			}
-		}
-	}
-	r.HeaderMap = headers
-	return nil // TODO: Are there any error conditions
-}
-
-func (r *Result) addParsedContentToResult(contentType string, data string) {
-	r.ContentType = contentType
-
-	switch getResultTypeFromContentType(r.ContentType) {
-	case "xml":
-		{
-			doc, err := makeXMLDOM(data)
-			if err != nil {
-				fmt.Fprintln(ErrorWriter(), "WARNING: XML ERROR: ", err)
-				r.Map = makeRootMap(data)
-			} else {
-				r.XMLDocument = doc
-			}
-		}
-	case "json":
-		{
-			resultMap, err := makeResultMapFromJson(data)
-			if err != nil {
-				fmt.Fprintln(ErrorWriter(), "WARNING: JSON ERROR: ", err)
-				resultMap = makeRootMap(data)
-			}
-			r.Map = resultMap
-		}
-	case "text":
-		r.Map = makeRootMap(data)
-	case "html":
-		r.Map = makeRootMap(data)
-	case "csv":
-		r.Map = makeRootMap(data)
-	case ResultContentBinary:
-		r.Map = makeRootMap("")
-	default:
-		r.Map = makeRootMap("Unsupported content type returned: " + r.ContentType)
-	}
-}
+// Path options scenarios for different use cases
+const (
+	ResultPath     ResultPayloadType = 1
+	AuthPath       ResultPayloadType = 2
+	CookiePath     ResultPayloadType = 3
+	HeaderPath     ResultPayloadType = 4
+	AllPaths       ResultPayloadType = 8
+	AlternatePaths ResultPayloadType = 9 // All paths but default as default is assumed
+)
 
 func (r *Result) DumpCookies(w io.Writer) {
 	fmt.Fprintln(w, "Cookies:")
@@ -124,7 +48,7 @@ func (r *Result) DumpCookies(w io.Writer) {
 
 func (r *Result) DumpHeader(w io.Writer) {
 	fmt.Fprintln(w, "Headers:")
-	for k, v := range r.HeaderMap {
+	for k, v := range r.headers {
 		fmt.Fprintf(w, "%s: %s\n", k, v)
 	}
 }
@@ -168,4 +92,110 @@ func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
 			fmt.Fprintf(w, "Response:\n%s\n", line)
 		}
 	}
+}
+
+func (r *Result) addCookieMap(resp *RestResponse) error {
+	r.cookies = resp.GetCookies()
+
+	m := make(map[string]string, 0)
+	for _, cookie := range r.cookies {
+		m[cookie.Name] = cookie.Value
+	}
+
+	var err error
+	r.CookieMap, err = NewSimpleHistoryMap(m)
+	return err
+}
+
+func (r *Result) addHeaderMap(resp *RestResponse) error {
+	m := make(map[string]string, 0)
+	for n, values := range resp.GetHeader() {
+		m[n] = values[0]
+
+		// Special code that evalutes authorization header as a JWT
+		// This may need revisiting to be more acceptable of possibiltiies
+		if n == "Authorization" {
+			authmap, err := decodeJwtClaims(values[0])
+			if err == nil {
+				if IsCmdDebugEnabled() {
+					fmt.Fprintf(ConsoleWriter(), "Pushing AuthMap:\n%v\n", authmap)
+				}
+				r.AuthMap = authmap
+			} else {
+				if IsCmdDebugEnabled() {
+					fmt.Fprintln(ConsoleWriter(), "Unable to decode JWT")
+				}
+			}
+		}
+	}
+
+	r.headers = m
+	r.HeaderMap, _ = NewSimpleHistoryMap(m)
+	return nil // TODO: Are there any error conditions
+}
+
+func (r *Result) addParsedContentToResult(contentType string, data string) {
+	r.ContentType = contentType
+
+	switch getResultTypeFromContentType(r.ContentType) {
+	case "xml":
+		{
+			resultMap, err := NewXmlHistoryMap(data)
+			if err != nil {
+				fmt.Fprintln(ErrorWriter(), "WARNING: XML ERROR: ", err)
+				resultMap, _ = NewTextHistoryMap(data)
+			}
+			r.BodyMap = resultMap
+		}
+	case "json":
+		{
+			resultMap, err := NewJsonHistoryMap(data)
+			if err != nil {
+				fmt.Fprintln(ErrorWriter(), "WARNING: JSON ERROR: ", err)
+				resultMap, _ = NewTextHistoryMap(data)
+			}
+			r.BodyMap = resultMap
+		}
+	case "text":
+		r.BodyMap, _ = NewTextHistoryMap(data)
+	case "html":
+		r.BodyMap, _ = NewTextHistoryMap(data)
+	case "csv":
+		r.BodyMap, _ = NewTextHistoryMap(data)
+	case ResultContentBinary:
+		r.BodyMap, _ = NewTextHistoryMap("")
+	default:
+		r.BodyMap, _ = NewTextHistoryMap("Unsupported content type returned: " + r.ContentType)
+	}
+}
+
+// getResultTypeFromResponse -- Get the result type
+//   xml, json, text, html, css, csv, media, unknown
+func getResultTypeFromContentType(contentType string) ResultContentType {
+	// Split off parameters
+	parts := strings.Split(contentType, ";")
+	if len(parts) == 0 {
+		return ResultContentUnknown
+	}
+
+	contentType = strings.TrimSpace(strings.ToLower(parts[0]))
+	if strings.HasPrefix(contentType, "application/xml") ||
+		strings.HasSuffix(contentType, "+xml") {
+		return ResultContentXml
+	} else if strings.HasPrefix(contentType, "application/json") ||
+		strings.HasSuffix(contentType, "+json") {
+		return ResultContentJson
+	} else if strings.HasPrefix(contentType, "text/plain") ||
+		strings.HasPrefix(contentType, "text/calendar") ||
+		strings.HasPrefix(contentType, "text/css") {
+		return ResultContentText
+	} else if strings.HasPrefix(contentType, "text/html") {
+		return ResultContentHtml
+	} else if strings.HasPrefix(contentType, "application/octet-stream") {
+		return ResultContentBinary
+	} else if strings.Contains(contentType, "text/csv") {
+		return ResultContentCsv
+	}
+
+	return ResultContentUnknown
 }

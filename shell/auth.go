@@ -73,10 +73,10 @@ func (a BasicAuth) ToString() string {
 
 func NewBasicAuth(u string, p string) BasicAuth {
 	if len(u) == 0 {
-		u = getLine("Username: ")
+		u = GetLine("Username: ")
 	}
 	if len(p) == 0 {
-		p = getPassword("Password: ")
+		p = GetPassword("Password: ")
 	}
 	return BasicAuth{UserName: u, Password: p}
 }

@@ -30,22 +30,15 @@ types of authentication objects. These types of objects may include:
 
     - JWT
     - Basic Authentication
-    - Query Parameters
+	- Query Parameters
+	- Cookies
+	- Headers
     - NoAuth
 
 JWT
 JWT is a special authentication that requires a request to get the token.
-There will be a separate command to perform a JWT authentication that will
-store the token for future use by other commands. An authentication command
-has a well known identifier other REST commands to use. Examples are:
-
-    MSAUTH resvno lastname
-
-This command generates a token that RESV and BUY commands use. Commands
-may provide options to not include authentication or override authentication
-with a different mechanism. When the command uses JWT, the proper 
-Authorization Header is updated in the REST API request. The RESV and BUY
-commands may fail if MSAUTH is not called first.
+A custom command can be created to authenticate a user to a service and
+save the token for future use by other commands.
 
 Basic Authentication
 Basic Authentication leverages a username and password pair that gets
@@ -61,10 +54,7 @@ for the information.
 
 Query Parameter Authentication
 Query Parameteer authentication enables a set of key,value pairs to be
-added has query parameters on the request. The "MOR" command is an
-example that has a "LOGIN" and "KEYS" sub-command to initialize the
-authenticadtion object for all other MOR sub-commands to be a Basic
-Authentication Object or a Query Parameter Authenticadtion object.
+added has query parameters on the request.
 
     Option syntax;
     --query-param=[[name,value]...]
@@ -76,6 +66,19 @@ used as the value of the query parameter. For example:
 	
 The query parameter object will automatically escape the values in
 the query string.
+
+Cookie Authentication
+Cookie authentication enables cookies to be defined that suffice
+as authentication. 
+
+Header Authentication 
+Header authentication allows headers to be set to specific values
+for authentication.
+
+There is a LOGIN command capable of creating auth contexts based on
+cookies or headers. The basic REST commands work with the AuthContext
+created by LOGIN. Additional custom commands can use those contexts
+as well.
 `,
 }
 

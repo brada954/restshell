@@ -46,7 +46,10 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 	line.handleSpecialCharacters()
 
 	if len(shellPrefix) > 0 {
-		line.CmdLine = strings.TrimSpace(shellPrefix + line.CmdLine)
+		text := strings.ToLower(line.CmdLine)
+		if text != "q" && text != "quit" && text != "shell" {
+			line.CmdLine = strings.TrimSpace(shellPrefix + line.CmdLine)
+		}
 	}
 
 	line.splitCommandAndArgs()

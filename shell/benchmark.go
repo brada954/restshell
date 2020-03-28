@@ -1,14 +1,13 @@
 package shell
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
 )
 
-// Functions isolated for mock testing
-var CalcTimeSince = time.Since
-
+// Benchmark -- Structure implementing JobMontor
 type Benchmark struct {
 	Iterations        []BenchmarkIteration
 	StartTime         time.Time
@@ -28,6 +27,7 @@ type Benchmark struct {
 	custom            interface{}
 }
 
+// BenchmarkIteration -- Iteration structure implementing JobContext
 type BenchmarkIteration struct {
 	Iteration int
 	WallTime  int64 // Nano-seconds
@@ -38,7 +38,7 @@ type BenchmarkIteration struct {
 	end       time.Time
 }
 
-func NewBenchmark(iterations int) Benchmark {
+func NewBenchmark(iterations int) *Benchmark {
 	result := Benchmark{
 		summarized: false,
 		Iterations: make([]BenchmarkIteration, iterations, iterations),
@@ -48,7 +48,7 @@ func NewBenchmark(iterations int) Benchmark {
 		result.Iterations[i].Iteration = i
 		result.Iterations[i].Messages = make([]string, 0)
 	}
-	return result
+	return &result
 }
 
 func (bm *Benchmark) summarize() {
@@ -123,17 +123,27 @@ func (bm *Benchmark) WallTimeInMs() float64 {
 	return float64(bm.Duration) / float64(time.Millisecond)
 }
 
-func (bm *Benchmark) StartIteration(i int) {
+func (bm *Benchmark) StartIteration(i int) JobContext {
 	bm.Iterations[i].start = time.Now()
+	return &bm.Iterations[i]
 }
 
-func (bm *Benchmark) EndIteration(i int) {
-	bm.Iterations[i].WallTime = int64(CalcTimeSince(bm.Iterations[i].start))
-	bm.Iterations[i].end = bm.Iterations[i].start.Add(time.Duration(bm.Iterations[i].WallTime))
+func (bm *Benchmark) FinalizeIteration(jc JobContext) {
+	if iteration, ok := jc.(*BenchmarkIteration); ok {
+		if iteration.WallTime == 0 {
+			iteration.EndIteration(errors.New("Iteration was not ended before finalize"))
+		}
+	}
 }
 
-func (bm *Benchmark) SetIterationStatus(i int, err error) {
-	bm.Iterations[i].Err = err
+func (jc *BenchmarkIteration) EndIteration(err error) {
+	jc.WallTime = int64(mockableTimeSince(jc.start))
+	jc.end = jc.start.Add(time.Duration(jc.WallTime))
+	jc.Err = err
+}
+
+func (jc *BenchmarkIteration) UpdateError(err error) {
+	jc.Err = err
 }
 
 func (bm *Benchmark) AddIterationMessage(i int, msg string) {
@@ -160,7 +170,7 @@ func (bm *Benchmark) Dump(label string, opts StandardOptions, showIterations boo
 				headingFmt,
 				"Label", "Count", "Err", "Avg", "High", "HI", "Low", "LI", "Avg-(HL)", "Tot", "Message", note)
 		} else {
-			var headingFmt = "%-14[1]s  %5[2]s  %5[3]s  %8[4]s  %8[5]s%[13]*[6]s  %8[7]s%[14]*[8]s  %8[9]s  %8[10]s %8[11]s %[12]s\n"
+			var headingFmt = "%-16[1]s  %5[2]s  %5[3]s  %8[4]s  %8[5]s%[13]*[6]s  %8[7]s%[14]*[8]s  %8[9]s  %8[10]s %8[11]s %[12]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
 				"Label", "Count", "Err", "Avg", "High", "", "Low", "", "Avg-(HL)", "Tot", "Message",
@@ -203,7 +213,7 @@ func (bm *Benchmark) Dump(label string, opts StandardOptions, showIterations boo
 			bm.message,
 		)
 	} else {
-		var displayFmt = "%-14s  %5d  %5d %9s %9s(%*d) %9s(%*d) %9s %9s  %s\n"
+		var displayFmt = "%-16.16s  %5d  %5d %9s %9s(%*d) %9s(%*d) %9s %9s  %s\n"
 		fmt.Fprintf(OutputWriter(),
 			displayFmt,
 			label,

@@ -1,0 +1,12 @@
+{
+    "string": "this is a \"string\"",
+    "number" : 123.343,
+    "int" : 321,
+    "array" : ["test_string", "red", "white", "blue"],
+    "object" : {
+        "string": "my string",
+        "number" : 1.01,
+        "integer" : 2,
+        "array" : [ { "obj": 1, "val": 111}, {"obj": 2, "val": 222}]
+    }
+}

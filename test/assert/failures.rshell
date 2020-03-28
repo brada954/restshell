@@ -5,8 +5,8 @@ REM ==  All the following tests should fail but
 REM ==  not counted as failures
 REM =========================================================
 assert --new
-assert eq -v --test --expect-error test notthis
-assert isint -v --test --float --expect-error 123.3
+assert eq -v --test --expect-fail test notthis
+assert isint -v --test --float --expect-fail 123.3
 REM =========================================================
 REM ==
 REM == Summary failures indicate unexpected successful asserts

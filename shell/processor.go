@@ -32,14 +32,15 @@ func ReadLine() {
 	scanner.Scan()
 }
 
-func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, stopOnInterrupt bool) (int, bool) {
+// CommandProcessor -- Initiate the command interpretter using the given reader and options
+func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, allowAbort bool) (int, bool) {
 	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
 		defaultPrompt = ""
 		singleStep = false
 	}
 
-	var quit bool = false
-	var count int = 0
+	var quit bool
+	var count int
 	var shell = ""
 	var prompt = defaultPrompt
 
@@ -71,7 +72,7 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 				shell = ""
 			}
 		case "SHELL":
-			if !quit && len(line.ArgString) > 0 {
+			if len(line.ArgString) > 0 {
 				shell = line.ArgString
 				if !(shell[len(shell)-1] == '\\' || shell[len(shell)-1] == '/') {
 					shell = shell + " "
@@ -86,11 +87,12 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, s
 				cmd, err, contStepping := processCommand(line, singleStep)
 				singleStep = contStepping
 				if IsFlowControl(err, FlowQuit) {
+					// Flow quit is considered success; but last error remains
 					quit = true
 				} else if err != nil {
 					LastError = 1
 					fmt.Fprintf(ErrorWriter(), "%s: %s\n", line.Command, err.Error())
-					if IsFlowControl(err, FlowAbort) && stopOnInterrupt {
+					if IsFlowControl(err, FlowAbort) && allowAbort {
 						quit = true
 					}
 				} else if track, trackable := cmd.(Trackable); cmd != nil && trackable {
@@ -364,7 +366,7 @@ func ContainsCommand(cmd string, tokens []string) bool {
 	return false
 }
 
-func getPassword(prompt string) string {
+func GetPassword(prompt string) string {
 	if len(prompt) > 0 {
 		fmt.Fprintf(os.Stdout, prompt)
 	}
@@ -378,7 +380,7 @@ func getPassword(prompt string) string {
 	return strings.TrimSpace(password)
 }
 
-func getLine(prompt string) string {
+func GetLine(prompt string) string {
 	if len(prompt) > 0 {
 		fmt.Fprintf(os.Stdout, prompt)
 	}

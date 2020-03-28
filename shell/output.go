@@ -10,6 +10,7 @@ import (
 // ShortDisplayFunc -- A function can be used to pretty format the output or condense it
 type ShortDisplayFunc func(io.Writer, Result) error
 
+// RestCompletionHandler -- Helper function to push rest result and perform output processing
 func RestCompletionHandler(response *RestResponse, resperr error, shortDisplay ShortDisplayFunc) error {
 
 	if resperr != nil {
@@ -23,6 +24,22 @@ func RestCompletionHandler(response *RestResponse, resperr error, shortDisplay S
 		return errors.New("Error: Unable to get the result")
 	}
 
+	return OutputResult(result, shortDisplay)
+}
+
+// JsonCompletionHandler -- Helper function to push json result data and perform output processing
+func JsonCompletionHandler(json string, resperr error, shortDisplay ShortDisplayFunc) error {
+	if resperr != nil {
+		PushError(resperr)
+		return fmt.Errorf("Json Error: %s", resperr.Error())
+	}
+
+	PushText("application/json", json, resperr)
+
+	result, err := PeekResult(0)
+	if err != nil {
+		return errors.New("Error: Unable to get the result")
+	}
 	return OutputResult(result, shortDisplay)
 }
 

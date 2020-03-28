@@ -16,10 +16,11 @@ import (
 
 // RestClient -- An object that makes REST calls
 type RestClient struct {
-	Debug   bool
-	Verbose bool
-	Headers []string
-	Client  *http.Client
+	Debug         bool
+	Verbose       bool
+	OutputRequest bool
+	Headers       []string
+	Client        *http.Client
 }
 
 // RestResponse -- The response structure returned by a REST interface
@@ -30,19 +31,21 @@ type RestResponse struct {
 
 func NewRestClient() RestClient {
 	return RestClient{
-		Debug:   false,
-		Verbose: false,
-		Headers: make([]string, 0),
-		Client:  &http.Client{Timeout: time.Duration(30 * time.Second)},
+		Debug:         false,
+		Verbose:       false,
+		OutputRequest: false,
+		Headers:       make([]string, 0),
+		Client:        &http.Client{Timeout: time.Duration(30 * time.Second)},
 	}
 }
 
 func NewRestClientFromOptions() RestClient {
 
 	client := RestClient{
-		Debug:   IsCmdDebugEnabled(),
-		Verbose: IsCmdVerboseEnabled() && !IsCmdSilentEnabled(),
-		Headers: make([]string, 0),
+		Debug:         IsCmdDebugEnabled(),
+		Verbose:       IsCmdVerboseEnabled() && !IsCmdSilentEnabled(),
+		OutputRequest: IsCmdOutputRequestEnabled(),
+		Headers:       make([]string, 0),
 		Client: &http.Client{
 			Timeout: time.Duration(GetCmdTimeoutValueMs()) * time.Millisecond,
 		},
@@ -178,8 +181,8 @@ func (r *RestClient) DoWithForm(method string, authContext Auth, url string, dat
 
 // DoMethodWithBody - Perform a HTTP request for the given method type and content provided
 func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url string, contentType string, data string) (resultResponse *RestResponse, resultError error) {
-	if r.Debug {
-		fmt.Fprintf(OutputWriter(), "Body:\n%s\n", data)
+	if r.Debug || r.OutputRequest {
+		fmt.Fprintf(OutputWriter(), "Request Body:\n%s\n\n", data)
 	}
 
 	if method == http.MethodGet {

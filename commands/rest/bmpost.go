@@ -11,6 +11,7 @@ type BmPostCommand struct {
 	useSubstitution             *bool
 	useSubstitutionPerIteration *bool
 	optionExpectedStatus        *int
+	optionLabel                 *string
 	postOptions                 PostOptions
 	// Processing variables
 	aborted bool
@@ -25,8 +26,10 @@ func (cmd *BmPostCommand) AddOptions(set shell.CmdSet) {
 	cmd.useSubstitution = set.BoolLong("subst", 0, "Run variable substitution on initial post data")
 	cmd.useSubstitutionPerIteration = set.BoolLong("subst-per-call", 0, "Run variable substitution on post data for each post")
 	cmd.optionExpectedStatus = set.IntLong("expect-status", 0, 200, "Expected status from post [default=200]")
+	cmd.optionLabel = set.StringLong("label", 0, "", "Label for results")
 	cmd.postOptions = AddPostOptions(set)
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth,
+		shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks, shell.CmdTimeout)
 }
 
 func (cmd *BmPostCommand) Execute(args []string) error {
@@ -45,6 +48,9 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	}
 
 	method := cmd.postOptions.GetPostMethod()
+	if len(*cmd.optionLabel) == 0 {
+		*cmd.optionLabel = method
+	}
 	postBody, err := cmd.postOptions.GetPostBody()
 	if err != nil {
 		return err
@@ -61,7 +67,7 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 	// Build the job processor that can perform substitution
 	// on each iteration if required
 	var client = shell.NewRestClientFromOptions()
-	jobMaker := func() shell.JobProcessor {
+	jobMaker := func() shell.JobFunction {
 		rc := &client
 		if shell.IsCmdReconnectEnabled() {
 			tmprc := shell.NewRestClientFromOptions()
@@ -86,13 +92,22 @@ func (cmd *BmPostCommand) Execute(args []string) error {
 
 	// Execute command using the job processor which supports
 	// iterations and concurrency
-	bm := shell.ProcessJob(jobMaker, shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus), &cmd.aborted)
+	o := shell.GetJobOptionsFromParams()
+	if o.Iterations == 0 {
+		o.Iterations = 10
+	}
+	o.CancelPtr = &cmd.aborted
+	o.JobMaker = jobMaker
+	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
+
+	bm := shell.NewBenchmark(o.Iterations)
+	shell.ProcessJob(o, bm)
 
 	if authContext == nil || !authContext.IsAuthed() {
 		bm.Note = "Not an authenticated run"
 	}
 
-	bm.Dump(method, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
+	bm.Dump(*cmd.optionLabel, shell.GetStdOptions(), shell.IsCmdVerboseEnabled())
 	return nil
 }
 

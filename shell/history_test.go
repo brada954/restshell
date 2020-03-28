@@ -37,7 +37,7 @@ func TestNonJsonPushResult(t *testing.T) {
 		t.Errorf("Unexpected failure to peek result: %s", err.Error())
 		return
 	} else {
-		node, err := GetJsonNode("/", r.Map)
+		node, err := r.BodyMap.GetNode("/")
 		if err != nil {
 			t.Errorf("failure to get root value from map: %s", err.Error())
 		} else if strResult, ok := node.(string); !ok {
@@ -61,11 +61,15 @@ func TestPushPeek(t *testing.T) {
 		if r.Text != string(json1) {
 			t.Errorf("Text in peek result does not match expected for json1")
 		}
-		if r.Map == nil {
+		if r.BodyMap == nil {
 			t.Errorf("Map does not appear to be initialized")
 		}
-		if m, ok := r.Map.(map[string]interface{}); !ok {
-			t.Errorf("Map has the wrong type: %v", reflect.TypeOf(m))
+		v, err := r.BodyMap.GetNode("car")
+		if err != nil {
+			t.Errorf("GetNode returned unexpected error for car node: %s", err)
+		}
+		if m, ok := v.(map[string]interface{}); !ok {
+			t.Errorf("Map has the wrong type for car node: %v", reflect.TypeOf(m))
 		}
 	}
 }
@@ -82,7 +86,7 @@ func TestRootAccessToMap(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	n, err := GetJsonNode("/", r.Map)
+	n, err := r.BodyMap.GetNode("/")
 	if err != nil {
 		t.Errorf("Unexpected root err: %s", err.Error())
 		return
@@ -109,7 +113,7 @@ func TestFirstLevelObjectFloat64Success(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	assertNodeFloat64(t, "testint", r.Map, float64(45))
+	assertNodeFloat64(t, "testint", r.BodyMap, float64(45))
 }
 
 func TestSecondLevelObjectStringSuccess(t *testing.T) {
@@ -124,7 +128,7 @@ func TestSecondLevelObjectStringSuccess(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	assertNodeString(t, "car.make", r.Map, "dodge")
+	assertNodeString(t, "car.make", r.BodyMap, "dodge")
 }
 
 func TestStringArraySuccess(t *testing.T) {
@@ -139,7 +143,7 @@ func TestStringArraySuccess(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	assertNodeString(t, "car.strarray[1]", r.Map, "s2")
+	assertNodeString(t, "car.strarray[1]", r.BodyMap, "s2")
 }
 
 func TestMissingObjectStringNodes(t *testing.T) {
@@ -154,9 +158,9 @@ func TestMissingObjectStringNodes(t *testing.T) {
 		t.Errorf("PeakResult faild with error: " + err.Error())
 	}
 
-	assertNodeNotFound(t, "home", r.Map)
-	assertNodeNotFound(t, "car.model", r.Map)
-	assertNodeNotFound(t, "carx.make", r.Map)
+	assertNodeNotFound(t, "home", r.BodyMap)
+	assertNodeNotFound(t, "car.model", r.BodyMap)
+	assertNodeNotFound(t, "carx.make", r.BodyMap)
 }
 
 func TestFirstItemOfObjectArray(t *testing.T) {
@@ -172,7 +176,7 @@ func TestFirstItemOfObjectArray(t *testing.T) {
 	}
 
 	key := "dataarray[0].d1"
-	x, err := GetJsonNode(key, r.Map)
+	x, err := r.BodyMap.GetNode(key)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}
@@ -201,7 +205,7 @@ func TestInvalidKeyForItemInObjectArray(t *testing.T) {
 	}
 
 	key := "dataarray.d1"
-	x, err := GetJsonNode(key, r.Map)
+	x, err := r.BodyMap.GetNode(key)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -224,7 +228,7 @@ func TestStringArrayOutOfBounds(t *testing.T) {
 	}
 
 	key := "car.strarray[3]"
-	x, err := GetJsonNode(key, r.Map)
+	x, err := r.BodyMap.GetNode(key)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -247,7 +251,7 @@ func TestDataArrayOutOfBounds(t *testing.T) {
 	}
 
 	key := "dataarray[2].d1"
-	x, err := GetJsonNode(key, r.Map)
+	x, err := r.BodyMap.GetNode(key)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s) type returned: %v", key, reflect.TypeOf(x))
 	}
@@ -286,8 +290,8 @@ func makeRestResponse(data string, contentType string, status int) *RestResponse
 	return &result
 }
 
-func assertNodeNotFound(t *testing.T, key string, m interface{}) {
-	x, err := GetJsonNode(key, m)
+func assertNodeNotFound(t *testing.T, key string, m HistoryMap) {
+	x, err := m.GetNode(key)
 	if err == nil {
 		t.Errorf("Unexpected success for node (%s)", key)
 	}
@@ -299,8 +303,8 @@ func assertNodeNotFound(t *testing.T, key string, m interface{}) {
 	}
 }
 
-func assertNodeFloat64(t *testing.T, key string, m interface{}, value float64) {
-	x, err := GetJsonNode(key, m)
+func assertNodeFloat64(t *testing.T, key string, m HistoryMap, value float64) {
+	x, err := m.GetNode(key)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}
@@ -314,8 +318,8 @@ func assertNodeFloat64(t *testing.T, key string, m interface{}, value float64) {
 	}
 }
 
-func assertNodeString(t *testing.T, key string, m interface{}, value string) {
-	x, err := GetJsonNode(key, m)
+func assertNodeString(t *testing.T, key string, m HistoryMap, value string) {
+	x, err := m.GetNode(key)
 	if err != nil {
 		t.Errorf("Unexpected error for node (%s): %s", key, err.Error())
 	}

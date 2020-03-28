@@ -252,7 +252,7 @@ func getRandomUserData() (Consumer, error) {
 	result := Result{}
 	consumer := Consumer{}
 
-	url := "https://randomuser.me/api?nat=us"
+	url := "https://randomuser.me/api/1.2?nat=us"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return consumer, err

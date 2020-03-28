@@ -81,6 +81,19 @@ func GetGlobal(key string) interface{} {
 	}
 }
 
+func TryGetGlobalString(key string) (string, bool) {
+	if v, ok := globalStore[key]; !ok {
+		return "", false
+	} else {
+		switch t := v.(type) {
+		case string:
+			return t, true
+		default:
+			return "", false
+		}
+	}
+}
+
 func GetGlobalString(key string) string {
 	v := GetGlobal(key)
 	if v == nil {

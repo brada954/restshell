@@ -14,18 +14,15 @@ import (
 var osLookupEnv = os.LookupEnv
 
 type SetCommand struct {
-	listOption        *bool
-	initOnly          *bool
-	valueIsPath       *bool
-	valueIsAuthPath   *bool
-	valueIsCookiePath *bool
-	valueIsHeaderPath *bool
-	valueIsVar        *bool
-	valueIsFile       *bool
-	valueIsEnvVar     *bool
-	allowEmpty        *bool
-	deleteTempOption  *bool
-	modifierOptions   modifiers.ModifierOptions
+	listOption       *bool
+	initOnly         *bool
+	valueIsVar       *bool
+	valueIsFile      *bool
+	valueIsEnvVar    *bool
+	allowEmpty       *bool
+	deleteTempOption *bool
+	modifierOptions  modifiers.ModifierOptions
+	historyOptions   shell.HistoryOptions
 }
 
 func NewSetCommand() *SetCommand {
@@ -40,16 +37,14 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	})
 	cmd.listOption = set.BoolLong("list", 'l', "List the globals")
 	cmd.initOnly = set.BoolLong("init", 'i', "Inialize if not set already")
-	cmd.valueIsPath = set.BoolLong("path", 'p', "Use value as a path into history buffer")
-	cmd.valueIsAuthPath = set.BoolLong("path-auth", 0, "Use value as a path into history buffer AuthToken")
-	cmd.valueIsCookiePath = set.BoolLong("path-cookie", 0, "Use value as a path into history buffer cookies")
-	cmd.valueIsHeaderPath = set.BoolLong("path-header", 0, "Use value as a path into history buffer headers")
 	cmd.valueIsVar = set.BoolLong("var", 0, "Use the value as variable name to lookup if exists")
 	cmd.valueIsEnvVar = set.BoolLong("env", 0, "Use the value to reference an environment variable if exists")
 	cmd.valueIsFile = set.BoolLong("file", 0, "Use the value as a file name to read for value")
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
+	_ = set.BoolLong("direct", 0, "Use direct value instead of redirecting to variable or file or history")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
+	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AllPaths)
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
@@ -76,6 +71,32 @@ func (cmd *SetCommand) Execute(args []string) error {
 
 	if len(args) > 0 {
 		for _, v := range args {
+			if len(v) > 2 && strings.HasPrefix(v, "--") {
+				*cmd.valueIsVar = false
+				*cmd.valueIsFile = false
+				*cmd.valueIsEnvVar = false
+				cmd.historyOptions.ClearPathOptions()
+				switch strings.ToLower(v) {
+				case "--var":
+					*cmd.valueIsVar = true
+				case "--file":
+					*cmd.valueIsFile = true
+				case "--env":
+					*cmd.valueIsEnvVar = true
+				case "--path":
+					cmd.historyOptions.SetPathOption(shell.ResultPath)
+				case "--path-header":
+					cmd.historyOptions.SetPathOption(shell.HeaderPath)
+				case "--path-auth":
+					cmd.historyOptions.SetPathOption(shell.AuthPath)
+				case "--path-cookie":
+					cmd.historyOptions.SetPathOption(shell.CookiePath)
+				case "--direct":
+				default:
+					return fmt.Errorf("Invalid option in arguments: %s", v)
+				}
+				continue
+			}
 			processArg(cmd, v)
 		}
 	}
@@ -83,109 +104,119 @@ func (cmd *SetCommand) Execute(args []string) error {
 }
 
 func processArg(cmd *SetCommand, arg string) {
+	var variable string
+	var value = ""
+
 	parts := parseArg(arg)
-	if len(parts) == 0 {
+	if len(parts) == 0 || len(parts[0]) == 0 {
 		fmt.Fprintln(shell.ErrorWriter(), "Warning: skipping invalid argument: "+arg)
 		return
 	} else if len(parts) == 1 && !*cmd.allowEmpty {
 		shell.RemoveGlobal(parts[0])
-	} else {
-		var value = ""
+		return
+	}
 
-		if len(parts) > 1 {
-			value = parts[1]
-		}
+	variable = parts[0]
+	if len(parts) > 1 {
+		value = parts[1]
+	}
 
-		if *cmd.valueIsFile {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for file name")
+	// Setup exit function to perform final common tasks
+	var exitError error
+	defer func() {
+		if exitError != nil {
+			fmt.Fprintf(shell.ErrorWriter(), "Warning: %s; clearing variable: %s\n", exitError, variable)
+			if len(variable) > 0 && !*cmd.allowEmpty {
+				shell.RemoveGlobal(variable)
 				return
 			}
-			v, err := shell.GetFileContents(value)
-			if err != nil {
-				fmt.Fprintln(shell.ErrorWriter(), err.Error())
-				return
-			}
-			value = v
-		}
-
-		if *cmd.valueIsVar {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for variable name")
-				return
-			}
-			value = shell.GetGlobalString(value)
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to variable: %s\n", parts[0], value)
-			}
-		}
-
-		if *cmd.valueIsEnvVar {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for environment variable")
-				return
-			}
-
-			if v, ok := osLookupEnv(value); ok {
-				value = v
-			} else {
-				value = ""
-			}
-
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to environment variable: %s\n", parts[0], value)
-			}
-		}
-
-		if *cmd.valueIsPath || *cmd.valueIsAuthPath || *cmd.valueIsCookiePath || *cmd.valueIsHeaderPath {
-			if len(value) == 0 {
-				fmt.Fprintln(shell.ErrorWriter(), "Invalid value for path name")
-				return
-			}
-			var err error
-			if *cmd.valueIsAuthPath {
-				value, err = shell.GetValueFromAuthHistory(0, value)
-			} else if *cmd.valueIsCookiePath {
-				value, err = shell.GetValueFromCookieHistory(0, value)
-			} else if *cmd.valueIsHeaderPath {
-				value, err = shell.GetValueFromHeaderHistory(0, value)
-			} else {
-				value, err = shell.GetValueFromHistory(0, value)
-			}
-
-			if err != nil {
-				fmt.Fprintf(shell.ErrorWriter(), "Warning: value not found, skipping argument: %s\n", arg)
-				return
-			}
-
-			if shell.IsDebugEnabled() {
-				fmt.Fprintf(shell.ConsoleWriter(), "Setting %s value to history value: %s\n", parts[0], value)
-			}
+			value = ""
 		}
 
 		if len(value) > 0 || *cmd.allowEmpty {
-			var err error = nil
-
-			valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
-			if v, err := valueModifierFunc(value); err != nil {
-				fmt.Fprintln(shell.ErrorWriter(), "Modifier Failure:", err.Error())
-				return
-			} else {
-				value = fmt.Sprintf("%v", v)
-			}
+			var err error
 
 			if *cmd.initOnly {
-				err = shell.InitializeGlobal(parts[0], value)
+				err = shell.InitializeGlobal(variable, value)
 			} else {
-				err = shell.SetGlobal(parts[0], value)
+				err = shell.SetGlobal(variable, value)
 			}
 			if err != nil {
-				fmt.Fprintf(shell.ErrorWriter(), "%s: %s\n", err.Error(), parts[0])
+				fmt.Fprintf(shell.ErrorWriter(), "%s: %s\n", err.Error(), variable)
 			} else if shell.IsCmdVerboseEnabled() {
-				fmt.Fprintf(shell.OutputWriter(), "%s=%s\n", parts[0], shell.GetGlobal(parts[0]))
+				fmt.Fprintf(shell.OutputWriter(), "%s=%s\n", variable, shell.GetGlobal(variable))
 			}
 		}
+		return
+	}()
+
+	if *cmd.valueIsFile {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for file name")
+			return
+		}
+		v, err := shell.GetFileContents(value)
+		if err != nil {
+			exitError = err
+			return
+		}
+		value = v
 	}
+
+	if *cmd.valueIsVar {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for variable name")
+			return
+		}
+		v, ok := shell.TryGetGlobalString(value)
+		if !ok {
+			exitError = fmt.Errorf("Variable does not contain a string value")
+			return
+		}
+		value = v
+	}
+
+	if *cmd.valueIsEnvVar {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for environment variable")
+			return
+		}
+
+		if v, ok := osLookupEnv(value); ok {
+			value = v
+		} else {
+			exitError = fmt.Errorf("Environment variable not found")
+			return
+		}
+	}
+
+	var ivalue interface{} = value
+
+	if cmd.historyOptions.IsHistoryPathOptionEnabled() {
+		if len(value) == 0 {
+			exitError = fmt.Errorf("Invalid value for path name")
+			return
+		}
+
+		v, err := cmd.historyOptions.GetNodeFromHistory(0, value)
+		if err != nil {
+			exitError = fmt.Errorf("Path Error: %s", err.Error())
+			return
+		}
+		ivalue = v
+	}
+
+	valueModifierFunc := modifiers.ConstructModifier(cmd.modifierOptions)
+	{
+		if v, err := valueModifierFunc(ivalue); err != nil {
+			exitError = fmt.Errorf("Modifier Failure: %s", err.Error())
+			return
+		} else {
+			value, exitError = shell.ConvertNodeValueToString(v)
+		}
+	}
+
+	return
 }
 
 func parseArg(arg string) []string {

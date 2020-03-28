@@ -34,7 +34,7 @@ func NewRunCommand() *RunCommand {
 
 func (cmd *RunCommand) AddOptions(set CmdSet) {
 	set.SetParameters("scripts...")
-	cmd.ifCondition = set.StringLong("cond", 0, "", "run script if specified variable is not empty")
+	cmd.ifCondition = set.StringLong("cond", 0, "", "run script if specified variable is not empty or matches optional value (k[=v])")
 	cmd.list = set.BoolLong("list", 0, "List the contexts of script file")
 	cmd.header = set.BoolLong("header", 0, "Display header of script file (Leading REM commands)")
 	cmd.stepOption = set.BoolLong("step", 0, "Single step through script")
@@ -43,7 +43,7 @@ func (cmd *RunCommand) AddOptions(set CmdSet) {
 	AddCommonCmdOptions(set, CmdDebug, CmdVerbose, CmdSilent)
 }
 
-// Validate the script exists by either basename or basename plus suffix
+// ValidateScriptExists -- Validate the script exists by either basename or basename plus suffix
 // return the file name modified with extension if necesssary.
 // If the error is not a file existence problem the file is returned.
 func ValidateScriptExists(file string) (string, error) {
@@ -79,11 +79,6 @@ func ValidateScriptExists(file string) (string, error) {
 func (cmd *RunCommand) executeFile(file string, runSilent bool) (count int, elapsed time.Duration, result error) {
 	count = 0
 	elapsed = 0
-
-	if verifyCondition(*cmd.ifCondition) == false {
-		fmt.Fprintf(OutputWriter(), "Missing Condition: %s. Skipping script: %s\n", *cmd.ifCondition, file)
-		return 0, 0, nil
-	}
 
 	var path = ""
 	{
@@ -191,14 +186,20 @@ func (cmd *RunCommand) Execute(args []string) error {
 		return errors.New("Too many nested scripts script")
 	}
 
+	if verifyCondition(*cmd.ifCondition) == false {
+		fmt.Fprintf(OutputWriter(), "Run command aborting; missing required condition: %s.\n", *cmd.ifCondition)
+		return nil
+	}
+
 	runSilent := IsCmdSilentEnabled() || *cmd.list
 	i := iterations
-	var result error = nil
+	var result error
 	var commands int
 	var duration time.Duration
+	var execLocal = *cmd.execOption
 	resultMsg := "Success"
 	for ; i > 0; i-- {
-		if *cmd.execOption {
+		if execLocal {
 			str := strings.Join(args, "\n")
 			r := strings.NewReader(str)
 			count, elapsed, err := cmd.executeStream(r, runSilent)
@@ -218,7 +219,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 					if len(args) > 1 {
 						fmt.Fprintf(ErrorWriter(), "Aborting due to errors in script: %s\n", fileName)
 					}
-					// TBD: HOw fatal should "not exists" be considered in list of files
+					// TBD: How fatal should "not exists" be considered in list of files
 					return err
 				}
 			}
@@ -277,16 +278,20 @@ func verifyCondition(variable string) bool {
 
 	value := GetGlobal(variable)
 	if str, ok := value.(string); ok {
-		if len(strings.TrimSpace(str)) > 0 {
-			if len(parts) > 1 {
-				if str == parts[1] {
-					return true
-				}
-			} else {
+		str = strings.TrimSpace(str)
+		if len(parts) > 1 {
+			if str == strings.TrimSpace(parts[1]) {
+				return true
+			}
+			return false
+		} else {
+			if len(str) > 0 {
 				return true
 			}
 		}
 	} else if value != nil {
+		return true
+	} else if len(parts) > 1 && len(strings.TrimSpace(parts[1])) == 0 {
 		return true
 	}
 	return false
