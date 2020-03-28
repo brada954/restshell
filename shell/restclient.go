@@ -19,7 +19,7 @@ type RestClient struct {
 	Debug         bool
 	Verbose       bool
 	OutputRequest bool
-	Headers       string
+	Headers       []string
 	Client        *http.Client
 }
 
@@ -34,7 +34,7 @@ func NewRestClient() RestClient {
 		Debug:         false,
 		Verbose:       false,
 		OutputRequest: false,
-		Headers:       "",
+		Headers:       make([]string, 0),
 		Client:        &http.Client{Timeout: time.Duration(30 * time.Second)},
 	}
 }
@@ -45,6 +45,7 @@ func NewRestClientFromOptions() RestClient {
 		Debug:         IsCmdDebugEnabled(),
 		Verbose:       IsCmdVerboseEnabled() && !IsCmdSilentEnabled(),
 		OutputRequest: IsCmdOutputRequestEnabled(),
+		Headers:       make([]string, 0),
 		Client: &http.Client{
 			Timeout: time.Duration(GetCmdTimeoutValueMs()) * time.Millisecond,
 		},
@@ -74,7 +75,7 @@ func NewRestClientFromOptions() RestClient {
 		transport.MaxIdleConnsPerHost = 1000
 	}
 
-	client.Headers = GetCmdHeaderValues("")
+	client.Headers = GetCmdHeaderValues()
 	return client
 }
 
@@ -335,15 +336,12 @@ func newTlsWithLocalCertificates(client *http.Client) {
 	}
 }
 
-func addHeaders(req *http.Request, headerParam string) error {
-	if len(headerParam) == 0 {
+func addHeaders(req *http.Request, headers []string) error {
+	if len(headers) == 0 {
 		return nil
 	}
 
-	parts := strings.Split(headerParam, ",")
-	headers := make(map[string]string, 0)
-
-	for _, pair := range parts {
+	for _, pair := range headers {
 		kv := strings.SplitN(pair, "=", 2)
 		if len(kv) != 2 {
 			return errors.New("Error parsing header parameter; no headers used")
@@ -353,11 +351,8 @@ func addHeaders(req *http.Request, headerParam string) error {
 		if strings.ToLower(key) == "host" {
 			req.Host = value
 		} else {
-			headers[key] = value
+			req.Header.Add(key, value)
 		}
-	}
-	for key, value := range headers {
-		req.Header.Add(key, value)
 	}
 	return nil
 }

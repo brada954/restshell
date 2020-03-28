@@ -68,6 +68,7 @@ type StandardOptions struct {
 	reconnectOption      *bool
 	warmingOption        *bool // BM warming iterations (# = concurrency)
 	headersOption        *string
+	headerOption         *StringList
 	shortOutputOption    *bool
 	bodyOutputOption     *bool
 	headerOutputOption   *bool
@@ -249,6 +250,9 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			if globalOptions.headersOption == nil {
 				globalOptions.headersOption = set.StringLong("headers", 0, "", "Set the headers [k=v,k=v]")
 			}
+			if globalOptions.headerOption == nil {
+				globalOptions.headerOption = set.StringListLong("header", 0, "Set a header [k=v]")
+			}
 		case CmdFormatOutput:
 			if globalOptions.shortOutputOption == nil {
 				globalOptions.shortOutputOption = set.BoolLong("out-short", 0, "Output the short response (overrides verbose)")
@@ -338,8 +342,8 @@ func GetCmdQueryParamAuthContext(fallback Auth) Auth {
 	return globalOptions.GetQueryParamAuthContext(fallback)
 }
 
-func GetCmdHeaderValues(fallback string) string {
-	return globalOptions.GetHeaderValues(fallback)
+func GetCmdHeaderValues() []string {
+	return globalOptions.GetHeaderValues()
 }
 
 func GetCmdIterationValue() int {
@@ -473,11 +477,21 @@ func (o *StandardOptions) GetUrlValue(fallback string) (result string) {
 	return fallback
 }
 
-func (o *StandardOptions) GetHeaderValues(fallback string) string {
+func (o *StandardOptions) GetHeaderValues() []string {
+	result := make([]string, 0)
 	if o.headersOption != nil {
-		return *o.headersOption
+		for _, v := range strings.Split(*o.headersOption, ",") {
+			if len(v) > 0 {
+				result = append(result, v)
+			}
+		}
 	}
-	return fallback
+	if o.headerOption != nil {
+		for _, v := range o.headerOption.Values {
+			result = append(result, v)
+		}
+	}
+	return result
 }
 
 // GetBasicAuthContext -- get the Auth context for the basic auth parameters specified
