@@ -52,26 +52,14 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 		}
 	}
 
-	line.splitCommandAndArgs()
-
-	// Perform alias substitution
-	if alias, err := GetAlias(line.Command); err == nil {
-		if IsDebugEnabled() {
-			fmt.Fprintf(ConsoleWriter(), "Using alias: %s\n", alias)
-		}
-		if len(line.ArgString) > 0 {
-			line.CmdLine = alias + " " + line.ArgString
-		} else {
-			line.CmdLine = alias
-		}
-		line.handleSpecialCharacters()
-	}
+	line.CmdLine, reterr = ExpandAlias(line.CmdLine)
 
 	if !line.NoSubstitute {
 		line.CmdLine = PerformVariableSubstitution(line.CmdLine)
 	}
 
 	// Re-calculate new command after aliases and substitutions
+	line.handleSpecialCharacters()
 	line.splitCommandAndArgs()
 	return
 }
