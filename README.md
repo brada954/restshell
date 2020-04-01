@@ -25,6 +25,8 @@ To build, open a command window at the root of the repository and execute:
 To run, execute:
 
     restshell
+    
+Dependent on Golang Vesion 1.10[.7] or later
 
 ## Running RestShell
 The RestShell program runs as a command shell. Execute "restshell" and you will get a prompt to enter commands.
