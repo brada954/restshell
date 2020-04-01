@@ -80,15 +80,21 @@ func GetAllAliasKeys() []string {
 
 // ExpandAlias - Expand alias in input string
 func ExpandAlias(command string) (string, error) {
+
+	if len(command) == 0 {
+		return command, nil
+	}
+
 	parts := strings.SplitN(command, " ", 2)
-	if len(parts) < 1 || len(parts[0]) <= 0 {
+	if len(parts[0]) <= 0 {
 		return "", errors.New("Unable to determine command to process")
 	}
+
 	if strings.Contains(parts[0], "\"") {
 		return "", errors.New("Command contains illegal characters (\",')")
 	}
 
-	if alias, err := GetAlias(parts[0]) ; err == nil {
+	if alias, err := GetAlias(parts[0]); err == nil {
 		argString := ""
 		if len(parts) > 1 {
 			argString = parts[1]
@@ -100,7 +106,7 @@ func ExpandAlias(command string) (string, error) {
 		if len(argString) > 0 {
 			if strings.HasSuffix(alias, "\\") || strings.HasSuffix(alias, "/") {
 				return alias + argString, nil
-			}else {
+			} else {
 				return alias + " " + argString, nil
 			}
 		} else {

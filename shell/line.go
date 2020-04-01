@@ -37,6 +37,11 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 	line.ArgString = ""
 
 	line.CmdLine = strings.TrimSpace(input)
+
+	if len(line.CmdLine) == 0 {
+		return
+	}
+
 	if strings.HasPrefix(line.CmdLine, "#") {
 		line.IsComment = true
 		return
