@@ -4,21 +4,19 @@ import (
 	"errors"
 	"strings"
 
-	xmldom "github.com/subchen/go-xmldom"
+	"github.com/antchfx/xmlquery"
 )
 
 // XML map
 type xmlMap struct {
-	data *xmldom.Document
+	data *xmlquery.Node
 }
 
 func NewXmlHistoryMap(data string) (HistoryMap, error) {
-	wrapper := xmldom.Must(xmldom.ParseXML("<assertwrapper></assertwrapper>"))
 	data = strings.TrimSpace(data)
-	if doc, err := xmldom.ParseXML(data); err == nil {
-		wrapper.Root.AppendChild(doc.Root)
+	if doc, err := xmlquery.Parse(strings.NewReader(data)); err == nil {
 		return &xmlMap{
-			data: wrapper,
+			data: doc,
 		}, nil
 	} else {
 		return nil, err
@@ -41,16 +39,18 @@ func (xm *xmlMap) GetNode(path string) (result interface{}, rtnerror error) {
 		return nil, ErrNotFound
 	}
 
-	root := xm.data.Root
-	nodeList := root.Query(path)
+	nodeList, err := xmlquery.QueryAll(xm.data, path)
+	if err != nil {
+		return nil, err
+	}
 	if len(nodeList) > 1 {
 		array := make([]string, 0)
 		for _, v := range nodeList {
-			array = append(array, v.Text)
+			array = append(array, v.InnerText())
 		}
 		return array, nil
 	} else if len(nodeList) == 1 {
-		return nodeList[0].Text, nil
+		return nodeList[0].InnerText(), nil
 	} else {
 		return nil, ErrNotFound
 	}
