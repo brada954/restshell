@@ -27,10 +27,25 @@ func NilModifier(i interface{}) (interface{}, error) {
 
 // FirstModifier -- get the first element from an array
 func FirstModifier(i interface{}) (interface{}, error) {
-	if s, ok := i.([]interface{}); !ok {
-		return i, nil
-	} else if len(s) > 0 {
-		return s[0], nil
+	switch v := i.(type) {
+	case []string:
+		if len(v) > 0 {
+			return v[0], nil
+		}
+	case []int:
+		if len(v) > 0 {
+			return v[0], nil
+		}
+	case []float64:
+		if len(v) > 0 {
+			return v[0], nil
+		}
+	case []interface{}:
+		if len(v) > 0 {
+			return v[0], nil
+		}
+	default:
+		return v, nil
 	}
 	return nil, errors.New("Empty array for first modifier")
 }
@@ -51,6 +66,12 @@ func LengthModifier(i interface{}) (interface{}, error) {
 	case map[string]interface{}:
 		return len(v), nil
 	case []interface{}:
+		return len(v), nil
+	case []string:
+		return len(v), nil
+	case []int:
+		return len(v), nil
+	case []float64:
 		return len(v), nil
 	default:
 		return nil, fmt.Errorf("Invalid type (%v) for len()", reflect.TypeOf(i))
