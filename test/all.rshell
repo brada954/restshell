@@ -4,6 +4,7 @@ REM ##
 assert --clear
 run variables\set.rshell
 run assert\assert.rshell
+run assert\assertjson.rshell
 run assert\failures.rshell
 run rest\json
 run rest\xml

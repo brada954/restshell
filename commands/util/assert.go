@@ -395,7 +395,7 @@ func (cmd *AssertCommand) executeAssertions(valueModifierFunc modifiers.ValueMod
 
 	newnode, err := valueModifierFunc(node)
 	if err != nil {
-		return NewAssertError(err, "Modifiers")
+		return NewAssertError(err, path)
 	}
 	node = newnode
 
