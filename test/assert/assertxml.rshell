@@ -4,13 +4,18 @@ REM =========================================================
 assert --new
 load ..\rest\complex.xml
 dump -v
-assert eq /root/string "this is a \"string\""
-assert neq /root/string "this is"
-assert isobj /root/object
-assert isarray /root/object/array
-assert isarray /root/object/array[1]/val
-assert eq --first /root/object.array[2]/val 222
-assert eq --first --expect-fail /root/object/array[3]/val 111
+assert eq -v /root/string "this is a \"string\""
+assert neq -v /root/string "this is"
+assert isobj -v --expect-fail /root/object
+assert isarray -v --expect-fail /root/object/array
+assert isarray -v /root/object/array/item
+assert eq -v --len /root/object/array/item 2
+assert isstr -v /root/object/array/item[1]/val
+assert eq -v --len /root/object/array/item[1]/val 3
+assert eq -v /root/object/array/item[1]/val 111
+assert eq -v --first /root/object/array/item[2]/val 222
+assert eq -v (//root/object/array/item)[2]/val 222
+assert eq -v --first --expect-fail /root/object/array[3]/val 111
 assert --report
 REM =========================================================
 assert --report-sum --new 
