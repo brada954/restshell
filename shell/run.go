@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// RunCommand - The run command structure
+// Note: Run is a command that recurses, so values here can be changed by
+// nested RUNs. Use local variables for data to be preserved.
 type RunCommand struct {
 	running         int
 	interrupted     bool

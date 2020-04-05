@@ -1,0 +1,14 @@
+REM =========================================================
+REM ==  TEST json objects
+REM =========================================================
+assert --new
+load ..\rest\complex.json
+dump -v
+assert eq -v $.string "this is a \"string\""
+assert neq -v $.string "this is"
+assert isobj -v $.object
+assert isarray -v $.object.array
+assert isarray -v $.object.array[?(@.obj==1)].val
+assert eq -v --first $.object.array[?(@.obj==2)].val 222
+assert eq -v --first --expect-fail $.object.array[?(@.obj==3)].val 111
+assert --report

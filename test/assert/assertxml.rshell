@@ -1,0 +1,16 @@
+REM =========================================================
+REM ==  TEST XML objects
+REM =========================================================
+assert --new
+load ..\rest\complex.xml
+dump -v
+assert eq /root/string "this is a \"string\""
+assert neq /root/string "this is"
+assert isobj /root/object
+assert isarray /root/object/array
+assert isarray /root/object/array[1]/val
+assert eq --first /root/object.array[2]/val 222
+assert eq --first --expect-fail /root/object/array[3]/val 111
+assert --report
+REM =========================================================
+assert --report-sum --new 
