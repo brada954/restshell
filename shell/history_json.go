@@ -15,7 +15,7 @@ type JsonMap struct {
 	data interface{}
 }
 
-// NewJsonHistoryMap -- Create a HistoryMap for json content
+// NewJsonHistoryMap -- Create a HistoryMap from json string content
 func NewJsonHistoryMap(data string) (HistoryMap, error) {
 
 	resultMap, err := makeHistoryMapFromJSON(data)
