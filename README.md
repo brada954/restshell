@@ -160,11 +160,13 @@ The scripting capabilities are used to easily adjust tests for different environ
 For example, a .rsconfig.user file can initialize basic variables and aliases for a developers environment and additional scripts can be written to alter configuration for a different environment. For example, create a usestaging.rshell script that when runs can set variables and aliases for a staging environment. When the developer runs "run usestaging" the configuration will change. A second script called "uselocal.rshell" can change the environment back to local configuration and this script can be called from the .rsconfig.user script. There are unlimited possibilities with using scripts to configure environments or test data for assertions.
 
 ### Variables
-Has mentioned above variables are a powerful tool for configuring parameters of commands or tests. Private commands may have some special variables it uses to perform tasks. Having variables for "secret" data is a best practice and is recommended to keep top secret data in .user files to avoid submitting to source control. Use your own descretion on test environments, etc.
+Variables are a powerful tool for configuring parameters of commands or tests. Private commands may have some special variables it uses to perform tasks. Having variables for "secret" data is a best practice and is recommended to keep top secret data in .user files to avoid submitting to source control. Use your own descretion on test environments, etc.
 
 Variables used by commands should have a name representing the command or a variable that may represent a  global entity to a set of commands.
 
-By convention, variables starting with "_" should be considered reference variables; not used by commands directly. Scripts can use reference variables to initialize variables used by commands or scripts. Variables starting with "$" are considered temporary and can be cleared in bulk (see "set --clear-tmp").
+By convention, variables starting with "_" should be considered reference variables like "const variables". These variables should not be modified by commands. Scripts can use reference variables to initialize variables used by commands or scripts. Note: they do not have a read only implementation at this time but may in the future.
+
+By convention, variables starting with "$" are considered temporary and can be cleared in bulk (see "set --clear-tmp").
 
 ### BASE Command
 Making REST calls can be made easier by using the BASE command:
