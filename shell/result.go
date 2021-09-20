@@ -89,7 +89,11 @@ func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
 					}
 				}
 			}
-			fmt.Fprintf(w, "Response:\n%s\n", line)
+			if strings.HasSuffix(line, "\n") {
+				fmt.Fprintf(w, "Response:\n%s", line)
+			} else {
+				fmt.Fprintf(w, "Response:\n%s\n", line)
+			}
 		}
 	}
 }
