@@ -43,6 +43,23 @@ func JsonCompletionHandler(json string, resperr error, shortDisplay ShortDisplay
 	return OutputResult(result, shortDisplay)
 }
 
+// MessageCompletionHandler -- Helper function to push plain text result and perform output processing
+func MessageCompletionHandler(str string, resperr error) error {
+
+	if resperr != nil {
+		PushError(resperr)
+		return errors.New("Network Error: " + resperr.Error())
+	}
+
+	PushText("text/plain", str, resperr)
+	result, err := PeekResult(0)
+	if err != nil {
+		return errors.New("Error: Unable to get the result")
+	}
+
+	return OutputResult(result, nil)
+}
+
 func OutputResult(result Result, shortDisplay ShortDisplayFunc) (resperr error) {
 	resperr = nil
 
