@@ -3,25 +3,26 @@
 //
 // globalStore -- map of global variables and data structures
 //
-// The globalStore is used to hold variables that the set command
-// can manage and command parser can leverage for variable substitution
-// It also hold references to interfaces that enable higher level
-// constructs
+// The globalStore is used to hold variables for the set command
+// to manage and the command parser can leverage for variable substitution.
+// The globalStore can store any object type as an interface{} enabling
+// other functions to support more advanced variables.
 //
-// Best practice for globalstore is to prefix the variable name with
-// an indicator of the command or function of the variable. The "_"
-// prefix works great to store default information that can be
-// easily accessed through variable substitution. The enumeration of
-// global store returns "_" prefixed variables last.
-//
-// Another best practice is to use $ prefix to indicate a variable may be considered
-// temporary. There are commands to delete all variables starting with $.
+// Variable naming has some best practices to help segragate variables.
+// Most best practices use a prefix in the variable name to signify
+// specific use cases or variable types. For example:
+//   "_" prefix for containing default information or immutable
+//       behavior (though immutable behavior is not enforced)
+//   "$" prefix indicates a variable may be considered temporary. There
+//       are commands to delete all variables starting with $.
+//   "#" prefix for non-string variables (e.g. BSON document)
 //
 //////////////////////////////////////////////////////////////////////
 package shell
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -40,6 +41,9 @@ var (
 )
 
 var globalStore map[string]interface{} = make(map[string]interface{}, 0)
+
+// Known characters used to prefix variable names
+var supportedPrefixKeys = "$_#"
 
 func initGlobalStore() {
 	globalStore = make(map[string]interface{}, 0)
@@ -119,18 +123,25 @@ func EnumerateGlobals(fn func(key string, value interface{}), filter func(string
 	// Supports a best practice by separating "_" prefixed keys from others
 	var keys []string
 	var _keys []string
+	var otherKeys []string
 
 	// Build list of keys to be sorted
 	for k, _ := range globalStore {
 		if strings.HasPrefix(k, "_") {
 			_keys = append(_keys, k)
+		} else if strings.Contains(supportedPrefixKeys, k[:1]) {
+			otherKeys = append(otherKeys, k)
 		} else {
 			keys = append(keys, k)
 		}
 	}
 
-	keys = append(keys, _keys...)
 	sort.Strings(keys)
+	sort.Strings(otherKeys)
+	sort.Strings(_keys)
+
+	keys = append(keys, otherKeys...)
+	keys = append(keys, _keys...)
 
 	// Enumerate the keys and process the map values
 	for _, v := range keys {
@@ -148,7 +159,9 @@ func RemoveGlobal(key string) {
 }
 
 func IsValidKey(key string) bool {
-	var isValidKey = regexp.MustCompile(`^[a-zA-Z0-9$_]+$`).MatchString
+
+	var expr = fmt.Sprintf(`^[%s]?[a-zA-Z0-9$_]+$`, supportedPrefixKeys)
+	var isValidKey = regexp.MustCompile(expr).MatchString
 	if !isValidKey(key) {
 		return false
 	}
