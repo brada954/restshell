@@ -1,15 +1,13 @@
-// Package jsonpath is an implementation of http://goessner.net/articles/JsonPath/
+package jsonpath
+
+// jsonpath is an implementation of http://goessner.net/articles/JsonPath/
 // If a JSONPath contains one of
 // [key1, key2 ...], .., *, [min:max], [min:max:step], (? expression)
 // all matchs are listed in an []interface{}
 //
 // The package comes with an extension of JSONPath to access the wildcard values of a match.
-// If the JSONPath is used inside of a JSON object, you can use placeholder '#' or '#i' with natural number i
+// If the JSONPath is used inside of a JSON object, you can use '#' or '#i' with natural number i
 // to access all wildcards values or the ith wildcard
-//
-// This package can be extended with gval modules for script features like multiply, length, regex or many more.
-// So take a look at github.com/PaesslerAG/gval.
-package jsonpath
 
 import (
 	"context"
@@ -17,12 +15,12 @@ import (
 	"github.com/PaesslerAG/gval"
 )
 
-// New returns an selector for given JSONPath
+// New returns an selector for given jsonpath
 func New(path string) (gval.Evaluable, error) {
 	return lang.NewEvaluable(path)
 }
 
-//Get executes given JSONPath on given value
+//Get executes given jsonpath on given value
 func Get(path string, value interface{}) (interface{}, error) {
 	eval, err := lang.NewEvaluable(path)
 	if err != nil {
@@ -33,22 +31,22 @@ func Get(path string, value interface{}) (interface{}, error) {
 
 var lang = gval.NewLanguage(
 	gval.Base(),
-	gval.PrefixExtension('$', parseRootPath),
-	gval.PrefixExtension('@', parseCurrentPath),
+	gval.PrefixExtension('$', single(getRootEvaluable).parse),
+	gval.PrefixExtension('@', single(getCurrentEvaluable).parse),
 )
 
-//Language is the JSONPath Language
+//Language is the jsonpath Language
 func Language() gval.Language {
 	return lang
 }
 
-var placeholderExtension = gval.NewLanguage(
+var wildcardExtension = gval.NewLanguage(
 	lang,
 	gval.PrefixExtension('{', parseJSONObject),
-	gval.PrefixExtension('#', parsePlaceholder),
+	gval.PrefixExtension('#', parseMatchReference),
 )
 
-//PlaceholderExtension is the JSONPath Language with placeholder
-func PlaceholderExtension() gval.Language {
-	return placeholderExtension
+//WildcardExtension is the jsonpath Language with access to the values, that matchs used wildcards
+func WildcardExtension() gval.Language {
+	return wildcardExtension
 }

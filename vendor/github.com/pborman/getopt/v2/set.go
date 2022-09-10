@@ -85,8 +85,6 @@ func PrintUsage(w io.Writer) { CommandLine.PrintUsage(w) }
 // Usage calls the usage function in the default option set.
 func Usage() { CommandLine.usage() }
 
-func (s *Set) Usage() { s.usage() }
-
 // Parse calls Parse in the default option set with the command line arguments
 // found in os.Args.
 func Parse() { CommandLine.Parse(os.Args) }
