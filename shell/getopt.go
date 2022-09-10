@@ -65,6 +65,10 @@ func (c newCmdSet) StringListVarLong(p getopt.Value, name string, short rune, he
 	return c.FlagLong(p, name, short, helpvalue...)
 }
 
+func (c newCmdSet) Usage() {
+	c.PrintUsage(ConsoleWriter())
+}
+
 type StringList struct {
 	Values []string
 }
