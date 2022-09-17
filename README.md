@@ -1,18 +1,24 @@
 # RestShell
 
-NOTE: This repository is still getting structured and some key features are still being developed. Future changes may break current usage patterns until settled.
+NOTE: This repository is still getting structured and some key features are still being developed or refactor. Future changes may break current usage patterns until settled.
 
 ## Overview
 
-RestShell is a command line driven program to execute commands and tests against REST API's or other services. Restshell can extend its command library with custom commands to simplify interacting with specific applications or environments.
+RestShell is a command line driven program to execute commands and tests against REST API's or other services. RestShell includes scripting and assertion facilities to implement repeatable and automated tests similar to unit testing frameworks. Restshell can support benchmarking and load testing. Finally, restshell is very extensible beyond scripting because developers can implement more complex API calls as simple commands.
 
-RestShell includes scripting and assertion facilities to implement repeatable and automated tests similar to unit testing frameworks. Tests can use the provided commands within scripts or developers can create specialized commands for more complex needs. Restshell commands can help with benchmarking and load testing as well.
+### Purpose
 
-RestShell was designed to be used in test and developer environments to help ensure developers can reproduce issues discovered in testing as well as isolating the specific functions that have issues. Best practices can be used to ensure scripts work in various environments.
+RestShell was developed for developers comfortable with interactive command line and the need to script interactions with API services. The interactive shell enables the developer to perform ad-hoc queries in the same context has running scripts. Most operating systems provide shells which provide the ability to repeat commands from history and edit previous commands for retry. For many developers, the interactive shell is more efficient than building and compiling code or clicking in web pages to generate API requests.
 
-> Note: Developers are encouraged to develop custom commands targeting their application needs. A custom command that executes a logon to a custom app would be easier to use then a generic post command and extracting authentication tokens. Many of the ease-of-use features are part of private commands not included in the public version.
+The simplicity of RestShell enables a customizable executable enable easy sharing of the tool and scripts between developers and non-technical persons.
 
-See the restshell-example repository to an example on building a custom Restshell.
+### Extensibliity
+
+Developers can extend the command library with custom commands to simplify interacting with specific applications or environments. With custom commands complex REST APIs can be wrapped with simple one word commands and options.
+
+Custom commands can also be shared as Golang packages and included in your own version of restshell.
+
+To create a custom restshell with third-party packages or your own commands consult <https://github.com/brada954/restshell-example>.
 
 ## Build
 
@@ -34,7 +40,7 @@ To run, execute:
 restshell
 ```
 
-Dependent on Golang Vesion 1.10[.7] or later
+Dependent on Golang Vesion 1.14 or later
 
 ## Running RestShell
 
@@ -193,38 +199,6 @@ Making REST calls can be made easier by using the BASE command:
 >> GET /books
 >> GET /magazines
 ```
-
-## Extending RestShell
-
-RestShell is easily extendable by developing new commands to perform typical project operations. Additional commands can perform more specific actions against specific REST Api's (including saving state) as well as perform other tasks to assist managing an environment such as OS shell commands, test setup commands, adminstrative tasks, database tasks and additional assertions as helpful. The goal of extensibility is to enable developers to augment the basic tool to simplify their day to day operations or automated testing needs. Specialized commands that save, manage and re-use state can simplify a developer or testers use of the tool.
-
-Typical commands to add may be:
-
-1. login
-2. getdata
-3. postdata
-
-This typical commands make it easy to manage the auth context between calls. The shell provides abstractions for different types of authentication to make writing the commands easier.
-
-### Adding a command
-
-To add a command, create a new package to hold your commands. The command package should use an init() function to register the commands with the shell (see restshell-example\commands\example). To link the new command package with RestShell, create an init2.go file (there is an example) to have an import reference to the new command package. This go mechanism will import of the command package and its init functino can register its commands with the RestShell.
-
-Alternatively, you can fork or copy the restshell-example repository and use your own main function and build process to use RestShell as just another package. Your main function will just call shell.RunShell() to host the RestShell shell and you can initialize all the private functions you want included.
-
-### Shell Capabilities
-
-More to come here but:  
-There are capabilities to handle authentication contexts and variables to be shared between commands. There are helpers to handle common handling of benchmarking, output generation, and command option handling.
-
-Review the restshell command source code to learn more.
-
-## Dependencies
-
-This program uses:  
-    http://github.com/pborman/getopt/v2 (getopt library)  
-    github.com/mitchellh/mapstructure/ (structure/map mapping)  
-    golang.org/x/crypto/ssh/terminal/ (terminal detection)  
 
 ## Contributors
 
