@@ -46,6 +46,7 @@ type Set struct {
 	shortOptions map[rune]*option
 	longOptions  map[string]*option
 	options      optionList
+	requiredGroups []string
 }
 
 // New returns a newly created option set.
@@ -88,6 +89,9 @@ func Usage() { CommandLine.usage() }
 // Parse calls Parse in the default option set with the command line arguments
 // found in os.Args.
 func Parse() { CommandLine.Parse(os.Args) }
+
+// Same as parse but not found in version 1 of getopt.
+func ParseV2() { CommandLine.Parse(os.Args) }
 
 // Getops returns the result of calling Getop in the default option set with the
 // command line arguments found in os.Args.  The fn function, which may be nil,
@@ -144,6 +148,9 @@ func (s *Set) SetParameters(parameters string) {
 	s.parameters = parameters
 }
 
+// Parameters returns the parameters set by SetParameters on s.
+func (s *Set) Parameters() string { return s.parameters }
+
 // SetProgram sets the program name to program.  Normally it is determined
 // from the zeroth command line argument (see os.Args).
 func SetProgram(program string) {
@@ -155,6 +162,9 @@ func SetProgram(program string) {
 func (s *Set) SetProgram(program string) {
 	s.program = program
 }
+
+// Program returns the program name associated with Set s.
+func (s *Set) Program() string { return s.program }
 
 // SetUsage sets the function used by Parse to display the commands usage
 // on error.  It defaults to calling PrintUsage(os.Stderr).
@@ -281,4 +291,19 @@ func (s *Set) Reset() {
 	for _, opt := range s.options {
 		opt.Reset()
 	}
+}
+
+// RequiredGroup marks the group set with Option.SetGroup as required.  At least
+// one option in the group must be seen by parse.  Calling RequiredGroup with a
+// group name that has no options will cause parsing to always fail.
+func (s *Set) RequiredGroup(group string) {
+	s.requiredGroups = append(s.requiredGroups, group)
+}
+
+// RequiredGroup marks the group set with Option.SetGroup as required on the
+// command line.  At least one option in the group must be seen by parse.
+// Calling RequiredGroup with a group name that has no options will cause
+// parsing to always fail.
+func RequiredGroup(group string) {
+	CommandLine.requiredGroups = append(CommandLine.requiredGroups, group)
 }

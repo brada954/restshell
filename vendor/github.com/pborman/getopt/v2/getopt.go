@@ -7,6 +7,9 @@
 // cannot be used to write a program that parses flags the way ls or ssh does,
 // for example.  Version 2 of this package has a simplified API.
 //
+// See the github.com/pborman/options package for a simple structure based
+// interface to this package.
+//
 // USAGE
 //
 // Getopt supports functionality found in both the standard BSD getopt as well
@@ -18,7 +21,7 @@
 //
 //	// Declare flags and have getopt return pointers to the values.
 //	helpFlag := getopt.Bool('?', "display help")
-//	cmdFlag := getopt.StringLong("command", 'c', "default", "the command)
+//	cmdFlag := getopt.StringLong("command", 'c', "default", "the command")
 //
 //	// Declare flags against existing variables.
 //	var {
@@ -149,6 +152,34 @@
 // Unless an option type explicitly prohibits it, an option may appear more than
 // once in the arguments.  The last value provided to the option is the value.
 //
+// MANDATORY OPTIONS
+//
+// An option marked as mandatory and not seen when parsing will cause an error
+// to be reported such as: "program: --name is a mandatory option".  An option
+// is marked mandatory by using the Mandatory method:
+//
+//	getopt.FlagLong(&fileName, "path", 0, "the path").Mandatory()
+//
+// Mandatory options have (required) appended to their help message:
+//
+//	--path=value    the path (required)
+//
+// MUTUALLY EXCLUSIVE OPTIONS
+//
+// Options can be marked as part of a mutually exclusive group.  When two or
+// more options in a mutually exclusive group are both seen while parsing then
+// an error such as "program: options -a and -b are mutually exclusive" will be
+// reported.  Mutually exclusive groups are declared using the SetGroup method:
+//
+//	getopt.Flag(&a, 'a', "use method A").SetGroup("method")
+//	getopt.Flag(&a, 'b', "use method B").SetGroup("method")
+//
+// A set can have multiple mutually exclusive groups.  Mutually exclusive groups
+// are identified with their group name in {}'s appeneded to their help message:
+//
+//	 -a    use method A {method}
+//	 -b    use method B {method}
+//
 // BUILTIN TYPES
 //
 // The Flag and FlagLong functions support most standard Go types.  For the
@@ -201,6 +232,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 )
 
 // stderr allows tests to capture output to standard error.
@@ -221,8 +253,24 @@ var DisplayWidth = 80
 //        the u flag's usage is quite long
 var HelpColumn = 20
 
-// PrintUsage prints the usage of the program to w.
+// PrintUsage prints the usage line and set of options of set S to w.
 func (s *Set) PrintUsage(w io.Writer) {
+	parts := make([]string, 2, 4)
+	parts[0] = "Usage:"
+	parts[1] = s.program
+	if usage := s.UsageLine(); usage != "" {
+		parts = append(parts, usage)
+	}
+	if s.parameters != "" {
+		parts = append(parts, s.parameters)
+	}
+	fmt.Fprintln(w, strings.Join(parts, " "))
+	s.PrintOptions(w)
+}
+
+// UsageLine returns the usage line for the set s.  The set's program name and
+// parameters, if any, are not included.
+func (s *Set) UsageLine() string {
 	sort.Sort(s.options)
 	flags := ""
 
@@ -274,13 +322,9 @@ func (s *Set) PrintUsage(w io.Writer) {
 	}
 	flags = strings.Join(opts, "] [")
 	if flags != "" {
-		flags = " [" + flags + "]"
+		flags = "[" + flags + "]"
 	}
-	if s.parameters != "" {
-		flags += " " + s.parameters
-	}
-	fmt.Fprintf(w, "Usage: %s%s\n", s.program, flags)
-	s.PrintOptions(w)
+	return flags
 }
 
 // PrintOptions prints the list of options in s to w.
@@ -302,11 +346,46 @@ func (s *Set) PrintOptions(w io.Writer) {
 	for _, opt := range s.options {
 		if opt.uname != "" {
 			opt.help = strings.TrimSpace(opt.help)
-			if len(opt.help) == 0 {
+			if len(opt.help) == 0 && !opt.mandatory && opt.group == "" {
 				fmt.Fprintf(w, " %s\n", opt.uname)
 				continue
 			}
-			help := strings.Split(opt.help, "\n")
+			helpMsg := opt.help
+
+			// If the default value is the known zero value
+			// then don't display it.
+			def := opt.defval
+			switch genericValue(opt.value).(type) {
+			case *bool:
+				if def == "false" {
+					def = ""
+				}
+			case *int, *int8, *int16, *int32, *int64,
+				*uint, *uint8, *uint16, *uint32, *uint64,
+				*float32, *float64:
+				if def == "0" {
+					def = ""
+				}
+			case *time.Duration:
+				if def == "0s" {
+					def = ""
+				}
+			default:
+				if opt.flag && def == "false" {
+					def = ""
+				}
+			}
+			if def != "" {
+				helpMsg += " [" + def + "]"
+			}
+			if opt.group != "" {
+				helpMsg += " {" + opt.group + "}"
+			}
+			if opt.mandatory {
+				helpMsg += " (required)"
+			}
+
+			help := strings.Split(helpMsg, "\n")
 			// If they did not put in newlines then we will insert
 			// them to keep the help messages from wrapping.
 			if len(help) == 1 {
@@ -397,6 +476,12 @@ func (s *Set) Getopt(args []string, fn func(Option) bool) (err error) {
 			default:
 				s.setState(Unknown)
 			}
+		}
+	}()
+
+	defer func() {
+		if err == nil {
+			err = s.checkOptions()
 		}
 	}()
 	if fn == nil {
@@ -515,5 +600,37 @@ Parsing:
 		}
 	}
 	s.args = []string{}
+	return nil
+}
+
+func (s *Set) checkOptions() error {
+	groups := map[string]Option{}
+	for _, opt := range s.options {
+		if !opt.Seen() {
+			if opt.mandatory {
+				return fmt.Errorf("option %s is mandatory", opt.Name())
+			}
+			continue
+		}
+		if opt.group == "" {
+			continue
+		}
+		if opt2 := groups[opt.group]; opt2 != nil {
+			return fmt.Errorf("options %s and %s are mutually exclusive", opt2.Name(), opt.Name())
+		}
+		groups[opt.group] = opt
+	}
+	for _, group := range s.requiredGroups {
+		if groups[group] != nil {
+			continue
+		}
+		var flags []string
+		for _, opt := range s.options {
+			if opt.group == group {
+				flags = append(flags, opt.Name())
+			}
+		}
+		return fmt.Errorf("exactly one of the following options must be specified: %s", strings.Join(flags, ", "))
+	}
 	return nil
 }
