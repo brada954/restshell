@@ -46,7 +46,7 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 
 	scanner := bufio.NewScanner(reader)
 	if prompt != "" {
-		fmt.Printf(prompt)
+		fmt.Print(prompt)
 	}
 	for !quit && scanner.Scan() {
 		line, err := NewCommandLine(scanner.Text(), shell)
@@ -59,7 +59,7 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 		case "ERROR":
 			LastError = 1
 			if err == nil {
-				err = errors.New("Invalid Command")
+				err = errors.New("invalid Command")
 			}
 			fmt.Fprintf(ErrorWriter(), "%s: %s\n", "Line Parse Error", err.Error())
 		case "QUIT":
@@ -186,7 +186,7 @@ func getCmdAndArgs(line *Line) (cmd Command, tokens []string, err error) {
 	err = nil
 
 	if len(line.Command) == 0 {
-		return nil, tokens, errors.New("No command parsed")
+		return nil, tokens, errors.New("no command parsed")
 	}
 
 	// Lookup command

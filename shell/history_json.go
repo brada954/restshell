@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/paesslerag/jsonpath"
+	"github.com/PaesslerAG/jsonpath"
 )
 
 // JsonMap -- contains a deserialized json

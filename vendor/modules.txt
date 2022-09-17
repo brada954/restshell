@@ -1,0 +1,54 @@
+# github.com/PaesslerAG/gval v1.0.2-0.20190803062529-6fceb06ca162
+## explicit
+github.com/PaesslerAG/gval
+# github.com/PaesslerAG/jsonpath v0.1.0
+## explicit
+github.com/PaesslerAG/jsonpath
+# github.com/antchfx/xmlquery v1.0.1-0.20191005065425-945b45d1f870
+## explicit
+github.com/antchfx/xmlquery
+# github.com/antchfx/xpath v0.0.0-20180524052354-077bca4d2caa
+## explicit
+github.com/antchfx/xpath
+# github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30
+## explicit
+github.com/pborman/getopt/v2
+# github.com/satori/go.uuid v1.2.1-0.20180103174451-36e9d2ebbde5
+## explicit
+github.com/satori/go.uuid
+# github.com/subchen/go-xmldom v1.1.2-0.20180301141929-e1029cd9087c
+## explicit
+github.com/subchen/go-xmldom
+# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+## explicit
+golang.org/x/crypto/ssh/terminal
+# golang.org/x/net v0.0.0-20191007182048-72f939374954
+## explicit
+golang.org/x/net/html
+golang.org/x/net/html/atom
+golang.org/x/net/html/charset
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+## explicit
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# golang.org/x/text v0.3.3-0.20190829152558-3d0f7978add9
+## explicit
+golang.org/x/text/encoding
+golang.org/x/text/encoding/charmap
+golang.org/x/text/encoding/htmlindex
+golang.org/x/text/encoding/internal
+golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/encoding/japanese
+golang.org/x/text/encoding/korean
+golang.org/x/text/encoding/simplifiedchinese
+golang.org/x/text/encoding/traditionalchinese
+golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/internal/utf8internal
+golang.org/x/text/language
+golang.org/x/text/runes
+golang.org/x/text/transform
+# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+## explicit
