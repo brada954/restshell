@@ -17,6 +17,14 @@ type Option interface {
 	// as a string, else it will be the long name.
 	Name() string
 
+	// ShortName always returns the short name of the option, or "" if there
+	// is no short name.  The name does not include the "-".
+	ShortName() string
+
+	// LongName always returns the long name of the option, or "" if there
+	// is no long name.  The name does not include the "--".
+	LongName() string
+
 	// IsFlag returns true if Option is a flag.
 	IsFlag() bool
 
@@ -51,21 +59,31 @@ type Option interface {
 	// yet been seen, including resetting the value of the option
 	// to its original default state.
 	Reset()
+
+	// Mandataory sets the mandatory flag of the option.  Parse will
+	// fail if a mandatory option is missing.
+	Mandatory() Option
+
+	// SetGroup sets the option as part of a radio group.  Parse will
+	// fail if two options in the same group are seen.
+	SetGroup(string) Option
 }
 
 type option struct {
-	short    rune   // 0 means no short name
-	long     string // "" means no long name
-	isLong   bool   // True if they used the long name
-	flag     bool   // true if a boolean flag
-	defval   string // default value
-	optional bool   // true if we take an optional value
-	help     string // help message
-	where    string // file where the option was defined
-	value    Value  // current value of option
-	count    int    // number of times we have seen this option
-	name     string // name of the value (for usage)
-	uname    string // name of the option (for usage)
+	short     rune   // 0 means no short name
+	long      string // "" means no long name
+	isLong    bool   // True if they used the long name
+	flag      bool   // true if a boolean flag
+	defval    string // default value
+	optional  bool   // true if we take an optional value
+	help      string // help message
+	where     string // file where the option was defined
+	value     Value  // current value of option
+	count     int    // number of times we have seen this option
+	name      string // name of the value (for usage)
+	uname     string // name of the option (for usage)
+	mandatory bool   // this option must be specified
+	group     string // mutual exclusion group
 }
 
 // usageName returns the name of the option for printing usage lines in one
@@ -113,12 +131,14 @@ func (o *option) sortName() string {
 	return o.long[:1] + o.long
 }
 
-func (o *option) Seen() bool          { return o.count > 0 }
-func (o *option) Count() int          { return o.count }
-func (o *option) IsFlag() bool        { return o.flag }
-func (o *option) String() string      { return o.value.String() }
-func (o *option) SetOptional() Option { o.optional = true; return o }
-func (o *option) SetFlag() Option     { o.flag = true; return o }
+func (o *option) Seen() bool               { return o.count > 0 }
+func (o *option) Count() int               { return o.count }
+func (o *option) IsFlag() bool             { return o.flag }
+func (o *option) String() string           { return o.value.String() }
+func (o *option) SetOptional() Option      { o.optional = true; return o }
+func (o *option) SetFlag() Option          { o.flag = true; return o }
+func (o *option) Mandatory() Option        { o.mandatory = true; return o }
+func (o *option) SetGroup(g string) Option { o.group = g; return o }
 
 func (o *option) Value() Value {
 	if o == nil {
@@ -132,6 +152,17 @@ func (o *option) Name() string {
 		return "-" + string(o.short)
 	}
 	return "--" + o.long
+}
+
+func (o *option) ShortName() string {
+	if o.short != 0 {
+		return string(o.short)
+	}
+	return ""
+}
+
+func (o *option) LongName() string {
+	return o.long
 }
 
 // Reset rests an option so that it appears it has not yet been seen.
