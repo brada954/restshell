@@ -33,12 +33,13 @@ type CmdSet interface {
 
 type newCmdSet struct {
 	*getopt.Set
+	cmdUsage func()
 }
 
 // NewCmdSet -- Create a command set for handling options
 func NewCmdSet() CmdSet {
 	g := getopt.New()
-	s := &newCmdSet{g}
+	s := &newCmdSet{g, nil}
 	return s
 }
 
@@ -48,12 +49,12 @@ func CmdParse(set CmdSet, tokens []string) error {
 	if s, ok := set.(*newCmdSet); ok {
 		return s.Getopt(tokens, nil)
 	} else {
-		return errors.New("Invalid option package used")
+		return errors.New("invalid option package used")
 	}
 }
 
 // StringListLong -- implement a string list option
-func (c newCmdSet) StringListLong(name string, short rune, help ...string) *StringList {
+func (c *newCmdSet) StringListLong(name string, short rune, help ...string) *StringList {
 	initial := &StringList{
 		Values: make([]string, 0),
 	}
@@ -61,12 +62,26 @@ func (c newCmdSet) StringListLong(name string, short rune, help ...string) *Stri
 	return initial
 }
 
-func (c newCmdSet) StringListVarLong(p getopt.Value, name string, short rune, helpvalue ...string) getopt.Option {
+func (c *newCmdSet) StringListVarLong(p getopt.Value, name string, short rune, helpvalue ...string) getopt.Option {
 	return c.FlagLong(p, name, short, helpvalue...)
 }
 
-func (c newCmdSet) Usage() {
-	c.PrintUsage(ConsoleWriter())
+func (c *newCmdSet) SetUsage(usage func()) {
+	// Need our own copy of usage as we cannot foce the pborman usage to be called
+	c.cmdUsage = usage
+	c.Set.SetUsage(usage)
+}
+
+func (c *newCmdSet) Usage() {
+	if c.cmdUsage != nil {
+		c.cmdUsage()
+	} else {
+		c.defaultUsage()
+	}
+}
+
+func (c *newCmdSet) defaultUsage() {
+	c.Set.PrintUsage(ConsoleWriter())
 }
 
 type StringList struct {
