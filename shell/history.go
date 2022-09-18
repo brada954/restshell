@@ -302,7 +302,7 @@ func ConvertNodeValueToString(node interface{}) (string, error) {
 	case int64:
 		return strconv.FormatInt(t, 10), nil
 	default:
-		return "", errors.New("Invalid data type found")
+		return "", errors.New("invalid data type found")
 	}
 }
 
@@ -324,11 +324,11 @@ func GetValueAsDate(i interface{}) (time.Time, error) {
 		}
 
 		if err != nil {
-			return time.Time{}, errors.New(fmt.Sprintf("Value not a date: %s (%s)", v, savedErr.Error()))
+			return time.Time{}, fmt.Errorf("value not a date: %s (%s)", v, savedErr.Error())
 		}
 		return date, nil
 	default:
-		return time.Time{}, errors.New(fmt.Sprintf("Invalid type for date check: %v", reflect.TypeOf(i)))
+		return time.Time{}, fmt.Errorf("invalid type for date check: %v", reflect.TypeOf(i))
 	}
 }
 

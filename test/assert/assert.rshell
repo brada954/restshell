@@ -1,5 +1,5 @@
 REM =========================================================
-REM ==  TEST ASSERT SUCCESS
+REM ==  TEST BASIC ASSERT SUCCESS SCENARIOS
 REM ==
 REM == Note: verbose output is misleading as absolute
 REM == test values are used and not paths
@@ -25,4 +25,4 @@ assert isint -v --test --int --float 123.3
 assert eq -v --test --regex "tth" testthis tth
 assert eq -v --test --regex "tt+" testthis tt
 
-assert --report
+assert --report-all

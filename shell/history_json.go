@@ -31,13 +31,16 @@ func NewJsonHistoryMap(data string) (HistoryMap, error) {
 // GetNode -- Get a JSON node from a map structure mapped from a json object or array
 func (jm *JsonMap) GetNode(path string) (interface{}, error) {
 
-	var i interface{}
-	i = jm.data
+	var i interface{} = jm.data
 
 	// Special case a root case for just text
 	if path == "/" || path == "$" {
 		switch t := i.(type) {
+		case string:
+			return i, nil
 		case map[string]interface{}:
+			return i, nil
+		case []interface{}:
 			return i, nil
 		default:
 			return nil, errors.New("Invalid type for / path: " + reflect.TypeOf(t).String())
@@ -57,7 +60,7 @@ func (jm *JsonMap) GetJsonObject() (map[string]interface{}, error) {
 	case map[string]interface{}:
 		return t, nil
 	default:
-		return nil, errors.New("Invalid type for Json object")
+		return nil, errors.New("invalid type for Json object")
 	}
 }
 
@@ -74,6 +77,10 @@ func makeHistoryMapFromJSON(data string) (interface{}, error) {
 	}
 
 	if m, ok := f.([]interface{}); ok {
+		return m, nil
+	}
+
+	if m, ok := f.(string); ok {
 		return m, nil
 	}
 

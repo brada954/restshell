@@ -1,5 +1,5 @@
 REM =========================================================
-REM ==  TEST XML objects
+REM ==  TEST XML objects (complex.xml)
 REM =========================================================
 assert --new
 load ..\rest\complex.xml
@@ -16,6 +16,4 @@ assert eq -v /root/object/array/item[1]/val 111
 assert eq -v --first /root/object/array/item[2]/val 222
 assert eq -v (//root/object/array/item)[2]/val 222
 assert eq -v --first --expect-fail /root/object/array[3]/val 111
-assert --report
-REM =========================================================
-assert --report-sum --new 
+assert --report-all
