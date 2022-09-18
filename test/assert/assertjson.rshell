@@ -1,5 +1,5 @@
 REM =========================================================
-REM ==  TEST json objects
+REM ==  TEST asserts for json object (complex.json)
 REM =========================================================
 assert --new
 load ..\rest\complex.json
@@ -12,3 +12,11 @@ assert isarray -v $.object.array[?(@.obj==1)].val
 assert eq -v --first $.object.array[?(@.obj==2)].val 222
 assert eq -v --first --expect-fail $.object.array[?(@.obj==3)].val 111
 assert --report
+REM =========================================================
+REM ==  TEST asserts for json string
+REM =========================================================
+assert --new
+set -v x="\"This is a \\\"quoted\\\" string\""
+load --json --var x
+assert eq -v $ "This is a \"quoted\" string"
+assert --report-all
