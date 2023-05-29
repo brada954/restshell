@@ -181,29 +181,21 @@ func TestSetDateDoesNotModifyCachedDate(t *testing.T) {
 	}
 }
 
-func TestSetDateReturnsMinDateForInvalidFormattedDate(t *testing.T) {
+func TestSetDatePanicsForInvalidFormattedDate(t *testing.T) {
 	// Arrange
 	inputDate := "04:23:48"
-	expectedDateMin := time.Time{}
+	defer func() {
+		err := recover()
+		if err != "SetDate substitution failed for invalid option for date format: "+inputDate {
+			t.Errorf("Unexpected error message: %s", err)
+		}
+	}()
 
 	// Act
-	str, cache := SetDateSubstitute(nil, "setdate", "local", inputDate)
+	SetDateSubstitute(nil, "setdate", "local", inputDate)
 
 	// Assert
-	if date, ok := cache.(time.Time); ok {
-		if !IsDateRangeWithinTollerance(date, expectedDateMin, 0) {
-			t.Errorf(
-				"Expected date (%s) but received (%s)",
-				expectedDateMin.Format(OutputDateFormat),
-				date.Format(OutputDateFormat))
-		}
-	} else {
-		t.Errorf("Expected time.Time value returned but got: %v", reflect.TypeOf(cache))
-	}
-
-	if str != "" {
-		t.Errorf("Expected empty string but received: %s", str)
-	}
+	t.Errorf("SetDateSubstitute failed to panic")
 }
 
 func TestSetDateOffset30MinutesBeforeLocalNow(t *testing.T) {
