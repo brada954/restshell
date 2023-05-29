@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -24,7 +25,11 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 
 	defer func() {
 		if r := recover(); r != nil {
-			reterr = fmt.Errorf("Panic processing line: %v", r)
+			if msg, ok := r.(string); ok {
+				reterr = errors.New(msg)
+			} else {
+				reterr = fmt.Errorf("unknown parsing error: %v", r)
+			}
 		}
 	}()
 

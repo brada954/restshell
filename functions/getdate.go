@@ -11,31 +11,32 @@ import (
 func init() {
 	shell.RegisterSubstitutionHandler(GetDateDefinition)
 	shell.RegisterSubstitutionHandler(SetDateDefinition)
+	shell.RegisterSubstitutionHandler(SetDateOffsetDefinition)
 	shell.RegisterSubstitutionHandler(ModifyDateDefinition)
 }
 
-// GetDateDefinition --
+// GetDateDefinition -- Display date based on display option provided (default is current time)
 var GetDateDefinition = shell.SubstitutionFunction{
 	Name:              "getdate",
 	Group:             "date",
-	FunctionHelp:      "Return formatted data value (default is now)",
-	FormatDescription: "Format Parameter selects type of time:",
+	FunctionHelp:      "Display formatted date value for key (default is now)",
+	FormatDescription: "Format parameter selects interpretation of date/time:",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Display Local time value"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Display UTC time value"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Display Unix timestamp"},
+		{Item: "local", Description: "Display Local time value"},
+		{Item: "utc", Description: "Display UTC time value"},
+		{Item: "unix", Description: "Display Unix timestamp"},
 	},
-	OptionDescription: "Option is the Golang format for a date string",
+	OptionDescription: "Option is the Golang format for date dislay",
 	Options: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{
+		{
 			Item:        "2006-01-02 15:04:05",
 			Description: "Default Golang format for date and time",
 		},
-		shell.SubstitutionItemHelp{
+		{
 			Item:        "Mon",
 			Description: "Example Golang format for day of week",
 		},
-		shell.SubstitutionItemHelp{
+		{
 			Item:        "2006",
 			Description: "Example Golang format for year",
 		},
@@ -43,71 +44,70 @@ var GetDateDefinition = shell.SubstitutionFunction{
 	Function: GetDateSubstitute,
 }
 
-// SetDateDefinition --
+// SetDateDefinition -- Sets the cached date value to value provided (default min date)
 var SetDateDefinition = shell.SubstitutionFunction{
 	Name:         "setdate",
 	Group:        "date",
 	FunctionHelp: "Set a date value equal to the option string (default to min date)",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Parse date as Local"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Parse date as UTC"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Parse date as Unix timestamp"},
+		{Item: "local", Description: "Parse date as Local"},
+		{Item: "utc", Description: "Parse date as UTC"},
+		{Item: "unix", Description: "Parse date as Unix timestamp"},
 	},
 	OptionDescription: "The desired date formatted to format string",
 	Options: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{
-			Item:        "2006-01-02T15:04:05",
-			Description: "Default date format string",
-		},
+		{Item: "2006-01-02T15:04:05", Description: "Default date format string"},
 	},
 	Function: SetDateSubstitute,
 }
 
-// ModifyDateDefinition --
+// ModifyDateDefinition -- Initialize the date based on an offset of current time
 var ModifyDateDefinition = shell.SubstitutionFunction{
 	Name:         "moddate",
 	Group:        "date",
-	FunctionHelp: "Modify current time by component (default to UTC)",
+	FunctionHelp: "Set date value to an offset of current time (default to UTC) (Deprecated for SetDateOffset)",
 	Formats: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{Item: "local", Description: "Default to Local time value"},
-		shell.SubstitutionItemHelp{Item: "utc", Description: "Default to UTC time value"},
-		shell.SubstitutionItemHelp{Item: "unix", Description: "Default to Unix time value 0"},
+		{Item: "local", Description: "Default to Local time value"},
+		{Item: "utc", Description: "Default to UTC time value"},
+		{Item: "unix", Description: "Default to Unix time value 0"},
 	},
-	OptionDescription: "Modifications options (d=-2;s=+30;t=hns)",
+	OptionDescription: "Offset options (d=-2;s=+30;t=hns)",
 	Options: []shell.SubstitutionItemHelp{
-		shell.SubstitutionItemHelp{
-			Item:        "s",
-			Description: "Add the specified seconds to time",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "n",
-			Description: "Add the specified minutes to time",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "h",
-			Description: "Add the specified hours to time",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "d",
-			Description: "Add the specified days to date",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "m",
-			Description: "Add the specified months to date",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "y",
-			Description: "Add the specified years to the date",
-		},
-		shell.SubstitutionItemHelp{
-			Item:        "t",
-			Description: "Truncate date/time component(s) to minimum (t=ymdhns)",
-		},
+		{Item: "s", Description: "Add the specified seconds to time"},
+		{Item: "n", Description: "Add the specified minutes to time"},
+		{Item: "h", Description: "Add the specified hours to time"},
+		{Item: "d", Description: "Add the specified days to date"},
+		{Item: "m", Description: "Add the specified months to date"},
+		{Item: "y", Description: "Add the specified years to the date"},
+		{Item: "t", Description: "Truncate date/time component(s) to minimum (t=ymdhns)"},
 	},
-	Function: ModifyDateSubstitute,
+	Function: SetDateOffsetSubstitute,
 }
 
-// GetDateSubstitute --
+// SetDateOffsetDefinition -- Initialize the date based on an offset of current time
+var SetDateOffsetDefinition = shell.SubstitutionFunction{
+	Name:         "setdateoffset",
+	Group:        "date",
+	FunctionHelp: "Set date value to an offset of current time (default to UTC)",
+	Formats: []shell.SubstitutionItemHelp{
+		{Item: "local", Description: "Default to Local time value"},
+		{Item: "utc", Description: "Default to UTC time value"},
+		{Item: "unix", Description: "Default to Unix time value 0"},
+	},
+	OptionDescription: "Offset options (d=-2;s=+30;t=hns)",
+	Options: []shell.SubstitutionItemHelp{
+		{Item: "s", Description: "Add the specified seconds to time"},
+		{Item: "n", Description: "Add the specified minutes to time"},
+		{Item: "h", Description: "Add the specified hours to time"},
+		{Item: "d", Description: "Add the specified days to date"},
+		{Item: "m", Description: "Add the specified months to date"},
+		{Item: "y", Description: "Add the specified years to the date"},
+		{Item: "t", Description: "Truncate date/time component(s) to minimum (t=ymdhns)"},
+	},
+	Function: SetDateOffsetSubstitute,
+}
+
+// GetDateSubstitute -- Display date based on display option provided (default is current time)
 func GetDateSubstitute(cache interface{}, subname string, format string, option string) (value string, date interface{}) {
 	var inputTime time.Time
 	var defaultFmt = "2006-01-02 15:04:05"
@@ -170,12 +170,11 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 	return "", inputTime
 }
 
-// ModifyDateSubstitute -- A function that modifies a date from from current value
-// Defaults to Now()
-func ModifyDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
+// SetDateOffsetSubstitute -- A function initializes date with offset from now
+func SetDateOffsetSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
 
-	if cache == nil {
+	if t, ok := cache.(time.Time); !ok {
 		switch format {
 		case "unix":
 			inputTime = time.Now().UTC()
@@ -188,7 +187,7 @@ func ModifyDateSubstitute(cache interface{}, subname, format string, option stri
 			inputTime = time.Now()
 		}
 	} else {
-		return "", cache
+		return "", t // Cannot change a cached value
 	}
 
 	years := 0

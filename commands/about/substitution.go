@@ -1,8 +1,10 @@
 package about
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/brada954/restshell/shell"
 )
@@ -18,56 +20,111 @@ var localSubstitutionTopic = &SubstitutionTopic{
 	Key:         "SUBST",
 	Title:       "Substitution",
 	Description: "Substitution functions in commands and input files",
-	About: `Variable substitution is built into the command line and some functions that
-read input files (e.g. post, load, etc). Variables set in the global name space
-using the SET command or other commands enable command lines to reference
-them. The typical syntanx is:
+	About: `Variable substitution is available with the command line and conditionally with commands 
+reading input files (e.g. post, load, etc). The SET command as well as other commands may
+add variables the global name space. Substitution occurs before the command line is
+parsed into parameters.
 
-	%%varname%%
+Use the following syntax when referencing a variable from the command line:
 
-In addition to variable substitution, there are functions that can provide
-more dynamic data in substitution or formatting manipulation of variables.
-The system comes with functions built in displayed below as well as allowing
-developers to build reshell with their own functions.
+	%%%%varname%%%%
 
-The substitution function syntax is limited to the following format:
+In addition to variable substitution, functions can provide complex substitions
+using calculated data or special formatting of variables. Restshell includes some basic
+functions and enables developers to add their own functions.
 
-	%%funcname(instancekey, format, "options")%%
+The substitution function syntax rquires following format:
 
-Parameters can be omitted as long as the commas are in place. Regex expressions
-are used to identify functions so any error in syntax will result in the
-function being un-substituted.
+	%%%%funcname(instancekey,format,"options")%%%%
+
+Parameters can be omitted as long as the commas are included.
 `,
 }
 
+// NewSubstitutionTopic -- return a topic structure for help about Substitutions
 func NewSubstitutionTopic() *SubstitutionTopic {
 	return localSubstitutionTopic
 }
 
+// GetKey -- return the key to the substitution help topic
 func (a *SubstitutionTopic) GetKey() string {
 	return a.Key
 }
 
+// GetTitle() -- return the title of the substitution about topic
 func (a *SubstitutionTopic) GetTitle() string {
 	return a.Title
 }
 
+// GetDescription -- return the description of substitution about topic
 func (a *SubstitutionTopic) GetDescription() string {
 	return a.Description
 }
 
+// WriteAbout -- write the substitution about topic to the provided writer
 func (a *SubstitutionTopic) WriteAbout(o io.Writer) error {
 	fmt.Fprintf(o, a.About)
 	fmt.Fprintf(o, "\n\nFunctions:\n")
-	shell.SubstitutionFunctionHelpList(o)
+	substitutionFunctionHelpList(o)
 	fmt.Fprintf(o, "\nRun \"ABOUT SUBST {funcname}\" to get more details\n\n")
 	return nil
 }
 
+// WriteSubTopic -- Write the Subtopic about information
 func (a *SubstitutionTopic) WriteSubTopic(o io.Writer, fname string) error {
-	err := shell.SubstitutionFunctionHelp(o, fname)
-	if err != nil {
-		return err
+	return substitutionFunctionHelp(o, fname)
+}
+
+func substitutionFunctionHelp(o io.Writer, funcName string) error {
+	if fn, ok := shell.GetSubstitutionFunction(funcName); ok {
+		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(fn.Name), fn.FunctionHelp)
+		if len(fn.Formats) > 0 {
+			if len(fn.FormatDescription) > 0 {
+				fmt.Fprintf(o, "  %s\n", fn.FormatDescription)
+			} else {
+				fmt.Fprintf(o, "  Format Specifiers:\n")
+			}
+			for _, f := range fn.Formats {
+				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
+			}
+		}
+		if len(fn.Options) > 0 {
+			if len(fn.OptionDescription) > 0 {
+				fmt.Fprintf(o, "  %s\n", fn.OptionDescription)
+			} else {
+				fmt.Fprintf(o, "  Options Specifiers:\n")
+			}
+			for _, f := range fn.Options {
+				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
+			}
+		}
+		fmt.Fprintf(o, "\nExample:\n  %%%%%s%%%%\n", generateExample(fn))
+		list := shell.SortedGroupSubstitutionFunctionList(fn.Group)
+		if len(list) > 1 {
+			fmt.Fprintf(o, "\nRelated Functions (grouped to share the key data):\n")
+			for _, g := range list {
+				if g.Name != fn.Name {
+					fmt.Fprintf(o, "  %s\n", g.Name)
+				}
+			}
+		}
+		fmt.Fprintln(o)
+		return nil
+	} else {
+		return errors.New("function not defined")
 	}
-	return nil
+}
+
+func substitutionFunctionHelpList(o io.Writer) {
+	arr := shell.SortedSubstitutionFunctionList(true)
+	for _, v := range arr {
+		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
+	}
+}
+
+func generateExample(fn shell.SubstitutionFunction) string {
+	if len(fn.Example) > 0 {
+		return fn.Example
+	}
+	return fmt.Sprintf("%s(keyname,format,\"options\")", strings.ToLower(fn.Name))
 }
