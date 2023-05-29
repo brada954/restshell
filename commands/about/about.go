@@ -42,7 +42,7 @@ func (cmd *AboutCommand) AddOptions(set shell.CmdSet) {
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose)
 }
 
-// Execute --
+// Execute -- Execute the command About command
 func (cmd *AboutCommand) Execute(args []string) error {
 	// Validate arguments
 	if len(args) == 0 {
@@ -54,7 +54,6 @@ func (cmd *AboutCommand) Execute(args []string) error {
 		}
 		return cmd.executeTopic(args[0], subTopic)
 	}
-	return nil
 }
 
 func (cmd *AboutCommand) executeTopicList() error {
@@ -70,23 +69,20 @@ func (cmd *AboutCommand) executeTopicList() error {
 
 func (cmd *AboutCommand) executeTopic(key string, subTopic string) error {
 	for _, topic := range topicList {
-		if strings.ToUpper(topic.GetKey()) != strings.ToUpper(key) {
+		if !strings.EqualFold(topic.GetKey(), key) {
 			continue
 		}
 
 		if len(subTopic) > 0 {
 			if st, ok := topic.(SubTopicInterface); ok {
-				if err := st.WriteSubTopic(shell.ConsoleWriter(), subTopic); err != nil {
-					return err
-				}
+				return st.WriteSubTopic(shell.ConsoleWriter(), subTopic)
 			} else {
-				return errors.New("No sub-topics to display")
+				return errors.New("no sub-topics to display")
 			}
 		} else {
 			fmt.Fprintf(shell.ConsoleWriter(), "%s (%s)\n\n", topic.GetTitle(), topic.GetKey())
 			return topic.WriteAbout(shell.ConsoleWriter())
 		}
-		break
 	}
-	return nil
+	return fmt.Errorf("%s topic was not found", key)
 }
