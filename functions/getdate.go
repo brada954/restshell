@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ var GetDateDefinition = shell.SubstitutionFunction{
 		{Item: "utc", Description: "Display UTC time value"},
 		{Item: "unix", Description: "Display Unix timestamp"},
 	},
-	OptionDescription: "Option is the Golang format for date dislay",
+	OptionDescription: "Option is the Golang format for date display",
 	Options: []shell.SubstitutionItemHelp{
 		{
 			Item:        "2006-01-02 15:04:05",
@@ -112,10 +113,12 @@ func GetDateSubstitute(cache interface{}, subname string, format string, option 
 	var inputTime time.Time
 	var defaultFmt = "2006-01-02 15:04:05"
 
-	if t, ok := cache.(time.Time); !ok {
+	if cache == nil {
 		inputTime = time.Now()
-	} else {
+	} else if t, ok := cache.(time.Time); ok {
 		inputTime = t
+	} else {
+		panic("GetDate substitition failure with cached date")
 	}
 
 	format = strings.ToLower(format)
@@ -135,8 +138,7 @@ func GetDateSubstitute(cache interface{}, subname string, format string, option 
 	}
 }
 
-// SetDateSubstitute -- A function that returns an empty string but sets the date
-// value used by the date group functions
+// SetDateSubstitute -- Returns empty string but sets the date value used by the date group functions to option string
 func SetDateSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
 	defaultFmt := "2006-01-02T15:04:05"
@@ -154,15 +156,20 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 			if len(option) > 0 {
 				if tm, err := time.ParseInLocation(defaultFmt[:minFormatLen], option, time.UTC); err == nil {
 					inputTime = tm
+				} else {
+					panic(fmt.Sprintf("SetDate substitution failed for invalid option for date format: %s", option))
 				}
 			}
 		case "local":
 			if len(option) > 0 {
 				if tm, err := time.ParseInLocation(defaultFmt[:minFormatLen], option, time.Local); err == nil {
 					inputTime = tm
+				} else {
+					panic(fmt.Sprintf("SetDate substitution failed for invalid option for date format: %s", option))
 				}
 			}
 		default:
+			panic(fmt.Sprintf("SetDate substitution failed for invalid format: %s", format))
 		}
 	} else {
 		return "", cache
@@ -174,7 +181,7 @@ func SetDateSubstitute(cache interface{}, subname, format string, option string)
 func SetDateOffsetSubstitute(cache interface{}, subname, format string, option string) (value string, date interface{}) {
 	var inputTime = time.Time{}
 
-	if t, ok := cache.(time.Time); !ok {
+	if cache == nil {
 		switch format {
 		case "unix":
 			inputTime = time.Now().UTC()
@@ -187,7 +194,8 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 			inputTime = time.Now()
 		}
 	} else {
-		return "", t // Cannot change a cached value
+		// Cannot change a cached value -- Panic?
+		return "", cache
 	}
 
 	years := 0
@@ -195,9 +203,8 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 	days := 0
 	duration := time.Duration(0)
 
-	modifiers := strings.Split(option, ";")
-	for _, m := range modifiers {
-		parts := strings.SplitN(m, "=", 2)
+	for _, modifier := range strings.Split(option, ";") {
+		parts := strings.SplitN(modifier, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
@@ -205,7 +212,7 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 		component := strings.ToLower(parts[0])
 		value, err := strconv.ParseInt(parts[1], 10, 0)
 		if err != nil {
-			value = 0
+			panic(fmt.Sprintf("SetDateOffset substitition failure to parse option value: %s", parts[1]))
 		}
 		ivalue := int(value)
 
@@ -258,6 +265,7 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 			}
 
 		default:
+			panic(fmt.Sprintf("SetDateOffset substitution failed for option component: %s", modifier))
 		}
 	}
 
