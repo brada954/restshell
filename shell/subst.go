@@ -39,9 +39,7 @@
 package shell
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"sort"
 	"strings"
@@ -57,6 +55,7 @@ type SubstitutionFunction struct {
 	OptionDescription string
 	Options           []SubstitutionItemHelp
 	Function          SubstitutionHandler
+	Example           string
 }
 
 // SubstitutionHandler -- A handler returns a value for substitution given a function name. The handler may
@@ -83,19 +82,27 @@ var regexPattern = `%%([a-zA-Z][a-zA-Z0-9]*)\(\s*([a-zA-Z0-9_]*)\s*(?:,([a-zA-Z0
 // RegisterSubstitutionHandler -- Register a substitution function
 func RegisterSubstitutionHandler(function SubstitutionFunction) {
 	if len(function.Name) == 0 {
-		panic("Substition Registration missing function name")
+		panic("Substition registration missing function name")
+	}
+
+	if strings.ToLower(function.Name) != function.Name {
+		panic("Substitution registration requires lower case function name")
 	}
 
 	if len(function.Group) == 0 {
-		panic("Substition Registration missing group name")
+		panic("Substition registration missing group name")
+	}
+
+	if strings.ToLower(function.Group) != function.Group {
+		panic("Substitution registration requires lower case group name")
 	}
 
 	if len(function.FunctionHelp) == 0 {
-		panic("Substitution Registration missing help")
+		panic("Substitution registration missing help")
 	}
 
 	if function.Function == nil {
-		panic("Substitution Registration missing function")
+		panic("Substitution registration missing function")
 	}
 
 	if _, ok := handlerMap[function.Name]; !ok {
@@ -108,7 +115,8 @@ func RegisterSubstitutionHandler(function SubstitutionFunction) {
 	}
 }
 
-func GetSubstitutionFunctions() {
+func GetSubstitutionFunction(name string) (fn SubstitutionFunction, ok bool) {
+	fn, ok = handlerMap[name]
 	return
 }
 
@@ -155,62 +163,24 @@ func PerformVariableSubstitution(input string) string {
 func IsVariableSubstitutionComplete(input string) bool {
 
 	if regx, err := regexp.Compile(`\%\%.*\%\%`); err == nil {
-		if regx.MatchString(input) == false {
+		if !regx.MatchString(input) {
 			return true
 		}
 	}
 	return false // Note: this is returned in error situations as well (requires investigation)
 }
 
-// SubstitutionFunctionNames --
+// SubstitutionFunctionNames -- return the list of substitute functions by name in sorted order
 func SubstitutionFunctionNames() []string {
 	names := make([]string, 0)
-	for _, f := range sortedSubstitutionFunctionList(true) {
+	for _, f := range SortedSubstitutionFunctionList(true) {
 		names = append(names, f.Name)
 	}
 	return names
 }
 
-// SubstitutionFunctionHelp --
-func SubstitutionFunctionHelp(o io.Writer, funcName string) error {
-	if fn, ok := handlerMap[funcName]; ok {
-		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(fn.Name), fn.FunctionHelp)
-		if len(fn.Formats) > 0 {
-			if len(fn.FormatDescription) > 0 {
-				fmt.Fprintf(o, "  %s\n", fn.FormatDescription)
-			} else {
-				fmt.Fprintf(o, "  Format Specifiers:\n")
-			}
-			for _, f := range fn.Formats {
-				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
-			}
-		}
-		if len(fn.Options) > 0 {
-			if len(fn.OptionDescription) > 0 {
-				fmt.Fprintf(o, "  %s\n", fn.OptionDescription)
-			} else {
-				fmt.Fprintf(o, "  Options Specifiers:\n")
-			}
-			for _, f := range fn.Options {
-				fmt.Fprintf(o, "    %s: %s\n", f.Item, f.Description)
-			}
-		}
-		fmt.Fprintln(o)
-		return nil
-	} else {
-		return errors.New("Function not defined")
-	}
-}
-
-// SubstitutionFunctionHelpList -- Display help
-func SubstitutionFunctionHelpList(o io.Writer) {
-	arr := sortedSubstitutionFunctionList(true)
-	for _, v := range arr {
-		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
-	}
-}
-
-func sortedSubstitutionFunctionList(sortByGroup bool) []SubstitutionFunction {
+// SortedSubstitutionFunctionList -- return the substitution functions in sorted order
+func SortedSubstitutionFunctionList(sortByGroup bool) []SubstitutionFunction {
 	arr := make([]SubstitutionFunction, 0)
 	for _, v := range handlerMap {
 		arr = append(arr, v)
@@ -223,11 +193,22 @@ func sortedSubstitutionFunctionList(sortByGroup bool) []SubstitutionFunction {
 		} else if sortByGroup && strings.ToLower(arr[a].Group) > strings.ToLower(arr[b].Group) {
 			return false
 		}
+		return strings.ToLower(arr[a].Name) < strings.ToLower(arr[b].Name)
+	})
+	return arr
+}
 
-		if strings.ToLower(arr[a].Name) < strings.ToLower(arr[b].Name) {
-			return true
+func SortedGroupSubstitutionFunctionList(group string) []SubstitutionFunction {
+	arr := make([]SubstitutionFunction, 0)
+	for _, v := range handlerMap {
+		if v.Group == group {
+			arr = append(arr, v)
 		}
-		return false
+	}
+
+	// Sort the array by group and function name
+	sort.Slice(arr, func(a, b int) bool {
+		return strings.ToLower(arr[a].Name) < strings.ToLower(arr[b].Name)
 	})
 	return arr
 }
@@ -251,7 +232,7 @@ func buildSubstitutionFunctionVars(input string) map[string]string {
 		format := ""
 		option := ""
 
-		varName := strings.Trim(list[0], "%%")
+		varName := strings.Trim(list[0], "%")
 
 		if len(list) > 1 {
 			fn = list[1]
