@@ -29,18 +29,9 @@ var GetDateDefinition = shell.SubstitutionFunction{
 	},
 	OptionDescription: "Option is the Golang format for date display",
 	Options: []shell.SubstitutionItemHelp{
-		{
-			Item:        "2006-01-02 15:04:05",
-			Description: "Default Golang format for date and time",
-		},
-		{
-			Item:        "Mon",
-			Description: "Example Golang format for day of week",
-		},
-		{
-			Item:        "2006",
-			Description: "Example Golang format for year",
-		},
+		{Item: "2006-01-02 15:04:05", Description: "Default Golang format for date and time"},
+		{Item: "Mon", Description: "Example Golang format for day of week"},
+		{Item: "2006", Description: "Example Golang format for year"},
 	},
 	Function: GetDateSubstitute,
 }
@@ -198,12 +189,15 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 		return "", cache
 	}
 
-	years := 0
-	months := 0
-	days := 0
-	duration := time.Duration(0)
+	if tm, err := applyDateModifiers(inputTime, option); err != nil {
+		panic(err.Error())
+	} else {
+		return "", tm
+	}
+}
 
-	for _, modifier := range strings.Split(option, ";") {
+func applyDateModifiers(tm time.Time, modifiers string) (time.Time, error) {
+	for _, modifier := range strings.Split(modifiers, ";") {
 		parts := strings.SplitN(modifier, "=", 2)
 		if len(parts) != 2 {
 			continue
@@ -211,68 +205,53 @@ func SetDateOffsetSubstitute(cache interface{}, subname, format string, option s
 
 		component := strings.ToLower(parts[0])
 		value, err := strconv.ParseInt(parts[1], 10, 0)
-		if err != nil {
-			panic(fmt.Sprintf("SetDateOffset substitition failure to parse option value: %s", parts[1]))
+		if component != "t" && err != nil {
+			return tm, fmt.Errorf("SetDateOffset substitition failure to parse option value: %s", parts[1])
 		}
-		ivalue := int(value)
 
 		switch component {
 		case "s":
-			duration = duration + (time.Duration(value) * time.Second)
+			tm = tm.Add(time.Duration(value) * time.Second)
 		case "n":
-			duration = duration + (time.Duration(value) * time.Minute)
+			tm = tm.Add(time.Duration(value) * time.Minute)
 		case "h":
-			duration = duration + (time.Duration(value) * time.Hour)
+			tm = tm.Add(time.Duration(value) * time.Hour)
 		case "m":
-			months = months + ivalue
+			tm = tm.AddDate(0, int(value), 0)
 		case "d":
-			days = days + ivalue
+			tm = tm.AddDate(0, 0, int(value))
 		case "y":
-			years = years + ivalue
+			tm = tm.AddDate(int(value), 0, 0)
 		case "t":
-			// Apply current modifications prior to truncating and
-			inputTime = inputTime.AddDate(years, months, days)
-			inputTime = inputTime.Add(duration)
-
-			// reset the modifiers to zero for continued manipulation
-			years = 0
-			months = 0
-			days = 0
-			duration = time.Duration(0)
-
 			// Perform truncating; modify the component to min value
 			for _, c := range parts[1] {
 				switch c {
 				case 'p': // truncate decimal places of second
-					inputTime = inputTime.Truncate(time.Second)
+					tm = tm.Truncate(time.Second)
 				case 's':
-					seconds := time.Duration(-inputTime.Second())
-					inputTime = inputTime.Add(seconds * time.Second)
+					seconds := time.Duration(-tm.Second())
+					tm = tm.Add(seconds * time.Second)
 				case 'n':
-					minutes := time.Duration(-inputTime.Minute())
-					inputTime = inputTime.Add(minutes * time.Minute)
+					minutes := time.Duration(-tm.Minute())
+					tm = tm.Add(minutes * time.Minute)
 				case 'h':
-					hours := time.Duration(-inputTime.Hour())
-					inputTime = inputTime.Add(hours * time.Hour)
+					hours := time.Duration(-tm.Hour())
+					tm = tm.Add(hours * time.Hour)
 				case 'd':
-					inputTime = inputTime.AddDate(0, 0, 1-inputTime.Day())
+					tm = tm.AddDate(0, 0, 1-tm.Day())
 				case 'm':
-					inputTime = inputTime.AddDate(0, 1-int(inputTime.Month()), 0)
+					tm = tm.AddDate(0, 1-int(tm.Month()), 0)
 				case 'y':
-					inputTime = inputTime.AddDate(1-int(inputTime.Year()), 0, 0)
+					tm = tm.AddDate(1-int(tm.Year()), 0, 0)
 				default:
+					return tm, fmt.Errorf("SetDateOffset substitution failed for truncate type: %c", c)
 				}
 			}
-
 		default:
-			panic(fmt.Sprintf("SetDateOffset substitution failed for option component: %s", modifier))
+			return tm, fmt.Errorf("SetDateOffset substitution failed for option component: %s", modifier)
 		}
 	}
-
-	inputTime = inputTime.AddDate(years, months, days)
-	inputTime = inputTime.Add(duration)
-
-	return "", inputTime
+	return tm, nil
 }
 
 // formatDate -- formats with some special options beyond golang date format string
