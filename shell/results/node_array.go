@@ -2,18 +2,20 @@ package results
 
 // ArrayNode - a container of an array of scalers
 type ArrayNode struct {
-	value []interface{}
+	length int
 }
 
-// Value -- golang value of an array : []interface{}
+// Value -- always nil
 func (fn *ArrayNode) Value() interface{} {
-	return fn.value
+	return nil
 }
 
+// Length - the length of the array
 func (fn *ArrayNode) Length() int {
-	return len(fn.value)
+	return fn.length
 }
 
-func NewArrayNode(values []interface{}) *ArrayNode {
-	return &ArrayNode{value: values}
+// NewArrayNode -- create a Node for an array
+func NewArrayNode(length int) *ArrayNode {
+	return &ArrayNode{length: length}
 }

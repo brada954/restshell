@@ -1,4 +1,4 @@
-RESTResponse
+# RESTResponse
 
 A set of documents for different parts of a REST Response including body, headers, cookies, and statistics and connection metadata.
 
@@ -8,20 +8,36 @@ Xml
 Text
 Opaque (HTML, binary, others) 
 
-The Result package
+# Result package
 
-The result package is an attempt to normalize different document types like xml and json to be usable in the generic assertion library. The idea is to have standard assert calls independent of document versus assert langague for each document.... may be this is not desired? It can be desired when iterating on data or creating sub documents.
+The result package is an attempt to normalize different document types like xml and json to be usable in the generic assertion library. The idea is to have standard assert calls independent of document type versus assert langague for each document.
 
-Json is the most flexible format for the remaining portions of a REST response it will be the document type for non-body related data in a REST response.
+Long term thinking includes processing capabilities like iteration and sub-document processing through script snippets (think of sub routines).
+
+JSON is the most flexible format for representing different forms of data like cookies, headers, and text, and since RestShell is primarily used with JSON scenarios, JSON will be a common format to represent non-body related data in a REST response.
 
 The Opaque document type is a catchall for types that cannot be respresented in the other formats. Binary type can be replaced by future documents types to handle complex documents like jpg, png, pdf, office documents, etc. Document inspection and traversal features of these documents can be very interesting to have to examine metadata or document content. However, these documennt types are highly specialized and out of scope for the forseable future. The make great capabilities 3rd parties with expertise in these document formats to add.
 
 The system designed should allow future expansion.
 
+## Result Inspection
 
-Result Documents support a node traversal/search capability for extracting data in a common form for components to implement assertions, data extraction, data manipulation, data presentation, and as input to other commands taking iterative action on the data. The data extraction can return a node that is either a native golang type or a node (TBD: should it always result in native format?)
+A result must support inspection to validate data, so a node traversal mechanism like XPath and JSONPath is fundamental mechanism to select data.
+Assertions are based on providing a path to a value or object and an expectation about the element referenced by the path including negative assertions.
+
+A common feature of data selection is that the result may be single result or list of results. A list of results will be difficult to distinguish from a single result that may be an array (i.e. list) when in native golang types. When a list of result is returned from a selection, the term collection will be used to distingush the result from a single result that may be an array.
+
+The biggest challenge in designing the abstractions for selecting nodes is whether the caller should provide a hint that a collection is expected or a single result is expected. Providing the hint makes the implementation easier and less dependendent on implementations having to know the nuances of the path selection at the cost that implementation of the assertion logic will have to have assertions that are tailored to single results or not.
+
+Initially, the design...
+
+## Iterative Inspection
+
+*Adanced concept not in immediate plans*
 
 To operate on data within a document iteratively, the extraction of components of a document may need to be reconstructable to Result Documents for iterative processing or have a node abstraction supporting children.
+
+# Node
 
 A Node provides a native value representation for assertions as well as an abstraction to support further node traversal if not a leaf node.
 

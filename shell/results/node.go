@@ -15,10 +15,8 @@ import (
 	"errors"
 )
 
-// Need a scaler document -- replace json or not?
-
 // Node -- abstract representation of a xpath/jsonpath like node that can
-// provide a golang type representing the data or can generate a new result
+// provide a golang type representing the data or can generate a new ResultDocument
 type Node interface {
 	// Value - return the golang data type
 	Value() interface{}
@@ -34,7 +32,7 @@ type NodeScaler interface {
 }
 
 // NodeArray is a specfic Node in the document representing an array of values, objects or
-// arrays. The entities in a NodeArray are Nodes.
+// arrays. The NodeArray just has a length.
 type NodeArray interface {
 	Node
 	Length()
@@ -43,7 +41,6 @@ type NodeArray interface {
 // NodeObject represents an object containing a set of properties
 type NodeObject interface {
 	Node
-	// Attributes []string
 	Properties() []string
 }
 
@@ -54,9 +51,7 @@ func (collection NodeCollection) ToNode() (Node, error) {
 	}
 
 	if len(collection) > 1 {
-		return nil, errors.New("Too many nodes to for a single node operation")
+		return nil, errors.New("too many nodes to for a single node operation")
 	}
-
 	return collection[0], nil
-
 }
