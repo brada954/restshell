@@ -23,8 +23,18 @@ func MakeXmlResult(r io.Reader) (*XmlResult, error) {
 	}
 }
 
+func (x *XmlResult) GetNode(path string) (Node, error) {
+	if collection, err := x.GetNodes(path); err != nil {
+		return nil, err
+	} else if len(collection) == 1 {
+		return collection[0], nil
+	} else {
+		return nil, errors.New("Invalid number of nodes returned")
+	}
+}
+
 // GetNodes -- return Nodes for the XmlResult
-func (x *XmlResult) GetNodes(path string) (nodes []Node, rtnerr error) {
+func (x *XmlResult) GetNodes(path string) (nodes NodeCollection, rtnerr error) {
 
 	nodes = make([]Node, 0)
 	rtnerr = nil
@@ -39,7 +49,7 @@ func (x *XmlResult) GetNodes(path string) (nodes []Node, rtnerr error) {
 	}()
 
 	if x.data == nil {
-		return nil, errors.New("Not found") //ErrNotFound
+		return nil, errors.New("not found") //ErrNotFound
 	}
 
 	nodeList, err := xmlquery.QueryAll(x.data, path)
@@ -53,7 +63,7 @@ func (x *XmlResult) GetNodes(path string) (nodes []Node, rtnerr error) {
 		}
 		return array, nil
 	} else {
-		return nil, errors.New("No elements Found")
+		return nil, errors.New("no elements Found")
 	}
 }
 
