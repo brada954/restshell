@@ -39,6 +39,19 @@ const (
 	AlternatePaths ResultPayloadType = 9 // All paths but default as default is assumed
 )
 
+func NewTextResult(text string) *Result {
+	result := &Result{Text: text}
+	result.addParsedContentToResult("text/plain", text)
+	return result
+}
+
+func NewJSONResult(text string) *Result {
+	result := &Result{Text: text}
+	result.addParsedContentToResult("application/json", text)
+	result.Error = nil
+	return result
+}
+
 func (r *Result) DumpCookies(w io.Writer) {
 	fmt.Fprintln(w, "Cookies:")
 	for _, v := range r.cookies {
