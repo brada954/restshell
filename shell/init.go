@@ -11,10 +11,10 @@ func init() {
 	ensureCategory(CategoryAnalysis)
 	ensureCategory(CategoryUtilities)
 
-	AddCommands()
+	addCommands()
 }
 
-func AddCommands() {
+func addCommands() {
 	AddCommand("rem", CategoryUtilities, NewRemCommand())
 	AddCommand("run", CategoryUtilities, NewRunCommand())
 	AddCommand("quit", CategoryUtilities, nil)

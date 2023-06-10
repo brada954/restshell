@@ -3,7 +3,6 @@ package about
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/brada954/restshell/shell"
@@ -11,26 +10,6 @@ import (
 
 type AboutCommand struct {
 	// Place getopt option value pointers here
-}
-
-// TopicInterface -- THe minumum supported interface for about topics
-type TopicInterface interface {
-	GetKey() string             // Key for lookup and sub-command
-	GetTitle() string           // Title for help display
-	GetDescription() string     // Decription of key in lists
-	WriteAbout(io.Writer) error // The text to display about the topic
-}
-
-// SubTopicInterface -- Some about topics may have sub topics
-type SubTopicInterface interface {
-	WriteSubTopic(io.Writer, string) error
-}
-
-var topicList []TopicInterface = []TopicInterface{
-	NewAuthTopic(),
-	NewBenchmarkTopic(),
-	NewJsonPathTopic(),
-	NewSubstitutionTopic(),
 }
 
 func NewAboutCommand() *AboutCommand {
@@ -60,7 +39,7 @@ func (cmd *AboutCommand) executeTopicList() error {
 	fmt.Fprintln(shell.ConsoleWriter(), "ABOUT {topic}")
 	fmt.Fprintln(shell.ConsoleWriter(), "\nUse the ABOUT command to learn about the following topics:")
 	fmt.Fprintln(shell.ConsoleWriter())
-	for _, topic := range topicList {
+	for _, topic := range shell.GetTopics() {
 		fmt.Fprintf(shell.ConsoleWriter(), "%s -- %s\n", topic.GetKey(), topic.GetDescription())
 	}
 	fmt.Fprintln(shell.ConsoleWriter(), "")
@@ -68,13 +47,13 @@ func (cmd *AboutCommand) executeTopicList() error {
 }
 
 func (cmd *AboutCommand) executeTopic(key string, subTopic string) error {
-	for _, topic := range topicList {
+	for _, topic := range shell.GetTopics() {
 		if !strings.EqualFold(topic.GetKey(), key) {
 			continue
 		}
 
 		if len(subTopic) > 0 {
-			if st, ok := topic.(SubTopicInterface); ok {
+			if st, ok := topic.(shell.SubTopicInterface); ok {
 				return st.WriteSubTopic(shell.ConsoleWriter(), subTopic)
 			} else {
 				return errors.New("no sub-topics to display")
