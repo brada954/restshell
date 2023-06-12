@@ -19,12 +19,12 @@ func NewLoginCommand() *LoginCommand {
 }
 
 func (cmd *LoginCommand) GetSubCommands() []string {
-	var commands = []string{"COOKIE", "HEADER"}
+	var commands = []string{"COOKIE", "HEADER", "BEARER", "BASIC"}
 	return shell.SortedStringSlice(commands)
 }
 
 func (cmd *LoginCommand) AddOptions(set shell.CmdSet) {
-	set.SetParameters("logintype [name=value]... [name=value;name=value;...]")
+	set.SetParameters("logintype [([name=value]... [name=value;name=value;...]|[token])]")
 	cmd.optionClear = set.BoolLong("clear", 0, "Clear the auth context")
 
 	set.SetUsage(func() {
@@ -39,13 +39,13 @@ func (cmd *LoginCommand) AddOptions(set shell.CmdSet) {
 func (cmd *LoginCommand) HeaderUsage(w io.Writer) {
 	fmt.Fprintln(w, "LOGIN logintype [parameters...]")
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, `Example command to demostrator sub commads`)
+	fmt.Fprintln(w, `Create an authentication context based on the desired type`)
 	fmt.Fprintln(w)
 }
 
 // ExtendedUsage -- write the extended useage
 func (cmd *LoginCommand) ExtendedUsage(w io.Writer) {
-	fmt.Fprintf(w, "\nSub Commands\n")
+	fmt.Fprintf(w, "\nAuthentication Types\n")
 	lines := shell.ColumnizeTokens(cmd.GetSubCommands(), 4, 15)
 	for _, v := range lines {
 		fmt.Fprintf(w, "  %s\n", v)
@@ -72,6 +72,10 @@ func (cmd *LoginCommand) Execute(args []string) error {
 		return cmd.setCookieAuth(args[1:])
 	case "HEADER":
 		return cmd.setHeaderAuth(args[1:])
+	case "BEARER":
+		return cmd.setBearerAuth(args[1:])
+	case "BASIC":
+		return cmd.setBasicAuth(args[1:])
 	default:
 		return shell.ErrInvalidSubCommand
 	}
@@ -137,4 +141,45 @@ func (cmd *LoginCommand) setHeaderAuth(args []string) error {
 		return nil
 	}
 	return errors.New("Invalid parameters, no authentication saved")
+}
+
+func (cmd *LoginCommand) setBearerAuth(args []string) error {
+	if len(args) == 0 {
+		line := shell.GetLine("Input Bearer Token value:\n")
+		args = shell.LineParse(line)
+	}
+
+	if len(args) > 1 {
+		return errors.New("too many arguments provided, only one token value supported")
+	}
+
+	// Execute commands
+	authContext := NewHeaderAuth()
+	authContext.AddHeader("Authorization", "Bearer "+strings.TrimSpace(args[0]))
+	shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
+	return nil
+}
+
+func (cmd *LoginCommand) setBasicAuth(args []string) error {
+	if len(args) > 2 {
+		return errors.New("too many arguments provided, only one token value supported")
+	}
+
+	u := ""
+	{
+		if len(args) > 0 {
+			u = args[0]
+		}
+	}
+	p := ""
+	{
+		if len(args) > 1 {
+			u = args[1]
+		}
+	}
+
+	// Execute commands
+	authContext := shell.NewBasicAuth(u, p)
+	shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
+	return nil
 }

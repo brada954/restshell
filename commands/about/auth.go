@@ -16,69 +16,47 @@ var localAuthTopic = &AuthTopic{
 	Key:         "AUTH",
 	Title:       "Authentication",
 	Description: "Authentication Objects for decorating REST calls",
-	About: `Authenticating REST API's is a rundandant task that would be cumbersome to
-perform with each HTTP request, so authentication objects are used to store
-authentication information that can be applied to HTTP requests. There may 
-be various well known objects stored in the global store that can be
-configured and used by different commands. For example, gateway API's may
-use the common JWT authentication token, but calls to back end services
-may use other mechanisms like query parameters or Basic Authentication
+	About: `Authenticating REST API's is a redundant task for each HTTP request,
+so authentication contexts are used to store authentication information for
+reuse in HTTP requests.
 
-Since HTTP requests support multiple methods of authentication like cookies, 
-Authorization headers for basic authentiation or JWTs. There are different
-types of authentication objects. These types of objects may include:
+Every REST operation has options to facilitate passing authentication details 
+with a request via cookies or headers.
 
-    - JWT
-    - Basic Authentication
-	- Query Parameters
-	- Cookies
-	- Headers
-    - NoAuth
+The LOGIN command can create a cached authentication context used with each
+REST operation without having to specify authentication options.
 
-JWT
-JWT is a special authentication that requires a request to get the token.
-A custom command can be created to authenticate a user to a service and
-save the token for future use by other commands.
+LOGIN supports BASIC, COOKIE and HEADER mechanisms and additional simplifications for
+BEARER tokens in the Authorization header.
 
-Basic Authentication
-Basic Authentication leverages a username and password pair that gets
-encoded and passed on the REST api. Commands may exist to create an object
-stored in the global store or a REST api may accept an option like 
---basic-auth which enables a user to provide a user name and password.
+The LOGIN command depends on the user authenticating with a service first
+to obtain the token required. The user can then supply the token to the LOGIN command
+for reuse with each REST operation.
 
-    Option syntax:
-    --basic-auth=[user][,pwd]
+    LOGIN BEARER my_auth_token
 
-For basic authentication an empty user name or password would get a prompt
-for the information.
+Each REST operation uses the established authentication context until it is cleared
+using Login --clear or excluded by a --no-auth option.
 
-Query Parameter Authentication
-Query Parameteer authentication enables a set of key,value pairs to be
-added has query parameters on the request.
+Authentication Options with REST Operations
 
-    Option syntax;
-    --query-param=[[name,value]...]
+The following options are common to REST operations:
 
-The name value is used as the query parameter name and the value is
-used as the value of the query parameter. For example:
+--basic-auth=[user][,pwd]
 
-    http://xyz.com?name=value&name2=value2
-	
-The query parameter object will automatically escape the values in
+The basic authentication option provides user and password details with the request.
+Empty user name or password values would get a prompt for the information
+(passwords are hidden when typed).
+
+--query-param=[[name,value][&name2,value2]...]
+
+The Query Parameter Authentication adds key,value pairs to the request.
+
+For example:
+	http://xyz.com?name=value&name2=value2
+
+The query parameter auth context will automatically escape the values in
 the query string.
-
-Cookie Authentication
-Cookie authentication enables cookies to be defined that suffice
-as authentication. 
-
-Header Authentication 
-Header authentication allows headers to be set to specific values
-for authentication.
-
-There is a LOGIN command capable of creating auth contexts based on
-cookies or headers. The basic REST commands work with the AuthContext
-created by LOGIN. Additional custom commands can use those contexts
-as well.
 `,
 }
 
