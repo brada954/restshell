@@ -36,8 +36,9 @@ func (cmd *DumpCommand) Execute(args []string) error {
 	}
 
 	dispfunc := displayBytesRead
-	if shell.GetCmdOutputFileName() != "" {
-		// If a file is specified; do not display the short form
+	if shell.GetCmdOutputFileName() != "" ||
+		(shell.IsCmdPrettyPrintEnabled() && !shell.IsCmdOutputShortEnabled()) {
+		// Force long form output
 		dispfunc = nil
 	}
 	return shell.OutputResult(result, dispfunc)
