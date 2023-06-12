@@ -207,7 +207,7 @@ func AddCommonCmdOptions(set CmdSet, options ...int) {
 			}
 		case CmdQueryParamAuth:
 			if globalOptions.queryParamAuthOption == nil {
-				globalOptions.queryParamAuthOption = set.StringLong("query-auth", 0, OptionDefaultQueryParamAuth, "Use query param authe: "+OptionDefaultQueryParamAuth)
+				globalOptions.queryParamAuthOption = set.StringLong("query-auth", 0, OptionDefaultQueryParamAuth, "Use query parameters for auth: "+OptionDefaultQueryParamAuth)
 			}
 		case CmdBenchmarks:
 			if globalOptions.iterationOption == nil {
