@@ -14,9 +14,9 @@ require (
 require (
 	github.com/PaesslerAG/gval v1.0.2-0.20190803062529-6fceb06ca162 // indirect
 	github.com/antchfx/xpath v0.0.0-20180524052354-077bca4d2caa // indirect
-	golang.org/x/net v0.1.0 // indirect
-	golang.org/x/sys v0.1.0 // indirect
-	golang.org/x/term v0.1.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
