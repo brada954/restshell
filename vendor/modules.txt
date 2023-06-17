@@ -4,12 +4,15 @@ github.com/PaesslerAG/gval
 # github.com/PaesslerAG/jsonpath v0.1.0
 ## explicit
 github.com/PaesslerAG/jsonpath
-# github.com/antchfx/xmlquery v1.0.1-0.20191005065425-945b45d1f870
-## explicit
+# github.com/antchfx/xmlquery v1.3.1
+## explicit; go 1.14
 github.com/antchfx/xmlquery
-# github.com/antchfx/xpath v0.0.0-20180524052354-077bca4d2caa
+# github.com/antchfx/xpath v1.1.10
 ## explicit
 github.com/antchfx/xpath
+# github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+## explicit
+github.com/golang/groupcache/lru
 # github.com/pborman/getopt/v2 v2.1.0
 ## explicit; go 1.13
 github.com/pborman/getopt/v2
