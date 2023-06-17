@@ -200,6 +200,8 @@ Making REST calls can be made easier by using the BASE command:
 >> GET /magazines
 ```
 
+Run the **ABOUT auth** command to learn about authentication contexts to use with the REST commands.
+
 ## Contributors
 
 A special thanks for the initial contributer, PeakActivity, LLC, which has allowed the program to be provided publically under the MIT License.
