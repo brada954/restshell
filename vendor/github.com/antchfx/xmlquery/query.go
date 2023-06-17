@@ -57,6 +57,7 @@ func getCurrentNode(it *xpath.NodeIterator) *Node {
 			Data: n.Value(),
 		}
 		return &Node{
+			Parent:     n.curr,
 			Type:       AttributeNode,
 			Data:       n.LocalName(),
 			FirstChild: childNode,
@@ -69,37 +70,37 @@ func getCurrentNode(it *xpath.NodeIterator) *Node {
 // Find is like QueryAll but it will panics if the `expr` is not a
 // valid XPath expression. See `QueryAll()` function.
 func Find(top *Node, expr string) []*Node {
-	exp, err := xpath.Compile(expr)
+	nodes, err := QueryAll(top, expr)
 	if err != nil {
 		panic(err)
 	}
-	return QuerySelectorAll(top, exp)
+	return nodes
+}
+
+// FindOne is like Query but it will panics if the `expr` is not a
+// valid XPath expression. See `Query()` function.
+func FindOne(top *Node, expr string) *Node {
+	node, err := Query(top, expr)
+	if err != nil {
+		panic(err)
+	}
+	return node
 }
 
 // QueryAll searches the XML Node that matches by the specified XPath expr.
 // Return an error if the expression `expr` cannot be parsed.
 func QueryAll(top *Node, expr string) ([]*Node, error) {
-	exp, err := xpath.Compile(expr)
+	exp, err := getQuery(expr)
 	if err != nil {
 		return nil, err
 	}
 	return QuerySelectorAll(top, exp), nil
 }
 
-// FindOne is like Query but it will panics if the `expr` is not a
-// valid XPath expression. See `Query()` function.
-func FindOne(top *Node, expr string) *Node {
-	exp, err := xpath.Compile(expr)
-	if err != nil {
-		panic(err)
-	}
-	return QuerySelector(top, exp)
-}
-
 // Query searches the XML Node that matches by the specified XPath expr,
 // and returns first element of matched.
 func Query(top *Node, expr string) (*Node, error) {
-	exp, err := xpath.Compile(expr)
+	exp, err := getQuery(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (x *NodeNavigator) NodeType() xpath.NodeType {
 	switch x.curr.Type {
 	case CommentNode:
 		return xpath.CommentNode
-	case TextNode:
+	case TextNode, CharDataNode:
 		return xpath.TextNode
 	case DeclarationNode, DocumentNode:
 		return xpath.RootNode
@@ -186,6 +187,10 @@ func (x *NodeNavigator) Prefix() string {
 		return ""
 	}
 	return x.curr.Prefix
+}
+
+func (x *NodeNavigator) NamespaceURL() string {
+	return x.curr.NamespaceURI
 }
 
 func (x *NodeNavigator) Value() string {
