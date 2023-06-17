@@ -1,28 +1,34 @@
 # RestShell
 
-NOTE: This repository is still getting structured and some key features are still being developed or refactor. Future changes may break current usage patterns until settled.
-
 ## Overview
 
-RestShell is a command line driven program to execute commands and tests against REST API's or other services. RestShell includes scripting and assertion facilities to implement repeatable and automated tests similar to unit testing frameworks. Restshell can support benchmarking and load testing. Finally, restshell is very extensible beyond scripting because developers can implement more complex API calls as simple commands.
+RestShell is a command line shell to execute REST or other API operations against services. RestShell is for those preferring command line interfaces over clicking through Web based programs like Postman. The shell features for maintaining state, extracting data from responses, and authentication contexts simplify the user experience over curl-like commands without shared state.
 
-### Purpose
+With support for scripting and golang command plugins, RestShell can provide business domain operation commands as well as perform functional, benchmark and load testing with included assertion facilities.
 
-RestShell was developed for developers comfortable with interactive command line and the need to script interactions with API services. The interactive shell enables the developer to perform ad-hoc queries in the same context has running scripts. Most operating systems provide shells which provide the ability to repeat commands from history and edit previous commands for retry. For many developers, the interactive shell is more efficient than building and compiling code or clicking in web pages to generate API requests.
-
-The simplicity of RestShell enables a customizable executable enable easy sharing of the tool and scripts between developers and non-technical persons.
+RestShell can provide unlimited use cases for building value quickly with API services before more complex applications are fully implemented.
 
 ### Extensibliity
 
-Developers can extend the command library with custom commands to simplify interacting with specific applications or environments. With custom commands complex REST APIs can be wrapped with simple one word commands and options.
+Developers can extend the command library with custom commands to simplify interacting with specific applications or environments. With custom commands complex REST APIs can be wrapped with simple one word commands and options and output responses in customized formats.
 
-Custom commands can also be shared as Golang packages and included in your own version of restshell.
+Custom commands can also be shared as Golang packages for reuse by the RestShell community.
 
 To create a custom restshell with third-party packages or your own commands consult <https://github.com/brada954/restshell-example>.
 
+### Use cases
+
+1. Build a command to import a CSV data file into a service via an API
+2. Build a command can request information via APIs and display a human readable summary or file export
+    1. Health of various services in a cluster or deploymnet
+    2. Collation of data representing a business entity like an Invoice, Reservation, or upcoming calandar events
+    3. Query data and merge the data with a document template
+3. While interacting with a domain service, the developer can easily call commands to modify data or configuration of any related service
+4. Orchestrate interactions across multiple independent services
+
 ## Build
 
-Assuming the go environment is setup correctly, get the code:
+Using Golang, get the code:
 
 ```bash
 go get github.com/brada954/restshell
