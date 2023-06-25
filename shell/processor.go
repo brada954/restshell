@@ -45,23 +45,16 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 	var prompt = defaultPrompt
 
 	scanner := bufio.NewScanner(reader)
-	if prompt != "" {
-		fmt.Print(prompt)
-	}
-	for !quit && scanner.Scan() {
+	for writePrompt(!quit, prompt); !quit && scanner.Scan(); writePrompt(!quit, prompt) {
 		line, err := NewCommandLine(scanner.Text(), shell)
 		if err != nil {
-			line, _ = NewCommandLine("ERROR", "")
+			LastError = 1
+			fmt.Fprintf(ErrorWriter(), "%s: %s\n", "Line Parse Error", err.Error())
+			continue
 		}
 
 		switch line.Command {
 		case "":
-		case "ERROR":
-			LastError = 1
-			if err == nil {
-				err = errors.New("invalid Command")
-			}
-			fmt.Fprintf(ErrorWriter(), "%s: %s\n", "Line Parse Error", err.Error())
 		case "QUIT":
 			fallthrough
 		case "Q":
@@ -113,9 +106,6 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 				}
 			}
 		}
-		if !quit && prompt != "" {
-			fmt.Printf(prompt)
-		}
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(ErrorWriter(), "Scanner error %s\n", err.Error())
@@ -130,6 +120,12 @@ func GetInitDirectory() string {
 
 func GetExeDirectory() string {
 	return ExecutableDirectory
+}
+
+func writePrompt(doPrompt bool, prompt string) {
+	if doPrompt && prompt != "" {
+		fmt.Print(prompt)
+	}
 }
 
 func InitializeShell() {
