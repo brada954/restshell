@@ -80,8 +80,7 @@ func (line *Line) GetCmdAndArguments() []string {
 	return append([]string{line.Command}, args...)
 }
 
-// splitCommandAndArgs() -- Regenerate the command and argument
-// strings of the line structure based on current CmdLine
+// splitCommandAndArgs -- Split CmdLine to Command and ArgString
 func (line *Line) splitCommandAndArgs() {
 	line.Command = ""
 	line.ArgString = ""
@@ -95,6 +94,7 @@ func (line *Line) splitCommandAndArgs() {
 	}
 }
 
+// handleSpecialCharacters -- Parse leading special characters
 func (line *Line) handleSpecialCharacters() {
 	for notDone := true; notDone; {
 		if strings.HasPrefix(line.CmdLine, "@") {
