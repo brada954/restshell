@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+var builtInCommands = []string{"HELP", "SHELL", "QUIT", "Q"}
+
 // Command - interface for basic command
 type Command interface {
 	Execute([]string) error
@@ -18,8 +20,11 @@ type Abortable interface {
 
 // Trackable - interface that overrides tracking mechanisms
 type Trackable interface {
+	// DoNotCount - prevents the executed command to be counted as a command executed
 	DoNotCount() bool
+	// DoNotClearError - prevents the command from affecting the LastError state of a previous command
 	DoNotClearError() bool
+	// CommandCount - returns the number of commands this command may have executed
 	CommandCount() int
 }
 

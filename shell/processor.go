@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"syscall"
@@ -16,13 +15,11 @@ import (
 )
 
 var LastError int = 0
-var InitDirectory string = ""
-var ExecutableDirectory string = ""
-var initialized = false
 
 // Default parameter line for commands
 var defaultParameters = "{CMD} [sub-command] [Command Options] [parameter]..."
 
+// ReadLine -- reads a line from standard in if it is a terminal
 func ReadLine() {
 	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
 		return
@@ -32,7 +29,8 @@ func ReadLine() {
 	scanner.Scan()
 }
 
-// CommandProcessor -- Initiate the command interpretter using the given reader and options
+// CommandProcessor -- Start the command interpretter using the given reader and options
+// and return the number of commands executed and whether it completed successfully
 func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, allowAbort bool) (int, bool) {
 	if !terminal.IsTerminal(int(os.Stdin.Fd())) {
 		defaultPrompt = ""
@@ -80,7 +78,6 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 				cmd, err, contStepping := processCommand(line, singleStep)
 				singleStep = contStepping
 				if IsFlowControl(err, FlowQuit) {
-					// Flow quit is considered success; but last error remains
 					quit = true
 				} else if err != nil {
 					LastError = 1
@@ -101,7 +98,7 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 					count++
 				}
 
-				if CommandRequestsQuit(cmd) {
+				if DoesCommandRequestQuit(cmd) {
 					quit = true
 				}
 			}
@@ -114,44 +111,13 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 	return count, true
 }
 
-func GetInitDirectory() string {
-	return InitDirectory
-}
-
-func GetExeDirectory() string {
-	return ExecutableDirectory
-}
-
 func writePrompt(doPrompt bool, prompt string) {
 	if doPrompt && prompt != "" {
 		fmt.Print(prompt)
 	}
 }
 
-func InitializeShell() {
-	if initialized == true {
-		return
-	}
-
-	initialized = true
-	curdir, err := os.Getwd()
-	if err == nil {
-		InitDirectory = curdir
-		if len(curdir) > 0 && strings.HasSuffix(curdir, "/") == false {
-			InitDirectory = InitDirectory + "/"
-		}
-	}
-
-	exPath := ""
-	{
-		ex, err := os.Executable()
-		if err == nil {
-			exPath = filepath.Dir(ex)
-		}
-	}
-	ExecutableDirectory = exPath
-}
-
+// processCommand - Identify command and process it in the context of built in debugger (singlestep)
 func processCommand(line *Line, singleStep bool) (Command, error, bool) {
 
 	if line.Echo || singleStep {
@@ -199,14 +165,16 @@ func getCmdAndArgs(line *Line) (cmd Command, tokens []string, err error) {
 	return
 }
 
+// doSingleStep - Unless a command exempt from single stepping prmopt for action
 func doSingleStep(cmd Command) string {
-	// Single step skips over commands like REM and other non-counting commands
-	if CommandRequestsNoStep(cmd) == false {
+	if DoesCommandRequestNoStep(cmd) {
+		return ""
+	} else {
 		return getStepCommand()
 	}
-	return ""
 }
 
+// parseAndExecute - Parse options and execute the command
 func parseAndExecute(cmd Command, command string, tokens []string) error {
 	// Strip out sub command before parsing; add it back with arguments
 	parseTokens := tokens
@@ -259,7 +227,7 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 		return errors.New("Failed to process command line")
 	}
 
-	// Setup interrupt handler
+	// Handle panics and interrupted commands
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, os.Interrupt)
 	var interrupted bool = false
@@ -276,7 +244,7 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 		}
 	}()
 
-	// Process command after setting up interrupt handler
+	// When interrupted (Ctrl-C) abort running command if supported
 	go func() {
 		for sig := range sigchan {
 			if sig == os.Interrupt {
@@ -288,12 +256,8 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 		}
 	}()
 
-	if CommandProcessesLine(cmd) == true {
-		// Line processors do not have standard argument processing
-		if c, ok := cmd.(LineProcessor); ok {
-			result = c.ExecuteLine(tokens[1], echoed)
-		}
-		return result
+	if c, ok := cmd.(LineProcessor); ok {
+		return c.ExecuteLine(tokens[1], echoed)
 	}
 	return parseAndExecute(cmd, command, tokens)
 }
@@ -391,7 +355,7 @@ func GetLine(prompt string) string {
 	return ""
 }
 
-// Return values for continue stepping and quit or not
+// getStepCommand - Prompt for stepping commands g, q, or empty
 func getStepCommand() string {
 	var stepCmd string
 	fmt.Print("Stopped> ")

@@ -52,7 +52,6 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 		return
 	}
 
-	// Process prefixes, Triming them one at a time
 	line.handleSpecialCharacters()
 
 	if len(shellPrefix) > 0 {
@@ -74,8 +73,13 @@ func NewCommandLine(input string, shellPrefix string) (line *Line, reterr error)
 	return
 }
 
-// GetCmdAndArguments -- get the tokens of the commmand line fully parsed
+// GetCmdAndArguments -- get the tokens of the commmand line fully parsed (obsolete)
 func (line *Line) GetCmdAndArguments() []string {
+	return line.GetTokens()
+}
+
+// GetTokens -- get the line tokens
+func (line *Line) GetTokens() []string {
 	args := LineParse(line.ArgString)
 	return append([]string{line.Command}, args...)
 }
