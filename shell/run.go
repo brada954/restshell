@@ -51,7 +51,7 @@ func (cmd *RunCommand) AddOptions(set CmdSet) {
 // If the error is not a file existence problem the file is returned.
 func ValidateScriptExists(file string) (string, error) {
 	if len(file) == 0 {
-		return "", errors.New("The file does not exist")
+		return "", errors.New("file does not exist")
 	}
 	_, err := os.Stat(file)
 	if os.IsNotExist(err) {
@@ -69,12 +69,12 @@ func ValidateScriptExists(file string) (string, error) {
 			if IsCmdDebugEnabled() {
 				fmt.Fprintf(ConsoleWriter(), "Unable to open file: %s\n", file)
 			}
-			return "", errors.New("The file does not exist")
+			return "", errors.New("file does not exist")
 		}
 	}
 
 	if err != nil {
-		return file, errors.New("Error accessing file")
+		return file, errors.New("error accessing file")
 	}
 	return file, nil
 }
@@ -182,14 +182,14 @@ func (cmd *RunCommand) Execute(args []string) error {
 	iterations := *cmd.iterationOption
 
 	if len(args) == 0 {
-		return errors.New("Need to specify at least one file to run")
+		return errors.New("specify at least one file to run")
 	}
 
 	if cmd.running > 3 {
-		return errors.New("Too many nested scripts script")
+		return errors.New("too many nested scripts script")
 	}
 
-	if verifyCondition(*cmd.ifCondition) == false {
+	if !isConditionMet(*cmd.ifCondition) {
 		fmt.Fprintf(OutputWriter(), "Run command aborting; missing required condition: %s.\n", *cmd.ifCondition)
 		return nil
 	}
@@ -270,7 +270,7 @@ func getDurationString(duration time.Duration) string {
 	}
 }
 
-func verifyCondition(variable string) bool {
+func isConditionMet(variable string) bool {
 	variable = strings.TrimSpace(variable)
 	if len(variable) <= 0 {
 		return true
@@ -283,10 +283,7 @@ func verifyCondition(variable string) bool {
 	if str, ok := value.(string); ok {
 		str = strings.TrimSpace(str)
 		if len(parts) > 1 {
-			if str == strings.TrimSpace(parts[1]) {
-				return true
-			}
-			return false
+			return str == strings.TrimSpace(parts[1])
 		} else {
 			if len(str) > 0 {
 				return true
@@ -313,7 +310,7 @@ func listfile(reader io.Reader, onlyHeader bool) {
 			command = strings.ToUpper(args[0])
 		}
 
-		if strings.HasPrefix(command, "REM") || onlyHeader == false {
+		if strings.HasPrefix(command, "REM") || !onlyHeader {
 			fmt.Fprintln(OutputWriter(), input)
 		} else {
 			quit = true

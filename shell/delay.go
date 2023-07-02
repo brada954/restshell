@@ -4,9 +4,7 @@ import (
 	"time"
 )
 
-// Basic delay function (not abortable)
+// Delay - Non-abortable delay function
 func Delay(value time.Duration) {
-	select {
-	case <-time.After(value):
-	}
+	<- time.After(value)
 }

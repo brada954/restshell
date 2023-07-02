@@ -32,7 +32,6 @@ var (
 // ResultContentType -- types of result data
 type ResultContentType string
 
-// Types of result data
 var (
 	ResultContentUnknown ResultContentType = "unknown"
 	ResultContentXml     ResultContentType = "xml"
@@ -200,9 +199,7 @@ func isHistoryOptionsRequested(t ResultPayloadType, list []ResultPayloadType) bo
 	return false
 }
 
-//
 // PushResponse -- Push a RestResponse into the history buffer
-//
 func PushResponse(resp *RestResponse, resperror error) error {
 	var result Result
 	{
@@ -225,9 +222,7 @@ func PushResponse(resp *RestResponse, resperror error) error {
 	return resperror
 }
 
-//
 // PushResponse -- Push a RestResponse into the history buffer
-//
 func PushText(contentType string, data string, resperror error) error {
 	var result Result
 	{
@@ -275,10 +270,8 @@ func PushResult(result Result) error {
 	return nil
 }
 
-//
 // PeekResult - Get a history result using an index. Index from the end of
 // the array which was the last item appended
-//
 func PeekResult(index int) (Result, error) {
 	if len(history) < 1+index {
 		return Result{}, ErrNoHistory

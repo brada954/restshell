@@ -40,7 +40,7 @@ func InitializeShell() {
 	curdir, err := os.Getwd()
 	if err == nil {
 		InitDirectory = curdir
-		if len(curdir) > 0 && strings.HasSuffix(curdir, "/") == false {
+		if len(curdir) > 0 && !strings.HasSuffix(curdir, "/") {
 			InitDirectory = InitDirectory + "/"
 		}
 	}

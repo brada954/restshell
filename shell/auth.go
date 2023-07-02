@@ -50,7 +50,7 @@ var authContexts map[string]Auth = map[string]Auth{
 func GetAuthContext(ctx string) (Auth, error) {
 	auth, ok := authContexts[ctx]
 	if !ok || auth == nil {
-		return nil, errors.New("Not Found")
+		return nil, errors.New("not Found")
 	}
 	return auth, nil
 }
@@ -170,7 +170,7 @@ func (a QueryParamAuth) ToString() string {
 
 func (a QueryParamAuth) GetKeyValue(key string) (string, bool) {
 	for _, nvp := range a.KeyPairs {
-		if strings.ToLower(nvp.Key) == strings.ToLower(key) {
+		if strings.EqualFold(nvp.Key, key) {
 			return nvp.Value, true
 		}
 	}

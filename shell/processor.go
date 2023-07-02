@@ -86,10 +86,10 @@ func CommandProcessor(defaultPrompt string, reader io.Reader, singleStep bool, a
 						quit = true
 					}
 				} else if track, trackable := cmd.(Trackable); cmd != nil && trackable {
-					if track.DoNotCount() == false {
+					if !track.DoNotCount() {
 						count++
 					}
-					if track.DoNotClearError() == false {
+					if !track.DoNotClearError() {
 						LastError = 0
 					}
 					count = count + track.CommandCount()
@@ -200,7 +200,7 @@ func parseAndExecute(cmd Command, command string, tokens []string) error {
 	if err != nil {
 		fmt.Fprintln(ErrorWriter(), err.Error())
 		set.Usage()
-		return errors.New("Invalid arguments")
+		return errors.New("invalid arguments")
 	}
 	if IsCmdHelpEnabled() {
 		set.Usage()
@@ -224,7 +224,7 @@ func processCmd(cmd Command, tokens []string, echoed bool) (result error) {
 	}
 
 	if cmd == nil || len(tokens) < 1 {
-		return errors.New("Failed to process command line")
+		return errors.New("failed to process command line")
 	}
 
 	// Handle panics and interrupted commands
@@ -305,7 +305,7 @@ func validateCmd(input string) error {
 	set.Reset()
 	err = CmdParse(set, tokens)
 	if err != nil {
-		return errors.New("Invalid arguments")
+		return errors.New("invalid arguments")
 	}
 	return nil
 }
