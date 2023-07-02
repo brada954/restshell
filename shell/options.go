@@ -487,9 +487,7 @@ func (o *StandardOptions) GetHeaderValues() []string {
 		}
 	}
 	if o.headerOption != nil {
-		for _, v := range o.headerOption.Values {
-			result = append(result, v)
-		}
+		result = append(result, (*o.headerOption).Values...)
 	}
 	return result
 }

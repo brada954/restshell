@@ -18,12 +18,12 @@ var aliasStore map[string]string = make(map[string]string, 0)
 func AddAlias(key string, command string, force bool) error {
 	key = strings.TrimSpace(strings.ToUpper(key))
 	if len(key) < 1 {
-		return errors.New("Invalid alias")
+		return errors.New("invalid alias")
 	}
 
 	if _, ok := aliasStore[key]; ok {
 		if !force {
-			return errors.New("Alias already exists")
+			return errors.New("alias already exists")
 		}
 	}
 
@@ -44,11 +44,11 @@ func AddAlias(key string, command string, force bool) error {
 func RemoveAlias(key string) error {
 	key = strings.TrimSpace(strings.ToUpper(key))
 	if len(key) == 0 {
-		return errors.New("Empty key")
+		return errors.New("empty key")
 	}
 
 	if _, ok := aliasStore[key]; !ok {
-		return errors.New("Key not found")
+		return errors.New("key not found")
 	}
 
 	delete(aliasStore, key)
@@ -59,11 +59,11 @@ func RemoveAlias(key string) error {
 func GetAlias(key string) (string, error) {
 	key = strings.TrimSpace(strings.ToUpper(key))
 	if len(key) == 0 {
-		return "", errors.New("Empty key")
+		return "", errors.New("empty key")
 	}
 
 	if value, ok := aliasStore[key]; !ok {
-		return "", errors.New("Key not found")
+		return "", errors.New("key not found")
 	} else {
 		return value, nil
 	}
@@ -72,7 +72,7 @@ func GetAlias(key string) (string, error) {
 // GetAllAliasKeys -- gets a list of keys from the library
 func GetAllAliasKeys() []string {
 	var list []string = make([]string, 0)
-	for key, _ := range aliasStore {
+	for key := range aliasStore {
 		list = append(list, key)
 	}
 	return SortedStringSlice(list)
@@ -87,11 +87,11 @@ func ExpandAlias(command string) (string, error) {
 
 	parts := strings.SplitN(command, " ", 2)
 	if len(parts[0]) <= 0 {
-		return "", errors.New("Unable to determine command to process")
+		return "", errors.New("unable to determine command to process")
 	}
 
 	if strings.Contains(parts[0], "\"") {
-		return "", errors.New("Command contains illegal characters (\",')")
+		return "", errors.New("command contains illegal characters (\",')")
 	}
 
 	if alias, err := GetAlias(parts[0]); err == nil {

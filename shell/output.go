@@ -31,16 +31,16 @@ func RestCompletionHandler(response *RestResponse, resperr error, shortDisplay S
 func JsonCompletionHandler(json string, resperr error, shortDisplay ShortDisplayFunc) error {
 	if resperr != nil {
 		PushError(resperr)
-		return fmt.Errorf("Json Error: %s", resperr.Error())
+		return fmt.Errorf("JSON Error: %s", resperr.Error())
 	}
 
 	PushText("application/json", json, resperr)
 
-	result, err := PeekResult(0)
-	if err != nil {
-		return errors.New("Error: Unable to get the result")
+	if result, err := PeekResult(0); err != nil {
+		return err
+	} else {
+		return OutputResult(result, shortDisplay)
 	}
-	return OutputResult(result, shortDisplay)
 }
 
 // MessageCompletionHandler -- Helper function to push plain text result and perform output processing

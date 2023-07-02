@@ -14,7 +14,6 @@ func (b *baseCommand) Execute(args []string) error {
 }
 
 func (b *baseCommand) AddOptions(set CmdSet) {
-	return
 }
 
 type subCommand struct {
@@ -64,7 +63,7 @@ func TestSubCommandInterface(t *testing.T) {
 func TestCmdInstance(t *testing.T) {
 	name := "BASE"
 
-	AddCommand(name, CategoryUtilities, &baseCommand{testInt: 111})
+	AddCommand(name, CategoryUtilities, &baseCommand{testInt: 111, testString: "test"})
 
 	if cmd, ok := cmdMap[name]; !ok {
 		t.Errorf("Falied to look up command on first pass")

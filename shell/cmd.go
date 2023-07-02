@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-var builtInCommands = []string{"HELP", "SHELL", "QUIT", "Q"}
-
 // Command - interface for basic command
 type Command interface {
 	Execute([]string) error
@@ -82,10 +80,9 @@ func AddCommand(name string, category string, cmd Command) {
 
 func ensureCategory(category string) {
 	category = strings.ToLower(category)
-	if keys, ok := cmdKeys[category]; !ok {
-		keys = make([]string, 0)
+	if _, ok := cmdKeys[category]; !ok {
 		cmdCategories = append(cmdCategories, category)
-		cmdKeys[category] = keys
+		cmdKeys[category] = make([]string, 0)
 	}
 }
 

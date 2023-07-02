@@ -24,7 +24,7 @@ func SortedStringSlice(commands []string) []string {
 // SortedMapKeys -- Sort a list of keys for a map
 func SortedMapKeys(mapData map[string]interface{}) []string {
 	var sorted []string = make([]string, 0, len(mapData))
-	for k, _ := range mapData {
+	for k := range mapData {
 		var index = 0
 		for ; index < len(sorted); index++ {
 			if strings.Compare(k, sorted[index]) < 0 {

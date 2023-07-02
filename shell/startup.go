@@ -16,7 +16,7 @@ var (
 	DefaultInitFileExt   = ".user"
 	DefaultScriptFileExt = ".rshell"
 	ProgramName          = "RestShell"
-	ProgramArgs          = make([]string, 0, 0)
+	ProgramArgs          = make([]string, 0)
 )
 
 // StartupOptions -- configuration available to the shell
@@ -39,11 +39,10 @@ func GetDefaultStartupOptions() StartupOptions {
 	}
 }
 
-// RunShell -- process command line and init scripts
-// and run command processor
+// RunShell -- process command line and init scripts and run command processor
 func RunShell(options StartupOptions) (exitCode int) {
 	exitCode = 1
-	if options.AbortOnExceptions == false {
+	if !options.AbortOnExceptions {
 		defer func() {
 			if r := recover(); r == nil {
 				return // Pass-thru existing error code
