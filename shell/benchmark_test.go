@@ -13,7 +13,7 @@ func TestBenchMarkIterations3(t *testing.T) {
 	var expectedVal float64
 
 	bm := NewBenchmark(3)
-	for k, _ := range bm.Iterations {
+	for k := range bm.Iterations {
 		jc := bm.StartIteration(k)
 		jc.EndIteration(nil)
 		bm.FinalizeIteration(jc)
@@ -49,7 +49,7 @@ func TestBenchMarkDump(t *testing.T) {
 	defer mockSinceCleanup(mockSince(testdata))
 
 	bm := NewBenchmark(len(testdata))
-	for k, _ := range bm.Iterations {
+	for k := range bm.Iterations {
 		jc := bm.StartIteration(k)
 		jc.EndIteration(nil)
 		if k == 2 {

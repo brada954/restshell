@@ -3,7 +3,6 @@ package shell
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -25,7 +24,7 @@ func GetFileContentsOfType(file string, extension string) (string, error) {
 }
 
 func GetFileContents(filename string) (string, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +32,7 @@ func GetFileContents(filename string) (string, error) {
 }
 
 func GetBinaryFileContents(filename string) ([]byte, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return make([]byte, 0), err
 	}
@@ -45,7 +44,7 @@ func GetBinaryFileContents(filename string) ([]byte, error) {
 // Note: extension must be all lower case
 func GetValidatedFileName(file string, extension string) (string, error) {
 	if len(file) == 0 {
-		return "", errors.New("The file was not specified")
+		return "", errors.New("file was not specified")
 	}
 
 	if len(extension) > 0 && !strings.HasPrefix(extension, ".") {
@@ -68,12 +67,12 @@ func GetValidatedFileName(file string, extension string) (string, error) {
 			if IsCmdDebugEnabled() {
 				fmt.Fprintf(ConsoleWriter(), "Unable to open file: %s\n", file)
 			}
-			return "", errors.New("The file does not exist")
+			return "", errors.New("file does not exist")
 		}
 	}
 
 	if err != nil {
-		return file, errors.New("Error accessing file")
+		return file, errors.New("error accessing file")
 	}
 	return file, nil
 }
@@ -95,7 +94,7 @@ func OpenFileForOutput(name string, truncate bool, append bool, newfile bool) (*
 					}
 				}
 			}
-			return nil, errors.New("File exists; use --append or --truncate to use the file")
+			return nil, errors.New("file exists; use --append or --truncate to use the file")
 		}
 		flags := os.O_APPEND | os.O_WRONLY
 		if truncate {
