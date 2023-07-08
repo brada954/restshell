@@ -31,30 +31,24 @@ func (b *subCommand) GetSubCommands() []string {
 	return result
 }
 
-func TestSubCommandDefinition(t *testing.T) {
-	var subCmdType CommandWithSubcommands
+func TestSubCommandInterfaceExtractedFromCommand(t *testing.T) {
+	var cmd Command = &subCommand{}
 
-	subCmdType = &subCommand{}
-	_ = subCmdType.GetSubCommands()
-}
-
-func TestBaseCommandInterface(t *testing.T) {
-	b := &baseCommand{}
-	var cmd Command
-	cmd = b
-	if _, ok := cmd.(CommandWithSubcommands); ok {
-		t.Errorf("baseCommand reported sub-commands in alternate mechanism")
+	if subCmd, ok := cmd.(CommandWithSubcommands); ok {
+		list := subCmd.GetSubCommands()
+		if list == nil || len(list) != 0 {
+			t.Errorf("sub command was expected to have zero length list of sub-commands")
+		}
+	} else {
+		t.Errorf("command was expected to convert to CommandWithSubcommands but it did not")
 	}
 }
 
-func TestSubCommandInterface(t *testing.T) {
-	s := &subCommand{}
-	var cmd Command
-	cmd = s
-	if sc, ok := cmd.(CommandWithSubcommands); !ok {
-		t.Errorf("subCommand did not have sub-commands in alternate mechanism")
-	} else {
-		_ = sc.GetSubCommands()
+func TestBaseCommandInterfaceFailsTypeConvertionToCommandWithSubcommansd(t *testing.T) {
+	var cmd Command = &baseCommand{}
+
+	if _, ok := cmd.(CommandWithSubcommands); ok {
+		t.Errorf("baseCommand was expected to not have sub-commands")
 	}
 }
 

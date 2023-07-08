@@ -210,7 +210,7 @@ func makeJobWithThrottle(makejob JobMaker, throttleMs int) (processor JobFunctio
 	defer func() {
 		// Absorb panics from make job
 		if r := recover(); r != nil {
-			err = fmt.Errorf("Make Job Panic'ed: %v", r)
+			err = fmt.Errorf("makeJobWithThrottle panic: %v", r)
 			processor = nil
 		}
 	}()
@@ -223,7 +223,7 @@ func makeJobWithThrottle(makejob JobMaker, throttleMs int) (processor JobFunctio
 			messages <- true
 		}()
 		processor = makejob()
-		_ = <-messages
+		<-messages
 	} else {
 		processor = makejob()
 	}
@@ -234,7 +234,7 @@ func callJobWithPanicHandler(processor JobFunction) (resp *RestResponse, err err
 	defer func() {
 		// Absorb panics from make job
 		if r := recover(); r != nil {
-			err = fmt.Errorf("Job Panic'ed: %v", r)
+			err = fmt.Errorf("job panic: %v", r)
 			resp = nil
 		}
 	}()

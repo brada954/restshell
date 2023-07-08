@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////
 // Manage global data, options, and common access functions
 //
 // globalStore -- map of global variables and data structures
@@ -11,13 +11,14 @@
 // Variable naming has some best practices to help segragate variables.
 // Most best practices use a prefix in the variable name to signify
 // specific use cases or variable types. For example:
-//   "_" prefix for containing default information or immutable
-//       behavior (though immutable behavior is not enforced)
-//   "$" prefix indicates a variable may be considered temporary. There
-//       are commands to delete all variables starting with $.
-//   "#" prefix for non-string variables (e.g. BSON document)
 //
-//////////////////////////////////////////////////////////////////////
+//	"_" prefix for containing default information or immutable
+//	    behavior (though immutable behavior is not enforced)
+//	"$" prefix indicates a variable may be considered temporary. There
+//	    are commands to delete all variables starting with $.
+//	"#" prefix for non-string variables (e.g. BSON document)
+//
+// ////////////////////////////////////////////////////////////////////
 package shell
 
 import (
@@ -126,7 +127,7 @@ func EnumerateGlobals(fn func(key string, value interface{}), filter func(string
 	var otherKeys []string
 
 	// Build list of keys to be sorted
-	for k, _ := range globalStore {
+	for k := range globalStore {
 		if strings.HasPrefix(k, "_") {
 			_keys = append(_keys, k)
 		} else if strings.Contains(supportedPrefixKeys, k[:1]) {
@@ -162,10 +163,7 @@ func IsValidKey(key string) bool {
 
 	var expr = fmt.Sprintf(`^[%s]?[a-zA-Z0-9$_]+$`, supportedPrefixKeys)
 	var isValidKey = regexp.MustCompile(expr).MatchString
-	if !isValidKey(key) {
-		return false
-	}
-	return true
+	return isValidKey(key)
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -240,7 +238,7 @@ func ConsoleWriter() io.Writer {
 
 func SetOutput(o io.Writer) error {
 	if savedOutput != nil {
-		return errors.New("Already redirected")
+		return errors.New("output already redirected")
 	}
 	savedOutput = currentOutput
 	savedError = currentError
@@ -258,5 +256,5 @@ func ResetOutput() (io.Writer, error) {
 		savedError = nil
 		return ret, nil
 	}
-	return nil, errors.New("Already reset output stream")
+	return nil, errors.New("output stream already reset")
 }

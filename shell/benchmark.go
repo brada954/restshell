@@ -41,7 +41,7 @@ type BenchmarkIteration struct {
 func NewBenchmark(iterations int) *Benchmark {
 	result := Benchmark{
 		summarized: false,
-		Iterations: make([]BenchmarkIteration, iterations, iterations),
+		Iterations: make([]BenchmarkIteration, iterations),
 		StartTime:  time.Now(),
 	}
 	for i := range result.Iterations {
@@ -131,7 +131,7 @@ func (bm *Benchmark) StartIteration(i int) JobContext {
 func (bm *Benchmark) FinalizeIteration(jc JobContext) {
 	if iteration, ok := jc.(*BenchmarkIteration); ok {
 		if iteration.WallTime == 0 {
-			iteration.EndIteration(errors.New("Iteration was not ended before finalize"))
+			iteration.EndIteration(errors.New("iteration was not complete before finalize"))
 		}
 	}
 }
