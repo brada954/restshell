@@ -234,10 +234,3 @@ func TestDisplayOptionFromVerboseAndDebugEnabled(t *testing.T) {
 		}
 	}
 }
-
-func outputStrings(lines []string) {
-	for _, s := range lines {
-		fmt.Printf("Line: (%s)\n", s)
-	}
-	fmt.Println("")
-}

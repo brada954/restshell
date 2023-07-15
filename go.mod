@@ -9,6 +9,7 @@ require (
 	github.com/satori/go.uuid v1.2.1-0.20180103174451-36e9d2ebbde5
 	github.com/subchen/go-xmldom v1.1.2-0.20180301141929-e1029cd9087c
 	golang.org/x/crypto v0.1.0
+	golang.org/x/text v0.11.0
 )
 
 require (
@@ -18,6 +19,5 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

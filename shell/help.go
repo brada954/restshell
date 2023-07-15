@@ -2,9 +2,10 @@ package shell
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pborman/getopt/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func DisplayHelp() {
@@ -27,7 +28,7 @@ For more information consult the repository README.md file
 
 	fmt.Fprintf(ConsoleWriter(), text, programName)
 	for _, category := range cmdCategories {
-		fmt.Fprintf(ConsoleWriter(), "\n%s commands:\n", strings.Title(category))
+		fmt.Fprintf(ConsoleWriter(), "\n%s commands:\n", makeTitle(category))
 		for _, cmd := range ColumnizeTokens(cmdKeys[category], 5, 12) {
 			fmt.Fprintf(ConsoleWriter(), "  %s\n", cmd)
 		}
@@ -48,4 +49,10 @@ $  Skip variable substitution on the command line
 func DisplayCmdHelp(set *getopt.Set, cmd string) {
 	fmt.Fprintf(ConsoleWriter(), "Command Help")
 	set.PrintUsage(ConsoleWriter())
+}
+
+func makeTitle(str string) string {
+	return cases.
+		Title(language.AmericanEnglish).
+		String(str)
 }

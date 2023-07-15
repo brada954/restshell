@@ -136,7 +136,7 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		errMsg := "Response Error: " + err.Error()
+		errMsg := "response returned error, " + err.Error()
 		if r.Debug {
 			fmt.Fprintln(OutputWriter(), errMsg)
 		}
@@ -146,7 +146,7 @@ func (r *RestClient) DoMethod(method string, authContext Auth, url string) (resu
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.New("Reading Response: " + err.Error())
+		return nil, errors.New("unable to get content, " + err.Error())
 	}
 
 	result := &RestResponse{string(body), resp}
@@ -158,7 +158,7 @@ func (r *RestClient) DoWithJsonMarshal(method string, authContext Auth, url stri
 	if error == nil {
 		return r.DoWithJson(method, authContext, url, string(body))
 	}
-	return nil, errors.New("Bad Request")
+	return nil, errors.New("bad Request")
 }
 
 func (r *RestClient) DoWithJson(method string, authContext Auth, url string, data string) (resultResponse *RestResponse, resultError error) {
@@ -191,7 +191,7 @@ func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url strin
 
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
-		return nil, errors.New("Building request: " + err.Error())
+		return nil, errors.New("failed to create new request, " + err.Error())
 	}
 	if authContext != nil {
 		authContext.AddAuth(req)
@@ -212,7 +212,7 @@ func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url strin
 
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		errMsg := "Response Error: " + err.Error()
+		errMsg := "response returned error, " + err.Error()
 		if r.Debug {
 			fmt.Fprintln(OutputWriter(), errMsg)
 		}
@@ -222,7 +222,7 @@ func (r *RestClient) DoMethodWithBody(method string, authContext Auth, url strin
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.New("Reading Response: " + err.Error())
+		return nil, errors.New("unable to get content, " + err.Error())
 	}
 
 	result := &RestResponse{string(body), resp}
@@ -312,13 +312,13 @@ func FormBodyValidate(debug bool, body string) {
 }
 
 // PerformHealthCheck - Valiate a default /health endpoint
-// TODO: Evaluate moving this to specialized commands; it is not generic enough to be heres
+// TODO: Evaluate moving this to specialized commands; it is not generic enough to be here
 func PerformHealthCheck(client RestClient, url string) error {
 	url = url + "/health"
 
 	resp, err := client.DoGet(nil, url)
 	if err != nil || resp.GetStatus() != http.StatusOK {
-		return errors.New("Failed Health Check")
+		return errors.New("failed health check")
 	}
 	fmt.Fprintln(OutputWriter(), "Healthy")
 	return nil
