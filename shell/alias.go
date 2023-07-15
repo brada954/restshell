@@ -6,12 +6,6 @@ import (
 	"strings"
 )
 
-type alias struct {
-	key      string
-	line     string
-	isJoined bool
-}
-
 var aliasStore map[string]string = make(map[string]string, 0)
 
 // AddAlias - Add an aliased command to the library

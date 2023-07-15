@@ -328,11 +328,11 @@ func ContainsCommand(cmd string, tokens []string) bool {
 
 func GetPassword(prompt string) string {
 	if len(prompt) > 0 {
-		fmt.Fprintf(os.Stdout, prompt)
+		fmt.Fprint(os.Stdout, prompt)
 	}
 
 	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Fprintf(os.Stdout, "\n")
+	fmt.Fprint(os.Stdout, "\n")
 	if err != nil {
 		return ""
 	}
@@ -342,7 +342,7 @@ func GetPassword(prompt string) string {
 
 func GetLine(prompt string) string {
 	if len(prompt) > 0 {
-		fmt.Fprintf(os.Stdout, prompt)
+		fmt.Fprint(os.Stdout, prompt)
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
