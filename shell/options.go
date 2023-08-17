@@ -557,8 +557,12 @@ func (o *StandardOptions) GetCmdIterationValueWithFallback(d int) int {
 // GetCmdDurationValueWithFallback -- Get the duration parameter use default if not set
 func (o *StandardOptions) GetCmdDurationValueWithFallback(d time.Duration) time.Duration {
 	if o.durationOption != nil {
-		if dur, err := ParseDuration(*o.durationOption); err != nil {
+		if dur, err := ParseDuration(*o.durationOption); err == nil {
 			return dur
+		} else {
+			if IsCmdDebugEnabled() {
+				fmt.Fprintf(ConsoleWriter(), "Using default duration because: %s\n", err.Error())
+			}
 		}
 	}
 	return d
