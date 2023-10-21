@@ -67,16 +67,21 @@ func (r *Result) DumpHeader(w io.Writer) {
 }
 
 func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
+	verbose := IsCmdVerboseEnabled()
+
 	if IsStatus(options) && !IsHeaders(options) {
 		fmt.Fprintf(w, "HEADER: Status(%s)\n", r.HttpStatusString)
+		verbose = true
 	}
 
 	if IsHeaders(options) {
 		r.DumpHeader(w)
+		verbose = true
 	}
 
 	if IsCookies(options) {
 		r.DumpCookies(w)
+		verbose = true
 	}
 
 	if IsBody(options) {
@@ -102,11 +107,7 @@ func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
 					}
 				}
 			}
-			if strings.HasSuffix(line, "\n") {
-				fmt.Fprintf(w, "Response:\n%s", line)
-			} else {
-				fmt.Fprintf(w, "Response:\n%s\n", line)
-			}
+			fmt.Fprint(w, generateResponseLine(line, verbose))
 		}
 	}
 }
@@ -187,7 +188,8 @@ func (r *Result) addParsedContentToResult(contentType string, data string) {
 }
 
 // getResultTypeFromResponse -- Get the result type
-//   xml, json, text, html, css, csv, media, unknown
+//
+//	xml, json, text, html, css, csv, media, unknown
 func getResultTypeFromContentType(contentType string) ResultContentType {
 	// Split off parameters
 	parts := strings.Split(contentType, ";")
@@ -215,4 +217,17 @@ func getResultTypeFromContentType(contentType string) ResultContentType {
 	}
 
 	return ResultContentUnknown
+}
+
+func generateResponseLine(line string, verbose bool) string {
+	responseLabel := ""
+	if verbose {
+		responseLabel = "Response:\n"
+	}
+
+	endOfLine := ""
+	if !strings.HasSuffix(line, "\n") {
+		endOfLine = "\n"
+	}
+	return fmt.Sprintf("%s%s%s", responseLabel, line, endOfLine)
 }

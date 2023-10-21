@@ -56,7 +56,6 @@ After invoking RestShell, a command can be entered with any required or optional
 
 ```bash
 >> get --url http://api.ipify.org/?format=json  
-Response:
 {"ip":"123.123.123.123"}
 >> assert ISSTR ip  
 >> assert NOSTR ip  
