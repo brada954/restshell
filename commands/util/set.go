@@ -21,6 +21,7 @@ type SetCommand struct {
 	valueIsEnvVar    *bool
 	allowEmpty       *bool
 	deleteTempOption *bool
+	configOption     *bool
 	modifierOptions  modifiers.ModifierOptions
 	historyOptions   shell.HistoryOptions
 }
@@ -42,6 +43,7 @@ func (cmd *SetCommand) AddOptions(set shell.CmdSet) {
 	cmd.valueIsFile = set.BoolLong("file", 0, "Use the value as a file name to read for value")
 	cmd.allowEmpty = set.BoolLong("empty", 0, "Allow an empty string for value")
 	cmd.deleteTempOption = set.BoolLong("clear-tmp", 0, "Remove all variables starting with $")
+	cmd.configOption = set.BoolLong("config", 0, "List configuration values starting with .")
 	_ = set.BoolLong("direct", 0, "Use direct value instead of redirecting to variable or file or history")
 	cmd.modifierOptions = modifiers.AddModifierOptions(set)
 	cmd.historyOptions = shell.AddHistoryOptions(set, shell.AllPaths)
@@ -65,7 +67,11 @@ func (cmd *SetCommand) Execute(args []string) error {
 		if len(args) >= 1 {
 			fn = MakeVariableFilter(args...)
 		}
-		DisplayGlobals(fn)
+		if *cmd.configOption {
+			DisplayConfiguration(fn)
+		} else {
+			DisplayGlobals(fn)
+		}
 		return nil
 	}
 
@@ -215,8 +221,6 @@ func processArg(cmd *SetCommand, arg string) {
 			value, exitError = shell.ConvertNodeValueToString(v)
 		}
 	}
-
-	return
 }
 
 func parseArg(arg string) []string {
@@ -232,7 +236,12 @@ func parseArg(arg string) []string {
 
 func DisplayGlobals(filter func(string, interface{}) bool) {
 	fmt.Fprintln(shell.ConsoleWriter(), "Global values:")
-	shell.EnumerateGlobals(displayEntry, filter)
+	shell.EnumerateGlobals(variableDisplayEntry, filter)
+}
+
+func DisplayConfiguration(filter func(string, interface{}) bool) {
+	fmt.Fprintln(shell.ConsoleWriter(), "Configuration:")
+	shell.EnumerateGlobals(configDisplayEntry, filter)
 }
 
 func MakeVariableFilter(filterArgs ...string) func(string, interface{}) bool {
@@ -263,6 +272,19 @@ func displayEntry(k string, v interface{}) {
 	default:
 		fmt.Fprintf(shell.ConsoleWriter(), "%s={unsupported type}\n", k)
 	}
+}
+
+func configDisplayEntry(k string, v interface{}) {
+	if strings.HasPrefix(k, ".") {
+		displayEntry(k, v)
+	}
+}
+
+func variableDisplayEntry(k string, v interface{}) {
+	if strings.HasPrefix(k, ".") || strings.HasPrefix(k, "#") {
+		return
+	}
+	displayEntry(k, v)
 }
 
 func deleteTemporary() {

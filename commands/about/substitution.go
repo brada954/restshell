@@ -118,7 +118,7 @@ func substitutionFunctionHelp(o io.Writer, funcName string) error {
 func substitutionFunctionHelpList(o io.Writer) {
 	arr := shell.SortedSubstitutionFunctionList(true)
 	for _, v := range arr {
-		fmt.Fprintf(o, "%s: %s\n", strings.ToUpper(v.Name), v.FunctionHelp)
+		fmt.Fprintf(o, "%s: %s\n", v.Name, v.FunctionHelp)
 	}
 }
 
