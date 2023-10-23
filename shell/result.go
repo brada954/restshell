@@ -100,7 +100,7 @@ func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
 				case "json":
 					{
 						var prettyJSON bytes.Buffer
-						err := json.Indent(&prettyJSON, []byte(line), "", "\t")
+						err := json.Indent(&prettyJSON, []byte(line), "", getJsonPrintIndent())
 						if err == nil {
 							line = prettyJSON.String()
 						}
@@ -230,4 +230,15 @@ func generateResponseLine(line string, verbose bool) string {
 		endOfLine = "\n"
 	}
 	return fmt.Sprintf("%s%s%s", responseLabel, line, endOfLine)
+}
+
+func getJsonPrintIndent() string {
+	switch GetGlobalStringWithFallback(".config.restshell.json.indent", "tabs") {
+	case "spaces":
+		return "    "
+	case "tabs":
+		fallthrough
+	default:
+		return "\t"
+	}
 }

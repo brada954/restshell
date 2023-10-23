@@ -16,6 +16,7 @@
 //	    behavior (though immutable behavior is not enforced)
 //	"$" prefix indicates a variable may be considered temporary. There
 //	    are commands to delete all variables starting with $.
+//	"." prefix indicates a variable may be considered configuration
 //	"#" prefix for non-string variables (e.g. BSON document)
 //
 // ////////////////////////////////////////////////////////////////////
@@ -44,7 +45,7 @@ var (
 var globalStore map[string]interface{} = make(map[string]interface{}, 0)
 
 // Known characters used to prefix variable names
-var supportedPrefixKeys = "$_#"
+var supportedPrefixKeys = "$_#."
 
 func initGlobalStore() {
 	globalStore = make(map[string]interface{}, 0)
@@ -161,7 +162,7 @@ func RemoveGlobal(key string) {
 
 func IsValidKey(key string) bool {
 
-	var expr = fmt.Sprintf(`^[%s]?[a-zA-Z0-9$_]+$`, supportedPrefixKeys)
+	var expr = fmt.Sprintf(`^[%s]?[a-zA-Z0-9$_][a-zA-Z0-9$_\.]*$`, supportedPrefixKeys)
 	var isValidKey = regexp.MustCompile(expr).MatchString
 	return isValidKey(key)
 }

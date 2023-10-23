@@ -195,6 +195,8 @@ By convention, variables starting with "_" should be considered reference variab
 
 By convention, variables starting with "$" are considered temporary and can be cleared in bulk (see "set --clear-tmp").
 
+By convention, variables starting with "." are considered configuration variables and expect a name space structure starting with .config (e.g. ".config.{module}.{component_or_command}.setting").
+
 ### BASE Command
 
 Making REST calls can be made easier by using the BASE command:
