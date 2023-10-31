@@ -24,7 +24,6 @@ type Benchmark struct {
 	highTimeIndex     int
 	lowTimeIndex      int
 	standardDeviation float64
-	custom            interface{}
 }
 
 // BenchmarkIteration -- Iteration structure implementing JobContext

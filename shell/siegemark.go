@@ -30,7 +30,7 @@ type Siegemark struct {
 	StartTime         time.Time
 	Duration          time.Duration
 	BucketDuration    time.Duration
-	LateStarts        int
+	LateFinishes      int
 	Note              string
 	message           string
 	summarized        bool
@@ -45,7 +45,6 @@ type Siegemark struct {
 	failuresPerSecond float64
 	mux               sync.Mutex // Protects counters like LateStarts
 	Buckets           []SiegeBucket
-	custom            interface{}
 }
 
 // SiegemarkIteration -- track a single rest call
@@ -102,25 +101,30 @@ func (sm *Siegemark) End() {
 // FinalizeIteration -- Fold iteration data into aggregated bucket data
 func (sm *Siegemark) FinalizeIteration(jc JobContext) {
 	if si, ok := jc.(*SiegemarkIteration); ok {
-		bucket := sm.getBucket(si.EndTime)
-		if bucket == nil {
-			// We do not count jobs starting late
-			sm.mux.Lock()
-			sm.LateStarts++
-			sm.mux.Unlock()
-		} else {
-			dur := si.EndTime.Sub(si.StartTime)
-			bucket.mux.Lock()
-			bucket.StartedJobs++
-			bucket.TotalDuration += dur
-			if si.Error != nil {
-				bucket.FailedJobs++
-				bucket.FailedDurations += dur
+		startBucket := sm.getBucket(si.StartTime)
+		if startBucket != nil {
+			startBucket.mux.Lock()
+			startBucket.StartedJobs++
+			startBucket.mux.Unlock()
+
+			endBucket := sm.getBucket(si.EndTime)
+			if endBucket == nil {
+				sm.mux.Lock()
+				sm.LateFinishes++
+				sm.mux.Unlock()
 			} else {
-				bucket.SuccessfulJobs++
-				bucket.SuccessDurations += dur
+				dur := si.EndTime.Sub(si.StartTime)
+				endBucket.mux.Lock()
+				endBucket.TotalDuration += dur
+				if si.Error != nil {
+					endBucket.FailedJobs++
+					endBucket.FailedDurations += dur
+				} else {
+					endBucket.SuccessfulJobs++
+					endBucket.SuccessDurations += dur
+				}
+				endBucket.mux.Unlock()
 			}
-			bucket.mux.Unlock()
 		}
 	}
 }
@@ -207,7 +211,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			var headingFmt = "%-16[1]s  %8[2]s  %8[3]s  %8[4]s  %12[5]s %12[6]s  %8[7]s  %12[8]s %[9]s %[10]s\n"
 			fmt.Fprintf(OutputWriter(),
 				headingFmt,
-				"Label", "Count", "Success", "Error", "Avg Req", "Req/Sec", "Err/Sec", "Duration(S)", "Message", note)
+				"Label", "Count", "Success", "Error", "Avg Req", "Req/sec", "Err/sec", "Duration(s)", "Message", note)
 		}
 	}
 
@@ -222,7 +226,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			sm.avgRequest,
 			sm.requestsPerSecond,
 			sm.failuresPerSecond,
-			sm.LateStarts,
+			sm.LateFinishes,
 			sm.message)
 	} else if opts.IsCsvOutputEnabled() {
 		var displayFmt = "%s,%d,%d,%d,%f,%f,%f,%d,%s\n"
@@ -235,7 +239,7 @@ func (sm *Siegemark) Dump(label string, opts StandardOptions, showIterations boo
 			sm.avgRequest,
 			sm.requestsPerSecond,
 			sm.failuresPerSecond,
-			sm.LateStarts,
+			sm.LateFinishes,
 			sm.message,
 		)
 	} else {
@@ -283,8 +287,9 @@ func (sm *Siegemark) DumpIterations(opts StandardOptions) {
 
 func (sb *SiegeBucket) dumpLine(opts StandardOptions, format string) {
 	avgReq := 0.0
-	if sb.StartedJobs > 0 {
-		avgReq = sb.TotalDuration.Seconds() / float64(sb.StartedJobs)
+	completedJobs := sb.SuccessfulJobs + sb.FailedJobs
+	if completedJobs > 0 {
+		avgReq = sb.TotalDuration.Seconds() / float64(completedJobs)
 	}
 	fmt.Fprintf(OutputWriter(), format, sb.Label, sb.StartedJobs, sb.SuccessfulJobs, sb.FailedJobs, avgReq, "")
 }
