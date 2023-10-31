@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////
-//  Package for running jobs that make REST requests
+// Package for running jobs that make REST requests
 //
 // Note: With concurrecy the RestClient will open new TCP/IP connections for
 // each worker in a concurrecy set. This leads to many requests having
@@ -19,8 +19,6 @@ package shell
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -63,6 +61,92 @@ type JobOptions struct {
 	JobMaker          JobMaker
 	CompletionHandler JobCompletion
 	CancelPtr         *bool
+	Logger            Logger
+}
+
+type JobProcessor struct {
+	maker             JobMaker
+	monitor           JobMonitor
+	throttle          int
+	logger            Logger
+	completionHandler JobCompletion
+}
+
+func NewJobProcessor(logger Logger, maker JobMaker, monitor JobMonitor, completion JobCompletion, throttleMs int) JobProcessor {
+	if logger == nil {
+		logger = NewLogger(false, false)
+	}
+	return JobProcessor{
+		maker:             maker,
+		monitor:           monitor,
+		throttle:          throttleMs,
+		logger:            logger,
+		completionHandler: completion,
+	}
+}
+
+func (jp JobProcessor) RunProcessor(iterations int, concurrency int, duration time.Duration, cancelPtr *bool) {
+	var waitGroup sync.WaitGroup
+	var endTime time.Time
+	logger := jp.logger
+	jobs := make(chan int, concurrency*2)
+	closeJobs := true
+	defer func() {
+		if closeJobs {
+			close(jobs)
+			closeJobs = false
+		}
+	}()
+
+	// Setup workers for consuming jobs
+	for t := 0; t < concurrency; t++ {
+		waitGroup.Add(1) // Add a waiter
+		go func() {
+			defer waitGroup.Done() // Subtract a waiter
+			worker := NewWorker(jp.logger, jp.maker, jp.monitor, jp.completionHandler, jp.throttle, cancelPtr)
+			worker.Process(jobs, &endTime, cancelPtr)
+		}()
+	}
+
+	// Run the jobs ; stop after all iterations or end of time whichever comes first
+	logger.LogDebug("Initializing monitor")
+	jp.startMonitor()
+	if duration == 0 {
+		endTime = time.Now().Add(time.Hour * 72)
+	} else {
+		endTime = time.Now().Add(duration)
+	}
+	logger.LogDebug("Starting jobs")
+	for i := 0; (iterations == 0 || i < iterations) && (duration == 0 || time.Now().Before(endTime)); i++ {
+		if cancelPtr != nil && *cancelPtr {
+			break
+		}
+		jobs <- i
+	}
+	logger.LogDebug("Finished job loop")
+
+	// Close job channel so workers exit when empty
+	if closeJobs {
+		close(jobs)
+		closeJobs = false
+	}
+
+	// Wait for all job threads to exit
+	waitGroup.Wait()
+	jp.endMonitor()
+	logger.LogDebug("Finished waiting for jobs to complete")
+}
+
+func (jp JobProcessor) startMonitor() {
+	if jp.monitor != nil {
+		jp.monitor.Start()
+	}
+}
+
+func (jp JobProcessor) endMonitor() {
+	if jp.monitor != nil {
+		jp.monitor.End()
+	}
 }
 
 // GetJobOptionsFromParams -- initializes options from common command line options
@@ -73,11 +157,13 @@ func GetJobOptionsFromParams() JobOptions {
 		Duration:      GetCmdDurationValueWithFallback(0),
 		ThrottleInMs:  GetCmdIterationThrottleMs(),
 		EnableWarming: IsCmdWarmingEnabled(),
+		Logger:        NewLogger(IsCmdVerboseEnabled(), IsCmdDebugEnabled()),
 	}
 }
 
 // ProcessJob -- Run the jobs based on provided options
 func ProcessJob(options JobOptions, jm JobMonitor) {
+	logger := options.Logger
 	if options.Iterations <= 0 && options.Duration <= 0 {
 		return
 	}
@@ -91,106 +177,13 @@ func ProcessJob(options JobOptions, jm JobMonitor) {
 		concurrency = 1
 	}
 
-	warming := 0
 	if options.EnableWarming {
-		warming = concurrency
+		warmer := NewJobProcessor(logger, options.JobMaker, nil, nil, 0)
+		warmer.RunProcessor(concurrency, concurrency, 0, nil)
 	}
 
-	// Wait group to single the completion of a job thread
-	var waitGroup sync.WaitGroup
-
-	// Create a channel to control jobs
-	jobs := make(chan int, concurrency*2)
-	closeJobs := true
-	defer func() {
-		if closeJobs {
-			close(jobs)
-			closeJobs = false
-		}
-	}()
-
-	// Setup workers for consuming jobs
-	endTime := time.Now() // Reset end time after warming
-	for t := 0; t < concurrency; t++ {
-		waitGroup.Add(1) // Add a waiter
-		go func() {
-			defer waitGroup.Done() // Subtract a waiter
-
-			for job := range jobs {
-				if options.Duration > 0 && time.Now().After(endTime) {
-					// Keep pulling jobs in case producer is blocked
-					// Overall, we are done starting new requests
-					continue
-				}
-
-				if options.CancelPtr != nil && *options.CancelPtr {
-					continue
-				}
-
-				if job >= 0 {
-					processor, err := makeJobWithThrottle(options.JobMaker, options.ThrottleInMs)
-					if err != nil {
-						context := jm.StartIteration(job)
-						context.EndIteration(err)
-						jm.FinalizeIteration(context)
-						continue
-					}
-					context := jm.StartIteration(job)
-
-					resp, err := callJobWithPanicHandler(processor)
-					context.EndIteration(err)
-					if err == nil {
-						if options.CompletionHandler != nil {
-							// Handle command specific completion
-							options.CompletionHandler(job, context, resp)
-						} else if resp.GetStatus() != http.StatusOK {
-							// Handle default completion; expects 200 status
-							// Use a custom completion handler for different statuses
-							msg := resp.GetStatusString()
-							context.UpdateError(errors.New(msg))
-						}
-					}
-					jm.FinalizeIteration(context)
-				} else {
-					// Performing warming; do not care about throttling or results
-					processor, err := makeJobWithThrottle(options.JobMaker, 0)
-					if err == nil {
-						_, _ = callJobWithPanicHandler(processor)
-					}
-				}
-			}
-		}()
-	}
-
-	// Run warming jobs
-	if warming > 0 {
-		for i := 0; i < warming; i++ {
-			jobs <- -1
-		}
-
-		// Give a little time for connections; longer the better but we don't want to wait too long
-		Delay(350 * time.Millisecond)
-	}
-
-	// Run the jobs ; stop after all iterations or end of time whichever comes first
-	jm.Start()
-	endTime = time.Now().Add(options.Duration)
-	for i := 0; (options.Iterations == 0 || i < options.Iterations) && (options.Duration == 0 || time.Now().Before(endTime)); i++ {
-		if options.CancelPtr != nil && *options.CancelPtr {
-			break
-		}
-		jobs <- i
-	}
-
-	// Close job channel so workers exit when empty
-	if closeJobs {
-		close(jobs)
-		closeJobs = false
-	}
-
-	// Wait for all job threads to exit
-	waitGroup.Wait()
-	jm.End()
+	processor := NewJobProcessor(logger, options.JobMaker, jm, options.CompletionHandler, options.ThrottleInMs)
+	processor.RunProcessor(options.Iterations, concurrency, options.Duration, options.CancelPtr)
 }
 
 // MakeJobCompletionForExpectedStatus -- Create a completion handler
@@ -202,42 +195,4 @@ func MakeJobCompletionForExpectedStatus(status int) JobCompletion {
 			jc.UpdateError(errors.New(msg))
 		}
 	}
-}
-
-// Function overlaps the creation of a job with a delay as job
-// creation could potentially make network calls
-func makeJobWithThrottle(makejob JobMaker, throttleMs int) (processor JobFunction, err error) {
-	defer func() {
-		// Absorb panics from make job
-		if r := recover(); r != nil {
-			err = fmt.Errorf("makeJobWithThrottle panic: %v", r)
-			processor = nil
-		}
-	}()
-
-	if throttleMs > 0 {
-		// When throttling overlap make job and delay
-		messages := make(chan bool)
-		go func() {
-			Delay(time.Duration(throttleMs) * time.Millisecond)
-			messages <- true
-		}()
-		processor = makejob()
-		<-messages
-	} else {
-		processor = makejob()
-	}
-	return processor, nil
-}
-
-func callJobWithPanicHandler(processor JobFunction) (resp *RestResponse, err error) {
-	defer func() {
-		// Absorb panics from make job
-		if r := recover(); r != nil {
-			err = fmt.Errorf("job panic: %v", r)
-			resp = nil
-		}
-	}()
-
-	return processor()
 }

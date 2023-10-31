@@ -27,7 +27,8 @@ func (cmd *SmPostCommand) AddOptions(set shell.CmdSet) {
 	cmd.useSubstitutionPerIteration = set.BoolLong("subst-per-call", 0, "Run variable substitution on post data for each post")
 	cmd.optionExpectedStatus = set.IntLong("expect-status", 0, 200, "Expected status from post [default=200]")
 	cmd.postOptions = AddPostOptions(set)
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth,
+		shell.CmdRestclient, shell.CmdBenchmarks, shell.CmdTimeout)
 }
 
 func (cmd *SmPostCommand) Execute(args []string) error {

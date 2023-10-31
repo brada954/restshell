@@ -9,9 +9,10 @@ import (
 
 type SmGetCommand struct {
 	// Place getopt option value pointers here
-	optionUseHead   *bool
-	optionUseDelete *bool
-	optionBuckets   *int
+	optionUseHead        *bool
+	optionUseDelete      *bool
+	optionBuckets        *int
+	optionExpectedStatus *int
 	// Processing variables
 	aborted bool
 }
@@ -25,7 +26,9 @@ func (cmd *SmGetCommand) AddOptions(set shell.CmdSet) {
 	cmd.optionUseHead = set.BoolLong("head", 0, "Use HTTP HEAD method")
 	cmd.optionUseDelete = set.BoolLong("delete", 0, "Use HTTP DELETE method")
 	cmd.optionBuckets = set.IntLong("buckets", 'b', 10, "Time slice buckets for metric collection")
-	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks)
+	cmd.optionExpectedStatus = set.IntLong("expect-status", 0, 200, "Expected status from post [default=200]")
+	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth,
+		shell.CmdQueryParamAuth, shell.CmdRestclient, shell.CmdBenchmarks, shell.CmdTimeout)
 }
 
 func (cmd *SmGetCommand) Execute(args []string) error {
@@ -75,6 +78,7 @@ func (cmd *SmGetCommand) Execute(args []string) error {
 	o := shell.GetJobOptionsFromParams()
 	o.CancelPtr = &cmd.aborted
 	o.JobMaker = jobMaker
+	o.CompletionHandler = shell.MakeJobCompletionForExpectedStatus(*cmd.optionExpectedStatus)
 	if o.Duration == 0 {
 		o.Duration = 10 * time.Second
 	}
