@@ -2,6 +2,7 @@ package about
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/brada954/restshell/shell"
 )
@@ -43,13 +44,20 @@ func (cmd *VersionCommand) AddOptions(set shell.CmdSet) {
 }
 
 func (cmd *VersionCommand) Execute(args []string) error {
-	// Validate arguments
+	executable, err := os.Executable()
+	if err != nil {
+		executable = "Unknown"
+	}
 
 	fmt.Fprintf(shell.OutputWriter(),
 		"Version: %s Branch: %s Commit: %s\n",
 		cmd.Version,
 		cmd.Branch,
 		cmd.Commit,
+	)
+	fmt.Fprintf(shell.OutputWriter(),
+		"Executable: %s\n",
+		executable,
 	)
 	return nil
 }
