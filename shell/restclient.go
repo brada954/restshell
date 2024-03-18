@@ -351,7 +351,7 @@ func addHeaders(req *http.Request, headers []string) error {
 		if strings.ToLower(key) == "host" {
 			req.Host = value
 		} else {
-			req.Header.Add(key, value)
+			req.Header[key] = []string{value}
 		}
 	}
 	return nil
