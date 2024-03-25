@@ -69,8 +69,8 @@ func (r *Result) DumpHeader(w io.Writer) {
 func (r *Result) DumpResult(w io.Writer, options ...DisplayOption) {
 	verbose := IsCmdVerboseEnabled()
 
-	if IsStatus(options) && !IsHeaders(options) {
-		fmt.Fprintf(w, "HEADER: Status(%s)\n", r.HttpStatusString)
+	if IsStatus(options) || IsHeaders(options) || verbose {
+		fmt.Fprintf(w, "HTTP Status: %s\n", r.HttpStatusString)
 		verbose = true
 	}
 
