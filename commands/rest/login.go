@@ -19,12 +19,12 @@ func NewLoginCommand() *LoginCommand {
 }
 
 func (cmd *LoginCommand) GetSubCommands() []string {
-	var commands = []string{"COOKIE", "HEADER", "BEARER", "BASIC"}
+	var commands = []string{"COOKIE", "HEADER", "BEARER", "BASIC", "JWT"}
 	return shell.SortedStringSlice(commands)
 }
 
 func (cmd *LoginCommand) AddOptions(set shell.CmdSet) {
-	set.SetParameters("logintype [([name=value]... [name=value;name=value;...]|[token])]")
+	set.SetParameters("logintype [([name=value][;name=value;...])|([token])]")
 	cmd.optionClear = set.BoolLong("clear", 0, "Clear the auth context")
 
 	set.SetUsage(func() {
@@ -74,6 +74,8 @@ func (cmd *LoginCommand) Execute(args []string) error {
 		return cmd.setHeaderAuth(args[1:])
 	case "BEARER":
 		return cmd.setBearerAuth(args[1:])
+	case "JWT":
+		return cmd.setJwtAuth(args[1:])
 	case "BASIC":
 		return cmd.setBasicAuth(args[1:])
 	default:
@@ -156,6 +158,23 @@ func (cmd *LoginCommand) setBearerAuth(args []string) error {
 	// Execute commands
 	authContext := NewHeaderAuth()
 	authContext.AddHeader("Authorization", "Bearer "+strings.TrimSpace(args[0]))
+	shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
+	return nil
+}
+
+func (cmd *LoginCommand) setJwtAuth(args []string) error {
+	if len(args) == 0 {
+		line := shell.GetLine("Input JWT Token value:\n")
+		args = shell.LineParse(line)
+	}
+
+	if len(args) > 1 {
+		return errors.New("too many arguments provided, only one token value supported")
+	}
+
+	// Execute commands
+	authContext := NewHeaderAuth()
+	authContext.AddHeader("Authorization", "JWT "+strings.TrimSpace(args[0]))
 	shell.SetAuthContext(RESTBASEAUTHKEY, authContext)
 	return nil
 }

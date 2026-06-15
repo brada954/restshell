@@ -29,6 +29,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pborman/getopt/v2"
@@ -119,6 +120,18 @@ func GetGlobalStringWithFallback(key string, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+func GetGlobalIntWithFallback(key string, fallback int) int {
+	v := GetGlobalString(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+	return n
 }
 
 func EnumerateGlobals(fn func(key string, value interface{}), filter func(string, interface{}) bool) {
