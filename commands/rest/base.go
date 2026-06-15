@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strings"
@@ -18,6 +19,7 @@ type BaseCommand struct {
 	// Place getopt option value pointers here
 	clearOption     *bool
 	clearAuthOption *bool
+	decode          *bool
 }
 
 func NewBaseCommand() *BaseCommand {
@@ -28,6 +30,7 @@ func (cmd *BaseCommand) AddOptions(set shell.CmdSet) {
 	set.SetParameters("[baseurl]")
 	cmd.clearOption = set.BoolLong("clear", 'c', "Clear the base URL")
 	cmd.clearAuthOption = set.BoolLong("clear-auth", 0, "Clear the base auth context")
+	cmd.decode = set.BoolLong("decode", 0, "Decode base64 auth context value")
 	shell.AddCommonCmdOptions(set, shell.CmdDebug, shell.CmdVerbose, shell.CmdUrl, shell.CmdBasicAuth, shell.CmdQueryParamAuth)
 }
 
@@ -50,7 +53,7 @@ func (cmd *BaseCommand) Execute(args []string) error {
 	if len(args) == 0 && !(*cmd.clearOption || *cmd.clearAuthOption) {
 		fmt.Fprintf(shell.OutputWriter(), "Current Base Url: %s\n", shell.GetGlobalStringWithFallback(RESTBASEURLKEY, "{not set}"))
 		if auth, err := shell.GetAuthContext(RESTBASEAUTHKEY); err == nil {
-			fmt.Fprintf(shell.OutputWriter(), "Current Auth Type: %v:%s\n", reflect.TypeOf(auth), auth.ToString())
+			fmt.Fprintf(shell.OutputWriter(), "Current Auth Type: %v:%s\n", reflect.TypeOf(auth), ExtractAuthString(auth, *cmd.decode))
 		} else {
 			fmt.Fprintf(shell.OutputWriter(), "Current Auth Type: undefined\n")
 		}
@@ -70,6 +73,27 @@ func GetBaseAuthContext() shell.Auth {
 	} else {
 		return auth
 	}
+}
+
+func ExtractAuthString(auth shell.Auth, decode bool) string {
+	if !decode {
+		return auth.ToString()
+	}
+
+	parts := strings.Split(auth.ToString(), ".")
+	s := parts[0]
+	if len(parts) > 2 {
+		s = parts[1]
+	}
+	decodedBytes, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		// If that fails, try raw decoding (no padding)
+		decodedBytes, err = base64.RawStdEncoding.DecodeString(s)
+		if err != nil {
+			return "Error: Decode Failure!"
+		}
+	}
+	return string(decodedBytes)
 }
 
 func GenerateBaseUrl(route string) string {

@@ -434,8 +434,12 @@ func (o *StandardOptions) GetTimeoutValueMs() int64 {
 	if o.timeoutOption != nil {
 		return *o.timeoutOption
 	} else {
-		return OptionDefaultTimeout
+		return getDefaultTimeOutMs()
 	}
+}
+
+func getDefaultTimeOutMs() int64 {
+	return int64(GetGlobalIntWithFallback(".config.restshell.rest.timeout", OptionDefaultTimeout))
 }
 
 func (o *StandardOptions) IsSilentEnabled() bool {

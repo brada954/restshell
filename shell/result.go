@@ -235,7 +235,7 @@ func generateResponseLine(line string, verbose bool) string {
 func getJsonPrintIndent() string {
 	switch GetGlobalStringWithFallback(".config.restshell.json.indent", "tabs") {
 	case "spaces":
-		return "    "
+		return strings.Repeat(" ", GetGlobalIntWithFallback(".config.restshell.json.indent.spaces", 2))
 	case "tabs":
 		fallthrough
 	default:
